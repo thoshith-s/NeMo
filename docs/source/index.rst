@@ -62,15 +62,6 @@ For more information, browse the developer docs for your area of interest in the
    checkpoints/intro
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Evaluation
-   :name: evaluation
-   :titlesonly:
-
-   evaluation/evaluation-doc
-   evaluation/evaluation-adapters
-
-.. toctree::
    :maxdepth: 1
    :caption: APIs
    :name: APIs
