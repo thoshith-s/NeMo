@@ -58,9 +58,9 @@ class RequestType(Enum):
     def from_str(cls, request_type: str) -> "RequestType":
         """Convert a string to a RequestType"""
         if request_type.lower() == "frame":
-            return cls.FRAME
+            return RequestType.FRAME
         elif request_type.lower() == "feature_buffer":
-            return cls.FEATURE_BUFFER
+            return RequestType.FEATURE_BUFFER
 
         choices = [choice.name for choice in cls]
         raise ValueError(f"Invalid request type: {request_type}. Need to be one of {choices}")

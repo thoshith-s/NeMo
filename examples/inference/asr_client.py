@@ -57,6 +57,10 @@ from nemo.utils import logging
 
 @hydra.main(version_base=None)
 def main(cfg):
+
+    # Set the logging level
+    logging.setLevel(cfg.log_level)
+
     # Reading audio filepaths
     audio_filepaths = get_audio_filepaths(cfg.audio_file, sort_by_duration=True)
     logging.info(f"Found {len(audio_filepaths)} audio files")
