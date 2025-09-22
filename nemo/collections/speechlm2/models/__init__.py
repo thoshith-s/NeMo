@@ -14,9 +14,11 @@
 from .duplex_s2s_model import DuplexS2SModel
 from .duplex_s2s_speech_decoder_model import DuplexS2SSpeechDecoderModel
 from .salm import SALM
+from .hybrid_salm_tdt import HybridSALMTDT
 
 __all__ = [
     'DuplexS2SModel',
     'DuplexS2SSpeechDecoderModel',
     'SALM',
+    "HybridSALMTDT",
 ]

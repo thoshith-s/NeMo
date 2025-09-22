@@ -223,7 +223,7 @@ class SALM(LightningModule, HFHubMixin):
             "padding_ratio": (batch["input_ids"] != self.text_pad_id).long().sum() / batch["input_ids"].numel(),
         }
         
-        # Log decoded outputs every 100 steps using already computed logits
+        # # Log decoded outputs every 100 steps using already computed logits
         if batch_idx % 100 == 0:
             self._log_decoded_outputs(forward_outputs["logits"], inputs["target_ids"], batch_idx)
         
@@ -246,11 +246,17 @@ class SALM(LightningModule, HFHubMixin):
             print(f"DEBUG on_validation_epoch_end: val_losses: {val_losses}")
 
         accuracies = []
+        val_wers = []
         for name, accs in self._partial_accuracies.items():
             val_acc = torch.stack(accs).mean()
-            self.log(f"val_acc_{name}", val_acc, on_epoch=True, sync_dist=True)
-            accuracies.append(val_acc)
+            if "val_wer" in name:
+                val_wers.append(val_acc)
+                self.log(f"{name}", val_acc, on_epoch=True, sync_dist=True)
+            else:
+                accuracies.append(val_acc)
+                self.log(f"val_acc_{name}", val_acc, on_epoch=True, sync_dist=True)
         self.log("val_acc", torch.stack(accuracies).mean(), on_epoch=True, sync_dist=True)
+        self.log("val_wer", torch.stack(val_wers).mean(), on_epoch=True, sync_dist=True)
 
         self._partial_val_losses.clear()
         self._partial_accuracies.clear()

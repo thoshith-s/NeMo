@@ -17,9 +17,77 @@ import torch
 from lightning import LightningDataModule
 from lightning.pytorch.utilities import CombinedLoader
 from omegaconf import DictConfig, OmegaConf, open_dict
+import logging
+import itertools
 
 from nemo.collections.common.data.lhotse import get_lhotse_dataloader_from_config
 from nemo.collections.common.tokenizers import TokenizerSpec
+
+
+class DualDataLoader:
+    """
+    A data loader that alternates between two separate data loaders.
+    
+    This ensures homogeneous batches - either all transcribe data or all not_transcribe data.
+    """
+    
+    def __init__(self, transcribe_loader, not_transcribe_loader, transcribe_ratio=0.5):
+        self.transcribe_loader = transcribe_loader
+        self.not_transcribe_loader = not_transcribe_loader
+        self.transcribe_ratio = transcribe_ratio
+        
+        # Calculate alternation pattern
+        if transcribe_ratio == 0.0:
+            self.pattern = [False]  # Only not_transcribe
+        elif transcribe_ratio == 1.0:
+            self.pattern = [True]   # Only transcribe
+        else:
+            # Create alternating pattern based on ratio
+            transcribe_count = max(1, int(transcribe_ratio * 10))
+            not_transcribe_count = max(1, int((1 - transcribe_ratio) * 10))
+            self.pattern = [True] * transcribe_count + [False] * not_transcribe_count
+        
+        logging.info(f"DualDataLoader created with pattern: {self.pattern}")
+    
+    def __iter__(self):
+        transcribe_iter = iter(self.transcribe_loader)
+        not_transcribe_iter = iter(self.not_transcribe_loader)
+        
+        pattern_cycle = itertools.cycle(self.pattern)
+        batch_count = 0
+        
+        while True:
+            try:
+                use_transcribe = next(pattern_cycle)
+                
+                if use_transcribe:
+                    try:
+                        batch = next(transcribe_iter)
+                        logging.debug(f"Batch {batch_count}: Using transcribe data")
+                        yield batch
+                    except StopIteration:
+                        # Restart transcribe loader
+                        transcribe_iter = iter(self.transcribe_loader)
+                        batch = next(transcribe_iter)
+                        yield batch
+                else:
+                    try:
+                        batch = next(not_transcribe_iter)
+                        logging.debug(f"Batch {batch_count}: Using not_transcribe data")
+                        yield batch
+                    except StopIteration:
+                        # Restart not_transcribe loader
+                        not_transcribe_iter = iter(self.not_transcribe_loader)
+                        batch = next(not_transcribe_iter)
+                        yield batch
+                
+                batch_count += 1
+                
+            except StopIteration:
+                break
+    
+    def __len__(self):
+        return len(self.transcribe_loader) + len(self.not_transcribe_loader)
 
 
 class HybridSALMTDTDataModule(LightningDataModule):
@@ -69,25 +137,70 @@ class HybridSALMTDTDataModule(LightningDataModule):
         self.dataset = dataset
 
     def train_dataloader(self):
-        """Create training dataloader using the hybrid dataset."""
+        """Create training dataloader with separate transcribe and not_transcribe loaders."""
         if "train_ds" not in self.cfg:
             return None
         
         # Get speech ratio from config, default to 0.5
         speech_ratio = self.cfg.train_ds.get('speech_ratio', 0.5)
         
-        # Update dataset with speech ratio if it supports it
-        if hasattr(self.dataset, 'speech_ratio'):
-            self.dataset.speech_ratio = speech_ratio
+        # Create separate configs for transcribe and not_transcribe data
+        transcribe_cfg = self.cfg.train_ds.copy()
+        not_transcribe_cfg = self.cfg.train_ds.copy()
         
+        # Modify input_cfg to separate transcribe and not_transcribe datasets
+        transcribe_input_cfg = []
+        not_transcribe_input_cfg = []
         
-        return get_lhotse_dataloader_from_config(
-            config=self.cfg.train_ds,
+        for input_config in self.cfg.train_ds.input_cfg:
+            if input_config.get('prompt') == 'transcribe':
+                transcribe_input_cfg.append(input_config)
+            elif input_config.get('prompt') == 'not_transcribe':
+                not_transcribe_input_cfg.append(input_config)
+            else:
+                # Skip datasets without explicit prompt labels to avoid mixed batches
+                logging.warning(f"Skipping dataset without prompt label: {input_config.get('type', 'unknown')}")
+                continue
+        
+        # Ensure we have data for both loaders
+        if not transcribe_input_cfg:
+            raise ValueError("No datasets with prompt='transcribe' found! All transcribe datasets need explicit prompt labels.")
+        if not not_transcribe_input_cfg:
+            raise ValueError("No datasets with prompt='not_transcribe' found! All not_transcribe datasets need explicit prompt labels.")
+        
+        # Update configs
+        with open_dict(transcribe_cfg):
+            transcribe_cfg.input_cfg = transcribe_input_cfg
+        with open_dict(not_transcribe_cfg):
+            not_transcribe_cfg.input_cfg = not_transcribe_input_cfg
+        
+        logging.info(f"Creating transcribe dataloader with {len(transcribe_input_cfg)} datasets")
+        logging.info(f"Creating not_transcribe dataloader with {len(not_transcribe_input_cfg)} datasets")
+        
+        # Create separate data loaders - each gets its own FallbackDataset instance
+        transcribe_loader = get_lhotse_dataloader_from_config(
+            config=transcribe_cfg,
             global_rank=self._get_dp_rank(),
             world_size=self._get_world_size(),
-            dataset=FallbackDataset(self.dataset),
+            dataset=FallbackDataset(self.dataset),  # Instance A - only sees speech data
             tokenizer=self.tokenizer,
             tdt_tokenizer=self.tdt_tokenizer,
+        )
+        
+        not_transcribe_loader = get_lhotse_dataloader_from_config(
+            config=not_transcribe_cfg,
+            global_rank=self._get_dp_rank(),
+            world_size=self._get_world_size(),
+            dataset=FallbackDataset(self.dataset),  # Instance B - only sees non-speech data
+            tokenizer=self.tokenizer,
+            tdt_tokenizer=self.tdt_tokenizer,
+        )
+        
+        # Return dual data loader that alternates between the two
+        return DualDataLoader(
+            transcribe_loader=transcribe_loader,
+            not_transcribe_loader=not_transcribe_loader,
+            transcribe_ratio=speech_ratio
         )
 
     def val_dataloader(self):

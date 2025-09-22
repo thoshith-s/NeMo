@@ -14,6 +14,7 @@
 
 from itertools import groupby
 from typing import Iterable, Union
+import logging
 
 import numpy as np
 import torch
@@ -45,47 +46,68 @@ class HybridSALMTDTDataset(torch.utils.data.Dataset):
     Args:
         salm_tokenizer (AutoTokenizer): SALM tokenizer for language model
         tdt_tokenizer (AutoTokenizer): TDT tokenizer for ASR model
-        speech_ratio (float): Ratio of speech data in each batch (default: 0.5)
     """
 
-    def __init__(self, salm_tokenizer: AutoTokenizer, tdt_tokenizer: AutoTokenizer, speech_ratio: float = 0.5, is_speech: bool = True) -> None:
+    def __init__(self, salm_tokenizer: AutoTokenizer, tdt_tokenizer: AutoTokenizer) -> None:
         self.salm_tokenizer = salm_tokenizer
         self.tdt_tokenizer = tdt_tokenizer
         self.salm_pad_id = get_pad_id(salm_tokenizer)
         self.tdt_pad_id = get_pad_id(tdt_tokenizer)
-        self.speech_ratio = speech_ratio
-        self.is_speech = is_speech
+        self.debug_file_count = 0  # Limit debug file creation
 
     def __getitem__(self, conversations: CutSet) -> dict | None:
-        if not conversations:
+        if not conversations or len(conversations) == 0:
+            # Return None for empty conversations - FallbackDataset will handle this
+            print(f"WARNING: Empty conversations provided to dataset - returning None for fallback handling")
             return None
         
-        # for i, conv in enumerate(conversations):
-        #     print(f"DEBUG Conversation: {conv}")
-        #     salm_text = self.salm_tokenizer.ids_to_text(conv.input_ids.tolist())
-        #     print(f"DEBUG SALM text (with prompts): {salm_text}")
+        # Check batch homogeneity
+        tdt_count = sum(1 for c in conversations if hasattr(c, 'tdt_input_ids') and c.tdt_input_ids is not None)
+        total_count = len(conversations)
         
-        #     # Use pre-tokenized TDT input_ids from lhotse processing
-        #     tdt_tokens = conv.tdt_input_ids
-        #     tdt_len = conv.tdt_input_ids_len
-        #     print(f"DEBUG TDT tokens: {self.tdt_tokenizer.ids_to_text(tdt_tokens)}")
-        #     print(f"DEBUG Using pre-tokenized TDT tokens: {tdt_tokens}")
-        #     print(f"DEBUG TDT length: {tdt_len}")
+        # Ensure batch consistency:
+        # Samples with the "transcribe" prompt have their inputs tokenized using the TDT tokenizer and stored in "tdt_input_ids".
+        # If any sample in the batch contains "tdt_inputs", then all samples in that batch must also include "tdt_inputs".
+        # This avoids training hangs caused when only a subset of GPUs computes the TDT
+        if tdt_count != 0 and tdt_count != total_count:
+            import os
+            import time
+            debug_file = f"debug_mixed_batch_pid{os.getpid()}_{int(time.time())}.txt"
+            with open(debug_file, "w") as f:
+                f.write(f"MIXED BATCH DETECTED: {tdt_count}/{total_count} conversations have TDT data\n")
+                f.write("All conversations in batch:\n")
+                for i, c in enumerate(conversations):
+                    has_tdt = hasattr(c, 'tdt_input_ids') and c.tdt_input_ids is not None
+                    conv_id = getattr(c, 'id', 'unknown')
+                    f.write(f"  Conv {i}: ID={conv_id}, has_tdt={has_tdt}\n")
+                    f.write(f"    Conv type: {type(c)}\n")
+                    f.write("-" * 40 + "\n")
+            raise ValueError(f"Mixed batch: {tdt_count}/{total_count} conversations have TDT data. Debug info: {debug_file}")
+        
+        # Process conversations - this may filter out conversations with audio loading issues
+        original_count = len(conversations)
+        audios, audio_lens, conversations = collate_conversation_audio_fault_tolerant(conversations)
+        
+        # Debug audio loading issues
+        if len(conversations) < original_count:
+            filtered_count = original_count - len(conversations)
+            print(f"WARNING: {filtered_count}/{original_count} conversations filtered out due to audio loading issues")
             
-        audios, audio_lens, conversations = collate_conversation_audio_fault_tolerant(conversations)    
-        salm_input_ids = left_collate_vectors([c.input_ids for c in conversations], padding_value=self.salm_pad_id)
-        
-        tdt_cuts = [c for c in conversations if hasattr(c, 'tdt_input_ids') and c.tdt_input_ids is not None]
-        tdt_input_idxs = torch.tensor([i for i, c in enumerate(conversations) if hasattr(c, 'tdt_input_ids') and c.tdt_input_ids is not None], device=audios.device, dtype=torch.long)
-        if len(tdt_cuts) > 0:
-            tdt_input_ids = right_collate_vectors([c.tdt_input_ids for c in tdt_cuts], padding_value=0)
-            tdt_input_ids_len = torch.tensor([c.tdt_input_ids_len for c in tdt_cuts], device=tdt_input_ids.device, dtype=torch.long)
+        if len(conversations) == 0:
+            print(f"CRITICAL: All {original_count} conversations filtered out due to audio loading failures!")
+            print(f"Returning None for FallbackDataset to handle...")
+            return None
+
+        salm_input_ids = left_collate_vectors([c.input_ids for c in conversations], padding_value=self.salm_pad_id)        
+                
+        if tdt_count > 0:
+            tdt_input_ids = right_collate_vectors([c.tdt_input_ids for c in conversations], padding_value=0)
+            tdt_input_ids_len = torch.tensor([c.tdt_input_ids_len for c in conversations], device=tdt_input_ids.device, dtype=torch.long)
             
             return {
                 "audios": audios,
                 "audio_lens": audio_lens,
                 "input_ids": salm_input_ids,  # For SALM head
-                "tdt_input_idxs": tdt_input_idxs,
                 "tdt_input_ids": tdt_input_ids,    # For TDT head
                 "tdt_input_ids_len": tdt_input_ids_len,
                 "loss_mask": left_collate_vectors(
@@ -150,28 +172,3 @@ def drop_in_memory_data(conversations: CutSet) -> CutSet:
         return fastcopy(conversation, turns=turns)
 
     return conversations.map(_drop, apply_fn=None)
-
-
-@registered_prompt_format_fn(NeMoMultimodalConversation, Llama2PromptFormatter)
-def default_multimodal_conversation_prompt_format_fn(
-    example: NeMoMultimodalConversation, prompt: Llama2PromptFormatter
-):
-    # Collapse consecutive same-role turns into single turn for proper prompt formatting.
-    turns = groupby(
-        [
-            {
-                "role": turn.role,
-                "slots": {"message": turn.value if isinstance(turn, TextTurn) else turn.audio_locator_tag},
-            }
-            for turn in example.turns
-        ],
-        key=lambda turn: turn["role"],
-    )
-    turns = [
-        {"role": role, "slots": {"message": " ".join(t["slots"]["message"] for t in turn_grp)}}
-        for role, turn_grp in turns
-    ]
-    if hasattr(example, "system_prompt"):
-        turns[0]["role"] = "system_and_user"
-        turns[0]["slots"]["system"] = example.system_prompt
-    return prompt.encode_dialog(turns)

@@ -51,7 +51,7 @@ class HybridSALMTDT(SALM):
     def _setup_tdt_head(self):
         # Use the already loaded ASR model
         asr_model = self.asr_model
-        logging.info("Setting up TDT components from already loaded ASR model")
+        logging.debug("Setting up TDT components from already loaded ASR model")
         
         # Extract TDT components
         self.tdt_decoder = asr_model.decoder
@@ -74,61 +74,78 @@ class HybridSALMTDT(SALM):
             tokenizer=self.tdt_tokenizer,
         )
         
-        logging.info("TDT head components loaded from pretrained ASR model successfully")
+        logging.debug("TDT head components loaded from pretrained ASR model successfully")
 
     def forward_tdt(self, audio_encoded: Tensor,
                     audio_encoded_len: Tensor, 
                     target_ids: Tensor,
                     target_ids_len: Tensor,
                     compute_wer: bool=False) -> dict[str, Tensor]:
-        pred_out, pred_out_len, _ = self.tdt_decoder(targets=target_ids, target_length=target_ids_len)
-        
-        # joint_out = self.tdt_joint(encoder_outputs=audio_encoded, decoder_outputs=pred_out)
-        
-        # Fused joint step
-        loss_value, wer, _, _ = self.tdt_joint(
-            encoder_outputs=audio_encoded,
-            decoder_outputs=pred_out,
-            encoder_lengths=audio_encoded_len,
-            transcripts=target_ids,
-            transcript_lengths=target_ids_len,
-            compute_wer=compute_wer,
-        )
-        
-        
-        if compute_wer:
-            return {
-                "loss_value": loss_value,
-                "wer": wer,
-            }
-        else:
-            return {
-                "loss_value": loss_value,
-            }
+        try:
+            # TDT decoder step
+            pred_out, pred_out_len, _ = self.tdt_decoder(targets=target_ids, target_length=target_ids_len)
+            
+            # Fused joint step with timeout protection
+            with torch.cuda.device(audio_encoded.device):
+                loss_value, wer, _, _ = self.tdt_joint(
+                    encoder_outputs=audio_encoded,
+                    decoder_outputs=pred_out,
+                    encoder_lengths=audio_encoded_len,
+                    transcripts=target_ids,
+                    transcript_lengths=target_ids_len,
+                    compute_wer=compute_wer,
+                )
+            
+            if compute_wer:
+                return {
+                    "loss_value": loss_value,
+                    "wer": wer,
+                }
+            else:
+                return {
+                    "loss_value": loss_value,
+                }
+        except Exception as e:
+            logging.error(f"Error in forward_tdt: {e}")
+            logging.error(f"  audio_encoded shape: {audio_encoded.shape}")
+            logging.error(f"  target_ids shape: {target_ids.shape}")
+            raise
 
 
     def prepare_tdt_inputs(self, batch: dict):
         """Prepare inputs for TDT head (ASR tasks)."""
-        tdt_batch_audios = batch["audios"].index_select(0, batch["tdt_input_idxs"])
-        tdt_batch_audio_lens = batch["audio_lens"].index_select(0, batch["tdt_input_idxs"])
-        
-        audio_encoded, audio_encoded_len = self.perception(
-            input_signal=tdt_batch_audios, input_signal_length=tdt_batch_audio_lens, 
-            apply_modality_adapter=False
-        )
-        
-        assert "tdt_input_ids" in batch, "tdt_input_ids must be in batch"
-        assert "tdt_input_ids_len" in batch, "tdt_input_ids_len must be in batch"
-        
-        target_ids = batch["tdt_input_ids"]
-        target_ids_len = batch["tdt_input_ids_len"]
-                
-        return {
-            "audio_encoded": audio_encoded,
-            "audio_encoded_len": audio_encoded_len,
-            "target_ids": target_ids,
-            "target_ids_len": target_ids_len,
-        }
+        try:
+            tdt_batch_audios = batch["audios"]
+            tdt_batch_audio_lens = batch["audio_lens"]
+            
+            audio_encoded, audio_encoded_len = self.perception(
+                input_signal=tdt_batch_audios, 
+                input_signal_length=tdt_batch_audio_lens, 
+                apply_modality_adapter=False
+            )
+            
+            # Validate required TDT target data
+            assert "tdt_input_ids" in batch, "tdt_input_ids must be in batch"
+            assert "tdt_input_ids_len" in batch, "tdt_input_ids_len must be in batch"
+            
+            target_ids = batch["tdt_input_ids"]
+            target_ids_len = batch["tdt_input_ids_len"]
+            
+            return {
+                "audio_encoded": audio_encoded,
+                "audio_encoded_len": audio_encoded_len,
+                "target_ids": target_ids,
+                "target_ids_len": target_ids_len,
+            }
+            
+        except Exception as e:
+            logging.error(f"Error in prepare_tdt_inputs: {e}")
+            logging.error(f"  Batch keys: {list(batch.keys())}")
+            if "tdt_input_ids" in batch:
+                logging.error(f"  Has TDT data: True")
+            if "audios" in batch:
+                logging.error(f"  Audio shape: {batch['audios'].shape}")
+            raise
 
     def training_step(self, batch: dict, batch_idx: int):
         """
@@ -142,14 +159,30 @@ class HybridSALMTDT(SALM):
         """
         total_loss = 0.0
         loss_dict = {}
-            
-        # Legacy batch format - treat as speech data
-        speech_loss, speech_metrics = self._process_speech_batch(batch, batch_idx)
-        total_loss += speech_loss
-        loss_dict.update(speech_metrics)
+        
+        try:
+            # Determine batch type based on presence of TDT data
+            has_tdt_data = "tdt_input_ids" in batch
+            if has_tdt_data:
+                speech_loss, speech_metrics = self._process_speech_batch(batch, batch_idx)
+                total_loss += speech_loss
+                loss_dict.update(speech_metrics)
+            else:
+                salm_loss, salm_metrics = self._process_non_transcribe_batch(batch, batch_idx)
+                total_loss += salm_loss
+                loss_dict.update(salm_metrics)
+        except Exception as e:
+            logging.error(f"Step {batch_idx}: Error in batch processing: {e}")
+            raise
     
         # Final logging
         loss_dict["loss"] = total_loss
+        
+        # Debug logging for final metrics
+        if batch_idx % 10 == 0:
+            logging.debug(f"Step {batch_idx}: Training step completed, total loss: {total_loss:.4f}")
+            logging.debug(f"  Loss components: {[(k, v.item() if hasattr(v, 'item') else v) for k, v in loss_dict.items() if 'loss' in k]}")
+        
         self.log_dict(loss_dict, on_step=True)
         return loss_dict
 
@@ -158,51 +191,76 @@ class HybridSALMTDT(SALM):
         loss_dict = {}
         total_loss = 0.0
         
-        # SALM training for speech data
-        salm_result = super().training_step(batch, batch_idx)
-        salm_loss = salm_result["loss"]
-        total_loss += (1 - self.tdt_weight) * salm_loss
-        loss_dict["salm_speech_loss"] = salm_loss
-        
-        # Add other SALM metrics with speech prefix
-        for key, value in salm_result.items():
-            if key != "loss":
-                loss_dict[f"salm_speech_{key}"] = value
-    
-        # TDT training for speech data
-        for m in (self.perception.preprocessor, self.perception.encoder):
-            if is_frozen(m):
-                m.eval()
-        
-        # Ensure TDT components are in training mode
-        if not is_frozen(self.tdt_decoder):
-            self.tdt_decoder.train()
-        if not is_frozen(self.tdt_joint):
-            self.tdt_joint.train()
-    
-        compute_wer = True if batch_idx % 100 == 0 else False
-        # Prepare TDT inputs using the new structure
-        tdt_loss = 0.0
-        if "tdt_input_ids" in batch:
-            inputs = self.prepare_tdt_inputs(batch)
-            forward_outputs = self.forward_tdt(
-                inputs["audio_encoded"], 
-                inputs["audio_encoded_len"],
-                inputs["target_ids"],
-                inputs["target_ids_len"],
-                compute_wer
-            )
+        try:
+            salm_result = super().training_step(batch, batch_idx)
+            salm_loss = salm_result["loss"]
+            weighted_salm_loss = (1 - self.tdt_weight) * salm_loss
+            total_loss += weighted_salm_loss
+            loss_dict["salm_speech_loss"] = salm_loss
             
-            tdt_loss = forward_outputs["loss_value"]
-            loss_dict["tdt_loss"] = forward_outputs["loss_value"]
-        
-            if compute_wer:
+            # Add other SALM metrics with speech prefix
+            for key, value in salm_result.items():
+                if key != "loss":
+                    loss_dict[f"salm_speech_{key}"] = value
+            
+        except Exception as e:
+            logging.error(f"Step {batch_idx}: Error in SALM training: {e}")
+            raise
+    
+        try:        
+            # # Prepare TDT inputs using the new structure
+            tdt_loss = 0.0
+            if "tdt_input_ids" in batch:
+                inputs = self.prepare_tdt_inputs(batch)
+                
+                forward_outputs = self.forward_tdt(
+                    inputs["audio_encoded"], 
+                    inputs["audio_encoded_len"],
+                    inputs["target_ids"],
+                    inputs["target_ids_len"],
+                    compute_wer=True
+                )
+                
+                tdt_loss = forward_outputs["loss_value"]
+                loss_dict["tdt_loss"] = forward_outputs["loss_value"]
                 loss_dict["tdt_wer"] = forward_outputs["wer"]
-        else:
-            print("No TDT input ids in batch")
+                    
+                logging.debug(f"Step {batch_idx}: TDT training completed, loss: {tdt_loss:.4f}")
+            else:
+                if batch_idx % 50 == 0:  # Reduce logging frequency
+                    logging.debug(f"Step {batch_idx}: No TDT input ids in batch - skipping TDT training")
+                
+        except Exception as e:
+            logging.error(f"Step {batch_idx}: Error in TDT training: {e}")
+            raise
             
         total_loss += tdt_loss * self.tdt_weight
+        
+        # Add loss component tracking
+        loss_dict["salm_loss_weighted"] = weighted_salm_loss if 'weighted_salm_loss' in locals() else 0.0
+        loss_dict["tdt_loss_weighted"] = tdt_loss * self.tdt_weight
+        loss_dict["tdt_weight"] = self.tdt_weight
+        loss_dict["salm_weight"] = (1 - self.tdt_weight)
+        
         return total_loss, loss_dict
+
+    def _process_non_transcribe_batch(self, batch: dict, batch_idx: int) -> tuple[float, dict]:
+        """Process non-transcribe batch through SALM head only."""
+        loss_dict = {}
+        try:
+            salm_result = super().training_step(batch, batch_idx)
+            salm_loss = salm_result["loss"]
+            loss_dict["salm_non_transcribe_loss"] = salm_loss
+            
+            # Add other SALM metrics with non_transcribe prefix
+            for key, value in salm_result.items():
+                if key != "loss":
+                    loss_dict[f"salm_non_transcribe_{key}"] = value
+            
+            return salm_loss, loss_dict
+        except Exception as e:
+            logging.error(f"Step {batch_idx}: Error in SALM training for non-transcribe data: {e}")
+            raise
 
     def validation_step(self, batch: dict, batch_idx: int):
         """Validation step that handles separate speech and non-speech batches."""
@@ -220,9 +278,8 @@ class HybridSALMTDT(SALM):
                 inputs["target_ids_len"],
                 compute_wer=True
             )
-            
-            self._partial_accuracies[f"{dataset_name}_tdt_val_loss"].append(forward_outputs["loss_value"])
-            self._partial_accuracies[f"{dataset_name}_tdt_val_wer"].append(forward_outputs["wer"])
+            self._partial_accuracies[f"tdt_{dataset_name}_val_wer"].append(forward_outputs["wer"])
+            self._partial_accuracies[f"val_wer"].append(forward_outputs["wer"])
 
 
     @torch.no_grad()
@@ -274,7 +331,6 @@ class HybridSALMTDT(SALM):
                 {"name": "tdt_input_ids_len", "type": NeuralType(("B",), LengthsType()), "seq_length": "tdt_output"},
                 
                 # Task routing inputs
-                {"name": "tdt_input_idxs", "type": NeuralType(("B",), LengthsType())},
                 {"name": "task_type", "type": str},  # "salm", "tdt", or "both"
             ],
         }
