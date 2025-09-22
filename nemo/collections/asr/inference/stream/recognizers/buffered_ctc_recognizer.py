@@ -25,12 +25,13 @@ from nemo.collections.asr.inference.stream.buffering.feature_bufferer import Bat
 from nemo.collections.asr.inference.stream.decoders.greedy.greedy_ctc_decoder import ClippedCTCGreedyDecoder
 from nemo.collections.asr.inference.stream.endpointing.greedy.greedy_ctc_endpointing import CTCGreedyEndpointing
 from nemo.collections.asr.inference.stream.framing.multi_stream import ContinuousBatchedRequestStreamer
-from nemo.collections.asr.inference.stream.framing.request import FeatureBuffer, Frame, Request, RequestType
+from nemo.collections.asr.inference.stream.framing.request import FeatureBuffer, Frame, Request
 from nemo.collections.asr.inference.stream.framing.request_options import ASRRequestOptions
 from nemo.collections.asr.inference.stream.recognizers.base_recognizer import BaseRecognizer
 from nemo.collections.asr.inference.stream.state.ctc_state import CTCStreamingState
 from nemo.collections.asr.inference.stream.text.text_processing import StreamingTextPostprocessor
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
+from nemo.collections.asr.inference.utils.enums import RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
     drop_trailing_features,
     get_confidence_utils,

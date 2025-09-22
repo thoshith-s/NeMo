@@ -26,7 +26,7 @@ from nemo.collections.asr.inference.stream.buffering.cache_feature_bufferer impo
 from nemo.collections.asr.inference.stream.decoders.greedy.greedy_rnnt_decoder import RNNTGreedyDecoder
 from nemo.collections.asr.inference.stream.endpointing.greedy.greedy_rnnt_endpointing import RNNTGreedyEndpointing
 from nemo.collections.asr.inference.stream.framing.multi_stream import ContinuousBatchedRequestStreamer
-from nemo.collections.asr.inference.stream.framing.request import FeatureBuffer, Frame, RequestType
+from nemo.collections.asr.inference.stream.framing.request import FeatureBuffer, Frame
 from nemo.collections.asr.inference.stream.framing.request_options import ASRRequestOptions
 from nemo.collections.asr.inference.stream.recognizers.base_recognizer import BaseRecognizer
 from nemo.collections.asr.inference.stream.state.cache_aware_rnnt_state import CacheAwareRNNTStreamingState
@@ -34,6 +34,7 @@ from nemo.collections.asr.inference.stream.text.text_processing import Streaming
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.context_manager import CacheAwareContextManager
 from nemo.collections.asr.inference.utils.endpointing_utils import millisecond_to_frames
+from nemo.collections.asr.inference.utils.enums import RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,

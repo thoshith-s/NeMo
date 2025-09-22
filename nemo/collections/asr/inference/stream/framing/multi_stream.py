@@ -24,10 +24,10 @@ from nemo.collections.asr.inference.stream.framing.request import (
     Frame,
     Request,
     RequestOptions,
-    RequestType,
 )
 from nemo.collections.asr.inference.stream.framing.stream import Stream
 from nemo.collections.asr.inference.utils.progressbar import ProgressBar
+from nemo.collections.asr.inference.utils.enums import RequestType
 
 
 class MultiStream:
