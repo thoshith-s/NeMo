@@ -31,15 +31,6 @@ class CacheAwareContext:
         self.cache_last_time = cache_last_time
         self.cache_last_channel_len = cache_last_channel_len
 
-    def set_cache_last_channel(self, cache_last_channel: Tensor) -> None:
-        self.cache_last_channel = cache_last_channel
-
-    def set_cache_last_time(self, cache_last_time: Tensor) -> None:
-        self.cache_last_time = cache_last_time
-
-    def set_cache_last_channel_len(self, cache_last_channel_len: Tensor) -> None:
-        self.cache_last_channel_len = cache_last_channel_len
-
 
 class CacheAwareContextManager:
 
@@ -174,10 +165,11 @@ class CacheAwareContextManager:
         cache_last_channel_len = self.cache_last_channel_len[slot_ids]
 
         # create a context object
-        context = CacheAwareContext()
-        context.set_cache_last_channel(cache_last_channel)
-        context.set_cache_last_time(cache_last_time)
-        context.set_cache_last_channel_len(cache_last_channel_len)
+        context = CacheAwareContext(
+            cache_last_channel=cache_last_channel,
+            cache_last_time=cache_last_time,
+            cache_last_channel_len=cache_last_channel_len,
+        )
 
         # mapping between cache and context
         mapping = dict(zip(slot_ids, range(len(slot_ids))))

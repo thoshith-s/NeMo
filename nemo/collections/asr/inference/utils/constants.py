@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Precision relatedconstants
+# Precision related constants
 BIG_EPSILON = 1e-5
 SMALL_EPSILON = 1e-10
 ROUND_PRECISION = 9
