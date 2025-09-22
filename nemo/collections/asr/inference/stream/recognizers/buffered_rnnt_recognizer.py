@@ -472,11 +472,11 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
 
         best_hyp = self.asr_model.decode(encs, enc_lens, partial_hypotheses=partial_hypotheses)
         if self.tokens_per_right_padding > 0:
-            for niva_state, rnnt_state in zip(states, self.decoding_computer.split_batched_state(batched_state)):
-                niva_state.hyp_decoding_state = rnnt_state
+            for state, rnnt_state in zip(states, self.decoding_computer.split_batched_state(batched_state)):
+                state.hyp_decoding_state = rnnt_state
         else:
-            for niva_state, hyp in zip(states, best_hyp):
-                niva_state.hyp_decoding_state = hyp.dec_state
+            for state, hyp in zip(states, best_hyp):
+                state.hyp_decoding_state = hyp.dec_state
 
         ready_states = self.alignment_decode_step(best_hyp, requests, states)
         for curr_state in states:
