@@ -40,8 +40,8 @@ class HybridSALMTDTDataset(torch.utils.data.Dataset):
     A dataset for Hybrid SALM-TDT models that separates speech and non-speech data.
     
     This dataset processes multimodal conversations and separates them into:
-    1. Speech data: conversations with audio turns (goes through both TDT and SALM heads)
-    2. Non-speech data: text-only conversations (goes through SALM head only)
+    1. Speech data: goes through both TDT and SALM heads
+    2. Non-speech data: goes through SALM head only
     
     Args:
         salm_tokenizer (AutoTokenizer): SALM tokenizer for language model
