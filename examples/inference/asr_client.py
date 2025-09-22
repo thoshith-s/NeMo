@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-f"""
+"""
 This script serves as the entry point for local ASR inference, supporting buffered CTC/RNNT/TDT and cache-aware CTC/RNNT inference.
 
 The script performs the following steps:

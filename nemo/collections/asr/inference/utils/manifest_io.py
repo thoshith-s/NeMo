@@ -71,7 +71,7 @@ def get_audio_filepaths(audio_file: str, sort_by_duration: bool = True) -> List[
         filepaths = [os.path.join(audio_file, x) for x in filepaths]
     elif audio_file.endswith(".wav"):
         filepaths = [audio_file]
-    elif audio_file.endswith(".json"):
+    elif audio_file.endswith((".json", ".jsonl")):
         manifest = read_manifest(audio_file)
         filepaths = [get_full_path(entry["audio_filepath"], audio_file) for entry in manifest]
     else:
