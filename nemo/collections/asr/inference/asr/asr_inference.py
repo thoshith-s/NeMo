@@ -15,10 +15,10 @@
 
 import copy
 from functools import cached_property
-from typing import List, Set, Union
+from typing import Callable, List, Set, Union
 
 import torch
-from omegaconf import open_dict
+from omegaconf import DictConfig, open_dict
 
 from nemo.collections.asr.inference.utils.constants import SENTENCEPIECE_UNDERSCORE
 from nemo.collections.asr.inference.utils.device_utils import setup_device
@@ -100,17 +100,17 @@ class ASRInference:
         return self.decoding_cfg.word_seperator
 
     @property
-    def confidence_aggregator(self):
+    def confidence_aggregator(self) -> Callable:
         """
         Returns:
-            (function) confidence aggregator function.
+            (Callable) confidence aggregator function.
         """
         return SUPPORTED_CONFIDENCE_AGGREGATORS[self.decoding_cfg.confidence_cfg.aggregation]
 
-    def copy_asr_config(self):
+    def copy_asr_config(self) -> DictConfig:
         """
         Returns:
-            (dict) copy of the ASR model configuration.
+            (DictConfig) copy of the ASR model configuration.
         """
         return copy.deepcopy(self.asr_model_cfg)
 

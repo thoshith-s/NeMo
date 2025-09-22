@@ -23,8 +23,9 @@ from nemo.collections.asr.inference.asr.asr_inference import ASRInference
 class CacheAwareASRInference(ASRInference):
 
     def get_input_features(self) -> int:
-        """Returns:
-        (int) number of channels in the input features.
+        """
+        Returns:
+            (int) number of channels in the input features.
         """
         return self.asr_model.encoder._feat_in
 
@@ -42,44 +43,51 @@ class CacheAwareASRInference(ASRInference):
         return self.sampling_frames
 
     def get_initial_cache_state(self, batch_size: int) -> Tuple[Tensor, Tensor, Tensor]:
-        """Returns:
-        (Tuple[Tensor, Tensor, Tensor]) the initial cache state of the encoder.
+        """
+        Returns:
+            (Tuple[Tensor, Tensor, Tensor]) the initial cache state of the encoder.
         """
         return self.asr_model.encoder.get_initial_cache_state(batch_size=batch_size)
 
     def get_drop_extra_pre_encoded(self) -> int:
-        """Returns:
-        (int) drop_extra_pre_encoded.
+        """
+        Returns:
+            (int) drop_extra_pre_encoded.
         """
         return self.asr_model.encoder.streaming_cfg.drop_extra_pre_encoded
 
     def get_chunk_size(self) -> List[int] | int:
-        """Returns:
-        (List[int] | int) the chunk size.
+        """
+        Returns:
+            (List[int] | int) the chunk size.
         """
         return self.asr_model.encoder.streaming_cfg.chunk_size
 
     def get_shift_size(self) -> List[int] | int:
-        """Returns:
-        (List[int] | int) the shift size.
+        """
+        Returns:
+            (List[int] | int) the shift size.
         """
         return self.asr_model.encoder.streaming_cfg.shift_size
 
     def get_pre_encode_cache_size(self) -> List[int] | int:
-        """Returns:
-        (List[int] | int) the pre_encode cache size.
+        """
+        Returns:
+            (List[int] | int) the pre_encode cache size.
         """
         return self.asr_model.encoder.streaming_cfg.pre_encode_cache_size
 
     def get_subsampling_factor(self) -> int:
-        """Returns:
-        (int) subsampling factor for the ASR encoder model.
+        """
+        Returns:
+            (int) subsampling factor for the ASR encoder model.
         """
         return self.asr_model.encoder.subsampling_factor
 
     def get_att_context_size(self) -> List:
-        """Returns:
-        (List) the attention context size.
+        """
+        Returns:
+            (List) the attention context size.
         """
         return self.asr_model.encoder.att_context_size.copy()
 
