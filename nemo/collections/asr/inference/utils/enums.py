@@ -49,14 +49,12 @@ class RecognizerType(Enum):
 
 
 class RequestType(Enum):
-    """Type of request"""
-
     FRAME = "frame"
     FEATURE_BUFFER = "feature_buffer"
 
     @classmethod
     def from_str(cls, request_type: str) -> "RequestType":
-        """Convert a string to a RequestType"""
+        """Convert a string to a RequestType enum value."""
         if request_type.lower() == "frame":
             return RequestType.FRAME
         elif request_type.lower() == "feature_buffer":

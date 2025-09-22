@@ -39,6 +39,18 @@ class RecognizerBuilder:
             raise ValueError(f"Invalid matmul precision: {matmul_precision}. Need to be one of {choices}")
         torch.set_float32_matmul_precision(matmul_precision)
         logging.info(f"Using matmul precision: {matmul_precision}")
+    
+    @staticmethod
+    def set_log_level(log_level: int) -> None:
+        """
+        Set the logging level.
+        Args:
+            log_level: (int) Logging level: 0 (NOTSET), 10 (DEBUG), 20 (INFO), 30 (WARNING), 40 (ERROR), 50 (CRITICAL)
+        """
+        choices = [0, 10, 20, 30, 40, 50]
+        if log_level not in choices:
+            raise ValueError(f"Invalid log level: {log_level}. Need to be one of {choices}")
+        logging.setLevel(log_level)
 
     @staticmethod
     def build_recognizer(cfg: DictConfig) -> Any:
@@ -49,6 +61,7 @@ class RecognizerBuilder:
         Returns:
             Returns Recognizer object
         """
+        RecognizerBuilder.set_log_level(cfg.log_level)
         RecognizerBuilder.set_matmul_precision(cfg.matmul_precision)
         recognizer_type = RecognizerType.from_str(cfg.recognizer_type)
         if recognizer_type is RecognizerType.BUFFERED:
