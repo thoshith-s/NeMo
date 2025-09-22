@@ -59,15 +59,12 @@ text_postprocessor:
     n_jobs: 16                                # Number of parallel jobs for ITN processing
 
 
-
 # ========================
 # Recognizer settings
 # ========================
 matmul_precision: high                        # Matrix multiplication precision: highest, high, medium
 recognizer_type: buffered                     # Recognizer type: buffered, cache_aware
 asr_decoding_type: ctc                        # Decoding method: ctc or rnnt
-
-
 
 
 # ========================
@@ -81,8 +78,3 @@ verbatim_transcripts: true                    # Whether to apply inverse text no
 cache_dir: null                               # Directory to store cache (e.g., .far files)
 lang: null                                    # Language code for ASR model
 return_tail_result: false                     # Whether to return the tail labels left in the right padded side of the buffer
-
-
-
-
-

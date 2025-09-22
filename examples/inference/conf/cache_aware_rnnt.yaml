@@ -28,6 +28,7 @@ endpointing:
   stop_history_eou: 800                       # Time window (ms) for evaluating EoU
   residue_tokens_at_end: 2                    # Number of residual tokens used for EoU
 
+
 # ========================
 # Streaming configuration
 # ========================
@@ -40,6 +41,7 @@ streaming:
   use_feat_cache: true                        # Whether to cache mel-spec features, set false to re-calculate all mel-spec features in audio buffer
   chunk_size_in_secs: null                    # Amount of audio to load for each streaming step, e.g., 0.08s for FastConformer. Set to `null` for using default size equal to 1+lookahead frames.
   request_type: frame                         # Type of request: frame, only frame is supported for cache-aware streaming
+
 
 # ============================
 # Text postprocessing settings

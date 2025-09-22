@@ -12,25 +12,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+f"""
+This script serves as the entry point for local ASR inference, supporting buffered CTC/RNNT/TDT and cache-aware CTC/RNNT inference.
 
-import hydra
+The script performs the following steps:
+    (1) Accepts as input a single audio file, a directory of audio files, or a manifest file.
+        - Note: Input audio files must be 16 kHz, mono-channel WAV files.
+    (2) Creates a recognizer object to run the ASR pipeline.
+    (3) Runs inference on the input audio files.
+    (4) Writes the transcriptions to an output json/jsonl file. Word-level output is written to a separate CTM file.
+
+Example usage:
+python asr_client.py \
+        --config-path=./conf \
+        --config-name=config.yaml \
+        audio_file=<path to audio file, directory of audio files, or manifest file> \
+        output_filename=<path to output jsonfile> \
+        lang=en \
+        automatic_punctuation=False \
+        verbatim_transcripts=True \
+        ...
+        # See conf/*.yaml for all available options
+
+Note:
+    The output file is a json file with the following structure:
+    {"audio_filepath": "path/to/audio/file", "text": "transcription of the audio file", "ctm_filepath": "path/to/ctm/file"}
+"""
+
+
 from time import time
 
-from nemo.collections.asr.inference.utils.manifest_io import (
-    get_audio_filepaths,
-    dump_output,
-    calculate_duration
-)
-from nemo.collections.asr.inference.factory.recognizer_builder import RecognizerBuilder
+import hydra
 
-from nemo.utils import logging
+from nemo_text_processing.utils import logger as nemo_text_logger
 
 # disable nemo_text_processing logging
-from nemo_text_processing.utils import logger as nemo_text_logger
 nemo_text_logger.propagate = False
 
-
+from nemo.collections.asr.inference.factory.recognizer_builder import RecognizerBuilder
+from nemo.collections.asr.inference.utils.manifest_io import calculate_duration, dump_output, get_audio_filepaths
 from nemo.collections.asr.inference.utils.progressbar import TQDMProgressBar
+from nemo.utils import logging
+
 
 @hydra.main(version_base=None)
 def main(cfg):
@@ -38,11 +61,11 @@ def main(cfg):
     audio_filepaths = get_audio_filepaths(cfg.audio_file, sort_by_duration=True)
     logging.info(f"Found {len(audio_filepaths)} audio files")
 
-    # Build the pipeline
+    # Build the recognizer
     recognizer = RecognizerBuilder.build_recognizer(cfg)
     progress_bar = TQDMProgressBar()
 
-    # Run the pipeline
+    # Run the recognizer
     start = time()
     output = recognizer.run(audio_filepaths, progress_bar=progress_bar)
     exec_dur = time() - start
