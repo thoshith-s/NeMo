@@ -18,7 +18,6 @@ import re
 from multiprocessing import Manager
 from typing import List, Tuple
 
-import diskcache
 import pynini
 from nemo_text_processing.inverse_text_normalization.inverse_normalize import InverseNormalizer, Normalizer
 from nemo_text_processing.text_normalization.en.graph_utils import INPUT_CASED, INPUT_LOWER_CASED
@@ -33,6 +32,14 @@ from nemo.collections.asr.inference.utils.itn_utils import (
 from nemo.utils import logging
 
 IN_MEM_CACHE = Manager().dict(lock=False)
+
+try:
+    import diskcache
+
+    CACHING_FROM_DISK = True
+except ImportError:
+    logging.warning("diskcache is not installed, caching from disk is disabled")
+    CACHING_FROM_DISK = False
 
 
 class AlignmentPreservingInverseNormalizer:
@@ -70,14 +77,14 @@ class AlignmentPreservingInverseNormalizer:
             overwrite_cache=overwrite_cache,
             max_number_of_permutations_per_split=max_number_of_permutations_per_split,
         )
-        if cache_dir:
+        if cache_dir and CACHING_FROM_DISK:
             self.DISK_TAG_CACHE = diskcache.Cache(os.path.join(cache_dir, "itn_tag_cache"))
             self.DISK_VERB_CACHE = diskcache.Cache(os.path.join(cache_dir, "itn_verb_cache"))
-            self.caching_enabled = True
+            self.caching_from_disk_enabled = True
         else:
             self.DISK_TAG_CACHE = None
             self.DISK_VERB_CACHE = None
-            self.caching_enabled = False
+            self.caching_from_disk_enabled = False
 
     def verbalize(self, tokens: List, sep: str) -> str | None:
         """
@@ -122,13 +129,13 @@ class AlignmentPreservingInverseNormalizer:
         Returns:
             (str) tagged text
         """
-        if not no_cache and self.caching_enabled:
+        if not no_cache:
             # In-memory cache check
             if text in IN_MEM_CACHE:
                 return IN_MEM_CACHE[text]
 
             # Disk cache check
-            if text in self.DISK_TAG_CACHE:
+            if self.caching_from_disk_enabled and text in self.DISK_TAG_CACHE:
                 x = self.DISK_TAG_CACHE[text]
                 IN_MEM_CACHE[text] = x
                 return x
@@ -140,8 +147,8 @@ class AlignmentPreservingInverseNormalizer:
         text = pynini.escape(text)
         tagged_lattice = self.itn_model.find_tags(text)
         tagged_text = Normalizer.select_tag(tagged_lattice)
-        if self.caching_enabled:
-            IN_MEM_CACHE[text] = tagged_text
+        IN_MEM_CACHE[text] = tagged_text
+        if self.caching_from_disk_enabled:
             self.DISK_TAG_CACHE[text] = tagged_text
         return tagged_text
 
@@ -154,24 +161,25 @@ class AlignmentPreservingInverseNormalizer:
         Returns:
             (str, str) Returns the verbalized text, and the semiotic class.
         """
-        if self.caching_enabled:
-            # In-memory cache check
-            if tagged_text in IN_MEM_CACHE:
-                return IN_MEM_CACHE[tagged_text]
 
-            # Disk cache check
-            if tagged_text in self.DISK_VERB_CACHE:
-                x = self.DISK_VERB_CACHE[tagged_text]
-                IN_MEM_CACHE[tagged_text] = x
-                return x
+        # In-memory cache check
+        if tagged_text in IN_MEM_CACHE:
+            return IN_MEM_CACHE[tagged_text]
+
+        # Disk cache check
+        if self.caching_from_disk_enabled and tagged_text in self.DISK_VERB_CACHE:
+            x = self.DISK_VERB_CACHE[tagged_text]
+            IN_MEM_CACHE[tagged_text] = x
+            return x
 
         self.itn_model.parser(tagged_text)
         tokens = self.itn_model.parser.parse()
         span_text = self.verbalize(tokens, sep)
         semiotic_class = DEFAULT_SEMIOTIC_CLASS if span_text is None else get_semiotic_class(tokens)
-        if self.caching_enabled:
+
+        IN_MEM_CACHE[tagged_text] = (span_text, semiotic_class)
+        if self.caching_from_disk_enabled:
             self.DISK_VERB_CACHE[tagged_text] = (span_text, semiotic_class)
-            IN_MEM_CACHE[tagged_text] = (span_text, semiotic_class)
         return span_text, semiotic_class
 
     def find_token_words(
