@@ -1,6 +1,6 @@
 # NeMo Voice Agent
 
-A [Pipecat](https://github.com/pipecat-ai/pipecat) example demonstrating the simplest way to create a voice agent using NVIDIA NeMo STT/TTS service and HuggingFace LLM. Everything is open-source and deployed locally so you can have your own voice agent. Feel free to explore the code and see how different speech technologies can be integrated with LLMs to create a seamless conversation experience. 
+A fully open-source NVIDIA NeMo Voice Agent example demonstrating a simple way to combine NVIDIA NeMo STT/TTS service and HuggingFace LLM together into a conversational agent. Everything is open-source and deployed locally so you can have your own voice agent. Feel free to explore the code and see how different speech technologies can be integrated with LLMs to create a seamless conversation experience. 
 
 As of now, we only support English input and output, but more languages will be supported in the future.
 
@@ -10,21 +10,20 @@ As of now, we only support English input and output, but more languages will be 
 - Open-source, local deployment, and flexible customization.
 - Allow users to talk to most LLMs from HuggingFace with configurable prompts. 
 - Streaming speech recognition with low latency.
-- FastPitch-HiFiGAN TTS for fast audio response generation.
-- Speaker diarization up to 4 speakers in different userturns.
+- Low latency TTS for fast audio response generation.
+- Speaker diarization up to 4 speakers in different user turns.
 - WebSocket server for easy deployment.
 
 
 ## 💡 Upcoming Next
-- More accurate and noise-robust streaming ASR models.
-- Faster EOU detection and handling backchannel phrases.
-- Better streaming ASR and speaker diarization pipeline.
-- Better TTS model with more natural voice.
-- Joint ASR and speaker diarization model.
-- Function calling, RAG, etc.
+- Accuracy and robustness ASR model improvements.
+- Faster EOU detection with acoustic based models.
+- Better TTS with more natural voice (e.g., [Magpie-TTS](https://build.nvidia.com/nvidia/magpie-tts-multilingual)).
+- Combine ASR and speaker diarization model to handle overlapping speech.
+
 
 ## Latest Updates
-- 2025-09-12: Add support for serving LLM with vLLM and auto-switch between vLLM and HuggingFace, add [nvidia/NVIDIA-Nemotron-Nano-9B-v2](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2) as default LLM.
+- 2025-09-30: Add support for serving LLM with vLLM and auto-switch between vLLM and HuggingFace, add [nvidia/NVIDIA-Nemotron-Nano-9B-v2](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2) as default LLM.
 - 2025-09-05: First release of NeMo Voice Agent.
 
 
@@ -199,10 +198,21 @@ You can also modify the `server/bot_websocket_server.py` to use NVIDIA NIM servi
 - [NVIDIA NIM LLM Service](https://github.com/pipecat-ai/pipecat/blob/main/src/pipecat/services/nim/llm.py)
 - [NVIDIA Riva ASR Service](https://github.com/pipecat-ai/pipecat/blob/main/src/pipecat/services/riva/stt.py)
 - [NVIDIA Riva TTS Service](https://github.com/pipecat-ai/pipecat/blob/main/src/pipecat/services/riva/tts.py)
+- Please refer to this [NVIDIA ACE Controller example](https://github.com/NVIDIA/ace-controller/blob/main/examples/speech-to-speech/bot.py#L63) for more details on how to use NVIDIA NIM services in the voice agent.
 
 For details of available NVIDIA NIM services, please refer to:
 - [NVIDIA NIM LLM Service](https://docs.nvidia.com/nim/large-language-models/latest/introduction.html)
 - [NVIDIA Riva ASR NIM Service](https://docs.nvidia.com/nim/riva/asr/latest/overview.html)
 - [NVIDIA Riva TTS NIM Service](https://docs.nvidia.com/nim/riva/tts/latest/overview.html)
 
+
+## Acknowledgments
+
+- This example uses the [Pipecat](https://github.com/pipecat-ai/pipecat) framework as orchestrator.
+
+
+
+## Contributing
+
+We welcome contributions to this project. Please feel free to submit a pull request or open an issue.
 
