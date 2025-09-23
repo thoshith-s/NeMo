@@ -26,6 +26,7 @@ from nemo import lightning as nl
 from nemo.collections import llm
 from nemo.collections.llm.api import finetune, pretrain
 from nemo.collections.llm.gpt.data.mock import MockDataModule
+from nemo.collections.llm.peft import LoRA
 from nemo.collections.llm.recipes.log.default import default_log, default_resume, tensorboard_logger
 from nemo.collections.llm.recipes.optim.adam import distributed_fused_adam_with_cosine_annealing
 from nemo.collections.llm.recipes.precision.mixed_precision import bf16_mixed
@@ -145,21 +146,18 @@ def trainer(
             overlap_grad_reduce=True,
             overlap_param_gather=False,  # Verify that this works
             grad_reduce_in_fp32=True,
+            use_distributed_optimizer=True,
         ),
     )
 
     callbacks = [
         run.Config(TimingCallback),
         run.Config(
-            MegatronCommOverlapCallback,
-            tp_comm_bootstrap_backend="nccl",
-            tp_comm_overlap=True,
-        ),
-        run.Config(
             ModelCheckpoint,
             every_n_train_steps=val_check_interval,
             dirpath=dir,
             save_top_k=save_top_k,
+            save_last="link",
             always_save_context=True,
             save_optim_on_train_end=True,
             save_context_on_train_end=True,
@@ -271,15 +269,15 @@ def finetune_recipe(
     tensor_parallelism: int = 2,
     sequence_parallelism: bool = True,
     pipeline_parallelism: int = 1,
-    seq_length: int = 8192,
-    max_steps: int = 10,
-    val_check_interval: int = 10,
+    seq_length: int = 2048,
+    max_steps: int = 1000,
+    val_check_interval: int = 50,
     limit_test_batches: int = 50,
     limit_val_batches: int = 32,
     log_every_n_steps: int = 10,
     save_top_k: int = 5,
     ckpt_async_save: bool = False,
-    gbs: int = 768,
+    gbs: int = 128,
     mbs: int = 1,
     peft_scheme: Optional[str] = 'none',
 ) -> run.Partial:
@@ -316,6 +314,7 @@ def finetune_recipe(
         nl.AutoResume,
         restore_config=run.Config(nl.RestoreConfig, path=resume_path),
     )
+    lr = 3e-4 if peft_scheme.lower() == "lora" else 1e-4
     recipe = run.Partial(
         llm.finetune,
         model=model(vocab_file=vocab_file),
@@ -334,14 +333,18 @@ def finetune_recipe(
             ckpt_async_save=ckpt_async_save,
         ),
         data=run.Config(
-            MockDataModule,
+            llm.SquadDataModule,
             seq_length=seq_length,
             global_batch_size=gbs,
             micro_batch_size=mbs,
-            tokenizer=tokenizer(vocab_file=vocab_file),
         ),
         log=llm.default_log(dir=dir, name=name, tensorboard_logger=tensorboard_logger(name=name)),
-        optim=distributed_fused_adam_with_cosine_annealing(max_lr=1e-4, min_lr=0, warmup_steps=50),
+        optim=distributed_fused_adam_with_cosine_annealing(max_lr=lr, min_lr=0, warmup_steps=50),
         resume=nemo_resume,
     )
+
+    if peft_scheme.lower() == "lora":
+        recipe.peft = run.Config(LoRA)
+        # exclude mamba layers
+        recipe.peft.target_modules = ['linear_qkv', 'linear_proj', 'linear_fc1', 'linear_fc2']
     return recipe
