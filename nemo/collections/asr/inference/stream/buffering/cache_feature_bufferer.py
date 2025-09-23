@@ -14,7 +14,7 @@
 
 
 import math
-from typing import List
+from typing import List, Tuple
 
 import torch
 from omegaconf import DictConfig
@@ -228,14 +228,15 @@ class BatchedCacheFeatureBufferer:
         """
         self.bufferers.pop(stream_id, None)
 
-    def update(self, frames: List[Frame]) -> List[torch.Tensor]:
+    def update(self, frames: List[Frame]) -> Tuple[List[torch.Tensor], List[int]]:
         """
         Update the feature bufferers with the new frames.
         Frames can come from different streams (audios), so we need to maintain a bufferer for each stream.
         Args:
             frames (List[Frame]): list of frames
         Returns:
-            list of feature buffers and right paddings
+            feature_buffers (List[torch.Tensor]): List of feature buffers, one per input frame
+            right_paddings (List[int]): List of right paddings, one per input frame
         """
         fbuffers = []
         right_paddings = []

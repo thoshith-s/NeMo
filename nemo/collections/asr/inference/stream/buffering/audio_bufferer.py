@@ -103,7 +103,8 @@ class BatchedAudioBufferer:
         Args:
             frames (List[Frame]): list of frames
         Returns:
-            List of buffered audio tensors, one per input frame
+            audio_buffers (List[Tensor]): List of buffered audio tensors, one per input frame
+            left_paddings (List[int]): List of left paddings, one per input frame
         """
         buffers, left_paddings = [], []
         for frame in frames:

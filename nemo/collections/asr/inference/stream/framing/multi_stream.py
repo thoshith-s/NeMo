@@ -320,12 +320,16 @@ class ContinuousBatchedRequestStreamer:
         Returns:
             List[FeatureBuffer]: The list of feature buffers
         """
-        buffered_frames, left_paddings = self.audio_bufferer.update(frames)
 
+        # Buffer input frames
+        buffered_frames, left_paddings = self.audio_bufferer.update(frames)
         buffers = []
+
+        # If right padding is enabled, convert left paddings to tensor
         if self.right_pad_features:
             left_paddings = torch.tensor(left_paddings, dtype=torch.int64, device=self.device)
 
+        # If right padding is enabled, roll the frames to the left
         for i in range(len(buffered_frames)):
             if self.right_pad_features:
                 lpad = left_paddings[i].item()
@@ -335,18 +339,27 @@ class ContinuousBatchedRequestStreamer:
 
         buffer_lens = torch.tensor([buffers[0].size(1)] * len(buffers), device=self.device)
 
+        # Calculate right paddings and subtract from buffer lens
+        # tail_padding_in_samples is used to keep some amount of padding at the end of the buffer
+        # some models perform better with this padding
         right_paddings = torch.tensor(
             [frame.size - frame.valid_size - self.tail_padding_in_samples for frame in frames], device=self.device
         ).clamp(min=0)
 
+        # Subtract right paddings from buffer lens
         buffer_lens = buffer_lens - right_paddings
+
+        # If right padding is enabled, subtract left paddings from buffer lens
+        # Becouse we rolled the frames to the left
         if self.right_pad_features:
             buffer_lens = buffer_lens - left_paddings
 
+        # Apply preprocessor to get mel spectrograms
         feature_buffers, feature_buffer_lens = self.preprocessor(
             input_signal=torch.cat(buffers).to(self.device), length=buffer_lens
         )
 
+        # Adjust left paddings after preprocessor
         if self.right_pad_features:
             left_paddings = left_paddings / self.preprocessor.featurizer.hop_length
             left_paddings = left_paddings.to(torch.int64)

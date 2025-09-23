@@ -132,7 +132,7 @@ class BatchedFeatureBufferer:
         Args:
             fbuffers (List[FeatureBuffer]): list of feature buffers
         Returns:
-            list of all feature buffers (torch.Tensor)
+            feature_buffers (List[torch.Tensor]): List of feature buffers, one per input frame
         """
         result_buffers = []
         for fbuffer in fbuffers:
