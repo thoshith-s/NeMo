@@ -37,7 +37,7 @@ try:
     import diskcache
 
     CACHING_FROM_DISK = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     logging.warning("diskcache is not installed, caching from disk is disabled")
     CACHING_FROM_DISK = False
 

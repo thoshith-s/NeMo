@@ -44,15 +44,21 @@ from time import time
 
 import hydra
 
-from nemo_text_processing.utils import logger as nemo_text_logger
-
-# disable nemo_text_processing logging
-nemo_text_logger.propagate = False
 
 from nemo.collections.asr.inference.factory.recognizer_builder import RecognizerBuilder
 from nemo.collections.asr.inference.utils.manifest_io import calculate_duration, dump_output, get_audio_filepaths
 from nemo.collections.asr.inference.utils.progressbar import TQDMProgressBar
 from nemo.utils import logging
+
+# disable nemo_text_processing logging
+try:
+    from nemo_text_processing.utils import logger as nemo_text_logger
+
+    nemo_text_logger.propagate = False
+except (ImportError, ModuleNotFoundError):
+    # NB: nemo_text_processing requires pynini, which is tricky to install on MacOS
+    # since nemo_text_processing is not necessary for ASR, wrap the import
+    logging.warning("NeMo text processing library is unavailable.")
 
 
 @hydra.main(version_base=None)

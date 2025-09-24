@@ -13,11 +13,8 @@
 # limitations under the License.
 
 from typing import Optional
-
 import torch
-
 from nemo.utils import logging
-
 
 COMPUTE_DTYPE_MAP = {
     'bfloat16': torch.bfloat16,
@@ -25,22 +22,28 @@ COMPUTE_DTYPE_MAP = {
     'float32': torch.float32,
 }
 
+DEVICE_TYPES = ["cuda", "mps", "cpu"]
+
 
 def setup_device(device: str, device_id: Optional[int], compute_dtype: str) -> tuple[str, int, torch.dtype]:
     """
     Set up the compute device for the model.
 
     Args:
-        device: Requested device type ('cuda' or 'cpu').
-        device_id: Requested CUDA device ID (None for CPU).
+        device: Requested device type ('cuda', 'mps' or 'cpu').
+        device_id: Requested CUDA device ID (None for CPU or MPS).
         compute_dtype: Requested compute dtype.
 
     Returns:
         Tuple of (device_string, device_id, compute_dtype) for model initialization.
     """
     device = device.strip()
+    if device not in DEVICE_TYPES:
+        raise ValueError(f"Invalid device type: {device}. Must be one of {DEVICE_TYPES}")
+
     device_id = int(device_id) if device_id is not None else 0
 
+    # Handle CUDA devices
     if torch.cuda.is_available() and device == "cuda":
         if device_id >= torch.cuda.device_count():
             logging.warning(f"Device ID {device_id} is not available. Using GPU 0 instead.")
@@ -55,7 +58,12 @@ def setup_device(device: str, device_id: Optional[int], compute_dtype: str) -> t
         device_str = f"cuda:{device_id}"
         return device_str, device_id, compute_dtype
 
-    if device == "cuda":
-        logging.warning(f"Device {device} is not available. Using CPU instead.")
+    # Handle MPS devices
+    if torch.backends.mps.is_available() and device == "mps":
+        return "mps", -1, torch.float32
 
-    return "cpu", -1, torch.float32
+    # Handle CPU devices
+    if device == "cpu":
+        return "cpu", -1, torch.float32
+
+    raise ValueError(f"Device {device} is not available.")
