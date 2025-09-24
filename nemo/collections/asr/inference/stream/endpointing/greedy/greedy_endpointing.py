@@ -44,6 +44,7 @@ class GreedyEndpointing:
         self.ms_per_timestep = ms_per_timestep
         self.sec_per_timestep = ms_per_timestep / 1000
         self.stop_history_eou = stop_history_eou
+        self.stop_history_eou_ms = stop_history_eou
         self.effective_buffer_size_in_secs = effective_buffer_size_in_secs
         if self.stop_history_eou > 0:
             self.stop_history_eou = millisecond_to_frames(self.stop_history_eou, ms_per_timestep)
@@ -183,7 +184,8 @@ class GreedyEndpointing:
         if self.effective_buffer_size_in_secs is None:
             raise ValueError("Effective buffer size in seconds is required for VAD-based EOU detection")
 
-        stop_history_eou = get_custom_stop_history_eou(stop_history_eou, self.stop_history_eou, self.ms_per_timestep)
+        # Use default stop history of EOU from the class if stop_history_eou is not provided
+        stop_history_eou = self.stop_history_eou_ms if stop_history_eou is None else stop_history_eou
         if stop_history_eou < 0:
             return False, -1
 
