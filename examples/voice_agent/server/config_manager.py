@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from loguru import logger
 from omegaconf import OmegaConf
 from pipecat.audio.vad.silero import VADParams
-from nemo.agents.voice_agent.pipecat.services.nemo.stt import NeMoSTTInputParams
+
 from nemo.agents.voice_agent.pipecat.services.nemo.diar import NeMoDiarInputParams
+from nemo.agents.voice_agent.pipecat.services.nemo.stt import NeMoSTTInputParams
 
 
 class ConfigManager:
@@ -26,33 +28,32 @@ class ConfigManager:
     Manages configuration for the voice agent server.
     Handles loading, merging, and providing access to all configuration parameters.
     """
-    
+
     def __init__(self, config_path: Optional[str] = None):
         """
         Initialize the configuration manager.
-        
+
         Args:
             config_path: Path to the main server configuration file.
                         If None, uses default path from environment variable.
         """
         self.config_path = config_path or os.environ.get(
-            "SERVER_CONFIG_PATH", 
-            f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/default.yaml"
+            "SERVER_CONFIG_PATH", f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/default.yaml"
         )
-        
+
         # Load model registry
         self.model_registry_path = f"{os.path.dirname(os.path.abspath(__file__))}/model_registry.yaml"
         self.model_registry = self._load_model_registry()
-        
+
         # Load and process main configuration
         self.server_config = self._load_server_config()
-        
+
         # Initialize configuration parameters
         self._initialize_config_parameters()
-        
+
         logger.info(f"Configuration loaded from: {self.config_path}")
         logger.info(f"Model registry loaded from: {self.model_registry_path}")
-    
+
     def _load_model_registry(self) -> Dict[str, Any]:
         """Load model registry from YAML file."""
         try:
@@ -60,29 +61,30 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"Failed to load model registry: {e}")
             raise ValueError(f"Failed to load model registry: {e}")
-    
+
     def _load_server_config(self) -> OmegaConf:
         """Load and process the main server configuration."""
         server_config = OmegaConf.load(self.config_path)
         server_config = OmegaConf.to_container(server_config, resolve=True)
         server_config = OmegaConf.create(server_config)
         return server_config
-    
+
     def _initialize_config_parameters(self):
         """Initialize all configuration parameters from the loaded config."""
         # Default constants
         self.SAMPLE_RATE = 16000
         self.RAW_AUDIO_FRAME_LEN_IN_SECS = 0.016
-        self.SYSTEM_PROMPT = " ".join([
-            "You are a helpful AI agent named Lisa.",
-            "Begin by warmly greeting the user and introducing yourself in one sentence.",
-            "Keep your answers concise and to the point."
-        ])
+        self.SYSTEM_PROMPT = " ".join(
+            [
+                "You are a helpful AI agent named Lisa.",
+                "Begin by warmly greeting the user and introducing yourself in one sentence.",
+                "Keep your answers concise and to the point.",
+            ]
+        )
 
-        
         # Transport configuration
         self.TRANSPORT_AUDIO_OUT_10MS_CHUNKS = self.server_config.transport.audio_out_10ms_chunks
-        
+
         # VAD configuration
         self.vad_params = VADParams(
             confidence=self.server_config.vad.confidence,
@@ -90,27 +92,27 @@ class ConfigManager:
             stop_secs=self.server_config.vad.stop_secs,
             min_volume=self.server_config.vad.min_volume,
         )
-        
+
         # STT configuration
         self._configure_stt()
-        
+
         # Diarization configuration
         self._configure_diarization()
-        
+
         # Turn taking configuration
         self._configure_turn_taking()
-        
+
         # LLM configuration
         self._configure_llm()
-        
+
         # TTS configuration
         self._configure_tts()
-    
+
     def _configure_stt(self):
         """Configure STT parameters."""
         self.STT_MODEL_PATH = self.server_config.stt.model
         self.STT_DEVICE = self.server_config.stt.device
-        
+
         # Apply STT-specific configuration based on model type
         if self.server_config.stt.type == "nemo" and "stt_en_fastconformer" in self.server_config.stt.model:
             stt_config_path = f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
@@ -120,13 +122,13 @@ class ConfigManager:
             error_msg = f"STT model {self.server_config.stt.model} with type {self.server_config.stt.type} is not supported configuration."
             logger.error(error_msg)
             raise ValueError(error_msg)
-        
+
         self.stt_params = NeMoSTTInputParams(
             att_context_size=self.server_config.stt.att_context_size,
             frame_len_in_secs=self.server_config.stt.frame_len_in_secs,
             raw_audio_frame_len_in_secs=self.RAW_AUDIO_FRAME_LEN_IN_SECS,
         )
-    
+
     def _configure_diarization(self):
         """
         Configure diarization parameters.
@@ -138,17 +140,17 @@ class ConfigManager:
             frame_len_in_secs=self.server_config.diar.frame_len_in_secs,
             threshold=self.server_config.diar.threshold,
         )
-    
+
     def _configure_turn_taking(self):
         """Configure turn taking parameters."""
         self.TURN_TAKING_BACKCHANNEL_PHRASES = self.server_config.turn_taking.backchannel_phrases
         self.TURN_TAKING_MAX_BUFFER_SIZE = self.server_config.turn_taking.max_buffer_size
         self.TURN_TAKING_BOT_STOP_DELAY = self.server_config.turn_taking.bot_stop_delay
-    
+
     def _configure_llm(self):
         """Configure LLM parameters."""
         llm_model = self.server_config.llm.model
-        
+
         # Get LLM configuration from registry
         if llm_model not in self.model_registry.llm_models:
             logger.warning(f"LLM model {llm_model} is not supported. Using default HuggingFace LLM config.")
@@ -156,17 +158,19 @@ class ConfigManager:
             llm_config_info = self.model_registry.llm_models[default_hf_model_id]
         else:
             llm_config_info = self.model_registry.llm_models[llm_model]
-        
+
         # Load and merge LLM configuration
-        yaml_path = f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/llm_configs/{llm_config_info.yaml_id}"
-        
+        yaml_path = (
+            f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/llm_configs/{llm_config_info.yaml_id}"
+        )
+
         # Handle reasoning models (add _think suffix)
         if llm_config_info.get("reasoning_supported", False):
             yaml_path = yaml_path.replace(".yaml", "_think.yaml")
-        
+
         llm_config = OmegaConf.load(yaml_path)
         self.server_config.llm = OmegaConf.merge(self.server_config.llm, llm_config)
-        
+
         # Configure system prompt
         self.SYSTEM_ROLE = self.server_config.llm.get("system_role", "system")
         if self.server_config.llm.get("system_prompt", None) is not None:
@@ -175,13 +179,13 @@ class ConfigManager:
                 with open(system_prompt, "r") as f:
                     system_prompt = f.read()
             self.SYSTEM_PROMPT = system_prompt
-        
+
         logger.info(f"System prompt: {self.SYSTEM_PROMPT}")
-    
+
     def _configure_tts(self):
         """Configure TTS parameters."""
         tts_model = self.server_config.tts.model
-        
+
         # Get TTS configuration from registry
         if tts_model not in self.model_registry.tts_models:
             logger.warning(f"TTS model {tts_model} is not supported. Using default TTS config.")
@@ -189,42 +193,44 @@ class ConfigManager:
             tts_config_info = self.model_registry.tts_models[default_hf_model_id]
         else:
             tts_config_info = self.model_registry.tts_models[tts_model]
-        
+
         # Load and merge TTS configuration
-        yaml_path = f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/tts_configs/{tts_config_info.yaml_id}"
+        yaml_path = (
+            f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/tts_configs/{tts_config_info.yaml_id}"
+        )
         tts_config = OmegaConf.load(yaml_path)
         self.server_config.tts = OmegaConf.merge(self.server_config.tts, tts_config)
-        
+
         # Extract TTS parameters
         self.TTS_FASTPITCH_MODEL = self.server_config.tts.fastpitch_model
         self.TTS_HIFIGAN_MODEL = self.server_config.tts.hifigan_model
         self.TTS_DEVICE = self.server_config.tts.device
-        
+
         # Handle optional TTS parameters
         self.TTS_THINK_TOKENS = self.server_config.tts.get("think_tokens", None)
         if self.TTS_THINK_TOKENS is not None:
             self.TTS_THINK_TOKENS = OmegaConf.to_container(self.TTS_THINK_TOKENS)
-        
+
         self.TTS_EXTRA_SEPARATOR = self.server_config.tts.get("extra_separator", None)
         if self.TTS_EXTRA_SEPARATOR is not None:
             self.TTS_EXTRA_SEPARATOR = OmegaConf.to_container(self.TTS_EXTRA_SEPARATOR)
-    
+
     def get_server_config(self) -> OmegaConf:
         """Get the complete server configuration."""
         return self.server_config
-    
+
     def get_model_registry(self) -> Dict[str, Any]:
         """Get the model registry configuration."""
         return self.model_registry
-    
+
     def get_vad_params(self) -> VADParams:
         """Get VAD parameters."""
         return self.vad_params
-    
+
     def get_stt_params(self) -> NeMoSTTInputParams:
         """Get STT parameters."""
         return self.stt_params
-    
+
     def get_diar_params(self) -> NeMoDiarInputParams:
         """Get diarization parameters."""
         return self.diar_params
