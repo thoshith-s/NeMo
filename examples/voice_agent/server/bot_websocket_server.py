@@ -54,89 +54,47 @@ from nemo.agents.voice_agent.pipecat.transports.network.websocket_server import 
     WebsocketServerTransport,
 )
 from nemo.agents.voice_agent.pipecat.utils.text.simple_text_aggregator import SimpleSegmentedTextAggregator
+from config_manager import ConfigManager
 
-SERVER_CONFIG_PATH = os.environ.get(
-    "SERVER_CONFIG_PATH", f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/default.yaml"
-)
-
-server_config = OmegaConf.load(SERVER_CONFIG_PATH)
-server_config = OmegaConf.to_container(server_config, resolve=True)
-server_config = OmegaConf.create(server_config)
+# Initialize configuration manager
+config_manager = ConfigManager()
+server_config = config_manager.get_server_config()
 
 logger.info(f"Server config: {server_config}")
 
-# Default Configuration
-SAMPLE_RATE = 16000  # Standard sample rate for speech recognition
-RAW_AUDIO_FRAME_LEN_IN_SECS = 0.016  # 16ms for websocket transport
-SYSTEM_PROMPT = """
-You are a helpful AI agent named Lisa. 
-Start by greeting the user warmly and introducing yourself within one sentence. 
-Your answer should be concise and to the point.
-"""
+# Access configuration parameters from ConfigManager
+SAMPLE_RATE = config_manager.SAMPLE_RATE
+RAW_AUDIO_FRAME_LEN_IN_SECS = config_manager.RAW_AUDIO_FRAME_LEN_IN_SECS
+SYSTEM_PROMPT = config_manager.SYSTEM_PROMPT
+SYSTEM_ROLE = config_manager.SYSTEM_ROLE
 
-################ Start of Configuration #################
+# Transport configuration
+TRANSPORT_AUDIO_OUT_10MS_CHUNKS = config_manager.TRANSPORT_AUDIO_OUT_10MS_CHUNKS
 
-### Transport
-TRANSPORT_AUDIO_OUT_10MS_CHUNKS = server_config.transport.audio_out_10ms_chunks
+# VAD configuration
+vad_params = config_manager.get_vad_params()
 
+# STT configuration
+STT_MODEL_PATH = config_manager.STT_MODEL_PATH
+STT_DEVICE = config_manager.STT_DEVICE
+stt_params = config_manager.get_stt_params()
 
-### VAD
-vad_params = VADParams(
-    confidence=server_config.vad.confidence,
-    start_secs=server_config.vad.start_secs,
-    stop_secs=server_config.vad.stop_secs,
-    min_volume=server_config.vad.min_volume,
-)
+# Diarization configuration
+DIAR_MODEL = config_manager.DIAR_MODEL
+USE_DIAR = config_manager.USE_DIAR
+diar_params = config_manager.get_diar_params()
 
+# Turn taking configuration
+TURN_TAKING_BACKCHANNEL_PHRASES = config_manager.TURN_TAKING_BACKCHANNEL_PHRASES
+TURN_TAKING_MAX_BUFFER_SIZE = config_manager.TURN_TAKING_MAX_BUFFER_SIZE
+TURN_TAKING_BOT_STOP_DELAY = config_manager.TURN_TAKING_BOT_STOP_DELAY
 
-### STT
-STT_MODEL_PATH = server_config.stt.model
-STT_DEVICE = server_config.stt.device
-stt_params = NeMoSTTInputParams(
-    att_context_size=server_config.stt.att_context_size,
-    frame_len_in_secs=server_config.stt.frame_len_in_secs,
-    raw_audio_frame_len_in_secs=RAW_AUDIO_FRAME_LEN_IN_SECS,
-)
-
-
-### Diarization
-DIAR_MODEL = server_config.diar.model
-USE_DIAR = server_config.diar.enabled
-diar_params = NeMoDiarInputParams(
-    frame_len_in_secs=server_config.diar.frame_len_in_secs,
-    threshold=server_config.diar.threshold,
-)
-
-
-### Turn taking
-TURN_TAKING_BACKCHANNEL_PHRASES = server_config.turn_taking.backchannel_phrases
-TURN_TAKING_MAX_BUFFER_SIZE = server_config.turn_taking.max_buffer_size
-TURN_TAKING_BOT_STOP_DELAY = server_config.turn_taking.bot_stop_delay
-
-
-### LLM
-SYSTEM_ROLE = server_config.llm.get("system_role", "system")
-if server_config.llm.get("system_prompt", None) is not None:
-    system_prompt = server_config.llm.system_prompt
-    if os.path.isfile(system_prompt):
-        with open(system_prompt, "r") as f:
-            system_prompt = f.read()
-    SYSTEM_PROMPT = system_prompt
-logger.info(f"System prompt: {SYSTEM_PROMPT}")
-
-
-### TTS
-TTS_FASTPITCH_MODEL = server_config.tts.fastpitch_model
-TTS_HIFIGAN_MODEL = server_config.tts.hifigan_model
-TTS_DEVICE = server_config.tts.device
-TTS_THINK_TOKENS = server_config.tts.get("think_tokens", None)
-if TTS_THINK_TOKENS is not None:
-    TTS_THINK_TOKENS = OmegaConf.to_container(TTS_THINK_TOKENS)
-TTS_EXTRA_SEPARATOR = server_config.tts.get("extra_separator", None)
-if TTS_EXTRA_SEPARATOR is not None:
-    TTS_EXTRA_SEPARATOR = OmegaConf.to_container(TTS_EXTRA_SEPARATOR)
-
-################ End of Configuration #################
+# TTS configuration
+TTS_FASTPITCH_MODEL = config_manager.TTS_FASTPITCH_MODEL
+TTS_HIFIGAN_MODEL = config_manager.TTS_HIFIGAN_MODEL
+TTS_DEVICE = config_manager.TTS_DEVICE
+TTS_THINK_TOKENS = config_manager.TTS_THINK_TOKENS
+TTS_EXTRA_SEPARATOR = config_manager.TTS_EXTRA_SEPARATOR
 
 
 def signal_handler(signum, frame):
