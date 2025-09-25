@@ -54,10 +54,10 @@ from nemo.agents.voice_agent.pipecat.transports.network.websocket_server import 
     WebsocketServerTransport,
 )
 from nemo.agents.voice_agent.pipecat.utils.text.simple_text_aggregator import SimpleSegmentedTextAggregator
-from config_manager import ConfigManager
+from nemo.agents.voice_agent.utils.config_manager import ConfigManager
 
 # Initialize configuration manager
-config_manager = ConfigManager()
+config_manager = ConfigManager(server_base_path=__file__)
 server_config = config_manager.get_server_config()
 
 logger.info(f"Server config: {server_config}")
@@ -85,13 +85,13 @@ USE_DIAR = config_manager.USE_DIAR
 diar_params = config_manager.get_diar_params()
 
 # Turn taking configuration
-TURN_TAKING_BACKCHANNEL_PHRASES = config_manager.TURN_TAKING_BACKCHANNEL_PHRASES
+TURN_TAKING_BACKCHANNEL_PHRASES_PATH = config_manager.TURN_TAKING_BACKCHANNEL_PHRASES_PATH
 TURN_TAKING_MAX_BUFFER_SIZE = config_manager.TURN_TAKING_MAX_BUFFER_SIZE
 TURN_TAKING_BOT_STOP_DELAY = config_manager.TURN_TAKING_BOT_STOP_DELAY
 
 # TTS configuration
-TTS_FASTPITCH_MODEL = config_manager.TTS_FASTPITCH_MODEL
-TTS_HIFIGAN_MODEL = config_manager.TTS_HIFIGAN_MODEL
+TTS_MAIN_MODEL_ID = config_manager.TTS_MAIN_MODEL_ID
+TTS_SUB_MODEL_ID = config_manager.TTS_SUB_MODEL_ID
 TTS_DEVICE = config_manager.TTS_DEVICE
 TTS_THINK_TOKENS = config_manager.TTS_THINK_TOKENS
 TTS_EXTRA_SEPARATOR = config_manager.TTS_EXTRA_SEPARATOR
@@ -134,7 +134,7 @@ async def run_bot_websocket_server():
             vad_analyzer=vad_analyzer,
             session_timeout=None,  # Disable session timeout
             audio_in_sample_rate=SAMPLE_RATE,
-            can_create_user_frames=TURN_TAKING_BACKCHANNEL_PHRASES
+            can_create_user_frames=TURN_TAKING_BACKCHANNEL_PHRASES_PATH
             is None,  # if backchannel phrases are disabled, we can use VAD to interrupt the bot immediately
             audio_out_10ms_chunks=TRANSPORT_AUDIO_OUT_10MS_CHUNKS,
         ),
@@ -174,7 +174,7 @@ async def run_bot_websocket_server():
         use_diar=USE_DIAR,
         max_buffer_size=TURN_TAKING_MAX_BUFFER_SIZE,
         bot_stop_delay=TURN_TAKING_BOT_STOP_DELAY,
-        backchannel_phrases=TURN_TAKING_BACKCHANNEL_PHRASES,
+        backchannel_phrases=TURN_TAKING_BACKCHANNEL_PHRASES_PATH,
     )
     logger.info("Turn taking service initialized")
 
@@ -186,8 +186,8 @@ async def run_bot_websocket_server():
     text_aggregator = SimpleSegmentedTextAggregator(punctuation_marks=TTS_EXTRA_SEPARATOR)
 
     tts = NeMoFastPitchHiFiGANTTSService(
-        fastpitch_model=TTS_FASTPITCH_MODEL,
-        hifigan_model=TTS_HIFIGAN_MODEL,
+        fastpitch_model=TTS_MAIN_MODEL_ID,
+        hifigan_model=TTS_SUB_MODEL_ID,
         device=TTS_DEVICE,
         text_aggregator=text_aggregator,
         think_tokens=TTS_THINK_TOKENS,

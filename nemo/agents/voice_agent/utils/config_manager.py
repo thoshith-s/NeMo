@@ -27,7 +27,7 @@ class ConfigManager:
     Handles loading, merging, and providing access to all configuration parameters.
     """
     
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, server_base_path: Optional[str] = None):
         """
         Initialize the configuration manager.
         
@@ -35,13 +35,14 @@ class ConfigManager:
             config_path: Path to the main server configuration file.
                         If None, uses default path from environment variable.
         """
-        self.config_path = config_path or os.environ.get(
-            "SERVER_CONFIG_PATH", 
-            f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/default.yaml"
-        )
-        
+        self._server_base_path = server_base_path
+        self._server_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/default.yaml"
+
+        if not os.path.exists(self._server_config_path):
+            raise FileNotFoundError(f"Server configuration file not found at {self._server_config_path}")
+
         # Load model registry
-        self.model_registry_path = f"{os.path.dirname(os.path.abspath(__file__))}/model_registry.yaml"
+        self.model_registry_path = f"{os.path.abspath(self._server_base_path)}/model_registry.yaml"
         self.model_registry = self._load_model_registry()
         
         # Load and process main configuration
@@ -50,7 +51,9 @@ class ConfigManager:
         # Initialize configuration parameters
         self._initialize_config_parameters()
         
-        logger.info(f"Configuration loaded from: {self.config_path}")
+        self._generic_hf_llm_model_id = "hf_llm_generic.yaml"
+        
+        logger.info(f"Configuration loaded from: {self._server_config_path}")
         logger.info(f"Model registry loaded from: {self.model_registry_path}")
     
     def _load_model_registry(self) -> Dict[str, Any]:
@@ -63,7 +66,7 @@ class ConfigManager:
     
     def _load_server_config(self) -> OmegaConf:
         """Load and process the main server configuration."""
-        server_config = OmegaConf.load(self.config_path)
+        server_config = OmegaConf.load(self._server_config_path)
         server_config = OmegaConf.to_container(server_config, resolve=True)
         server_config = OmegaConf.create(server_config)
         return server_config
@@ -108,18 +111,21 @@ class ConfigManager:
     
     def _configure_stt(self):
         """Configure STT parameters."""
-        self.STT_MODEL_PATH = self.server_config.stt.model
-        self.STT_DEVICE = self.server_config.stt.device
+        stt_model_id = self.server_config.stt.model
+        self.STT_MODEL_PATH = stt_model_id
+        self.STT_DEVICE = self.server_config.stt.get("device", None)
         
         # Apply STT-specific configuration based on model type
-        if self.server_config.stt.type == "nemo" and "stt_en_fastconformer" in self.server_config.stt.model:
-            stt_config_path = f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
-            stt_config = OmegaConf.load(stt_config_path)
-            self.server_config.stt = OmegaConf.merge(self.server_config.stt, stt_config)
+        if self.server_config.stt.type == "nemo" and "stt_en_fastconformer" in self.model_registry.stt_models:
+            stt_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
+        elif self.server_config.stt.get("model_config", None) is not None:
+            stt_config_path = self.server_config.stt.model_config
         else:
-            error_msg = f"STT model {self.server_config.stt.model} with type {self.server_config.stt.type} is not supported configuration."
+            error_msg = f"STT model {stt_model_id} with type {self.server_config.stt.type} is not supported configuration."
             logger.error(error_msg)
             raise ValueError(error_msg)
+        stt_config = OmegaConf.load(stt_config_path)
+        self.server_config.stt = OmegaConf.merge(self.server_config.stt, stt_config)
         
         self.stt_params = NeMoSTTInputParams(
             att_context_size=self.server_config.stt.att_context_size,
@@ -141,24 +147,23 @@ class ConfigManager:
     
     def _configure_turn_taking(self):
         """Configure turn taking parameters."""
-        self.TURN_TAKING_BACKCHANNEL_PHRASES = self.server_config.turn_taking.backchannel_phrases
+        self.TURN_TAKING_BACKCHANNEL_PHRASES_PATH = self.server_config.turn_taking.backchannel_phrases_path
         self.TURN_TAKING_MAX_BUFFER_SIZE = self.server_config.turn_taking.max_buffer_size
         self.TURN_TAKING_BOT_STOP_DELAY = self.server_config.turn_taking.bot_stop_delay
     
     def _configure_llm(self):
         """Configure LLM parameters."""
-        llm_model = self.server_config.llm.model
+        llm_model_id = self.server_config.llm.model
         
         # Get LLM configuration from registry
-        if llm_model not in self.model_registry.llm_models:
-            logger.warning(f"LLM model {llm_model} is not supported. Using default HuggingFace LLM config.")
-            default_hf_model_id = "Qwen/Qwen2.5-7B-Instruct"
-            llm_config_info = self.model_registry.llm_models[default_hf_model_id]
+        if llm_model_id in self.model_registry.llm_models:
+            llm_config_info = self.model_registry.llm_models[llm_model_id]
         else:
-            llm_config_info = self.model_registry.llm_models[llm_model]
+            logger.warning(f"LLM model {llm_model_id} is not included in the model registry. Using a generic HuggingFace LLM config.")
+            llm_config_info = self.model_registry.llm_models[self._generic_hf_llm_model_id]
         
         # Load and merge LLM configuration
-        yaml_path = f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/llm_configs/{llm_config_info.yaml_id}"
+        yaml_path = f"{os.path.abspath(self._server_base_path)}/server_configs/llm_configs/{llm_config_info.yaml_id}"
         
         # Handle reasoning models (add _think suffix)
         if llm_config_info.get("reasoning_supported", False):
@@ -180,25 +185,32 @@ class ConfigManager:
     
     def _configure_tts(self):
         """Configure TTS parameters."""
-        tts_model = self.server_config.tts.model
+        tts_model_id = self.server_config.tts.model
         
         # Get TTS configuration from registry
-        if tts_model not in self.model_registry.tts_models:
-            logger.warning(f"TTS model {tts_model} is not supported. Using default TTS config.")
-            default_hf_model_id = "fastpitch-hifigan"
-            tts_config_info = self.model_registry.tts_models[default_hf_model_id]
+        if tts_model_id in self.model_registry.tts_models:
+            tts_config_info = self.model_registry.tts_models[tts_model_id]
         else:
-            tts_config_info = self.model_registry.tts_models[tts_model]
+            logger.warning(f"TTS model {tts_model_id} is not supported. Using default TTS config.")
         
         # Load and merge TTS configuration
-        yaml_path = f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/tts_configs/{tts_config_info.yaml_id}"
+        if self.server_config.tts.type == "nemo" and "fastpitch-hifigan" in self.server_config.tts.model:
+            stt_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
+        elif self.server_config.tts.get("model_config", None) is not None:
+            stt_config_path = self.server_config.tts.model_config
+        else:
+            error_msg = f"TTS model {self.server_config.tts.model} with type {self.server_config.tts.type} is not supported configuration."
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
+        yaml_path = f"{os.path.abspath(self._server_base_path)}/server_configs/tts_configs/{tts_config_info.yaml_id}"
         tts_config = OmegaConf.load(yaml_path)
         self.server_config.tts = OmegaConf.merge(self.server_config.tts, tts_config)
         
         # Extract TTS parameters
-        self.TTS_FASTPITCH_MODEL = self.server_config.tts.fastpitch_model
-        self.TTS_HIFIGAN_MODEL = self.server_config.tts.hifigan_model
-        self.TTS_DEVICE = self.server_config.tts.device
+        self.TTS_MAIN_MODEL_ID = self.server_config.tts.get("main_model_id", None)
+        self.TTS_SUB_MODEL_ID = self.server_config.tts.get("sub_model_id", None)
+        self.TTS_DEVICE = self.server_config.tts.get("device", None)
         
         # Handle optional TTS parameters
         self.TTS_THINK_TOKENS = self.server_config.tts.get("think_tokens", None)
