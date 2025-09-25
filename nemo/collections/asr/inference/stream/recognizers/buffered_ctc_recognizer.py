@@ -33,13 +33,13 @@ from nemo.collections.asr.inference.stream.text.text_processing import Streaming
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.enums import RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
+    create_partial_transcript,
     drop_trailing_features,
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,
     make_preprocessor_deterministic,
     normalize_features,
     normalize_log_probs,
-    remove_leading_punctuation_spaces,
 )
 from nemo.collections.asr.models import ASRModel
 
@@ -343,22 +343,22 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
             requests: List of frames or feature buffers to transcribe.
             log_probs: Log probabilities from the ASR model.
         """
-        postponed_requests = [(frame_idx, frame.stream_id) for frame_idx, frame in enumerate(requests)]
+        postponed_requests = [(ridx, request.stream_id) for ridx, request in enumerate(requests)]
         next_postponed_requests = []
 
         while len(postponed_requests) > 0:
 
             ready_state_ids = set()
-            for frame_idx, stream_id in postponed_requests:
+            for ridx, stream_id in postponed_requests:
 
                 if stream_id in ready_state_ids:
                     # Skip if the state is already ready
-                    next_postponed_requests.append((frame_idx, stream_id))
+                    next_postponed_requests.append((ridx, stream_id))
                     continue
 
-                request = requests[frame_idx]
+                request = requests[ridx]
                 state = self.get_state(stream_id)
-                lp = log_probs[frame_idx].cpu()
+                lp = log_probs[ridx].cpu()
                 start, end = self.get_cut_off_range(lp.shape[0], request.is_last)
                 eou_detected = self.run_greedy_decoder(state, request, lp, start, end)
 
@@ -373,7 +373,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
                     # If there are multiple streams, we need to wait until all streams are ready
                     ready_state_ids.add(stream_id)
             states = [self.get_state(request.stream_id) for request in requests]
-            self.create_partial_transcript(states)
+            create_partial_transcript(states, self.asr_model.tokenizer, self.leading_regex_pattern)
             if len(ready_state_ids) > 0:
                 self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
                 ready_state_ids.clear()
@@ -419,15 +419,3 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
             tail_padding_in_samples=self.tail_padding_in_samples,
         )
         return request_generator
-
-    def create_partial_transcript(self, states: List[CTCStreamingState]) -> None:
-        """Create partial transcript from the state."""
-        for state in states:
-            # state tokens represent all tokens accumulated since the EOU
-            # incomplete segment tokens are the remaining tokens on the right side of the buffer after EOU
-            all_tokens = state.tokens + state.incomplete_segment_tokens
-            if len(all_tokens) > 0:
-                pt_string = self.bpe_decoder.tokenizer.ids_to_text(all_tokens)
-                state.partial_transcript = remove_leading_punctuation_spaces(pt_string, self.leading_regex_pattern)
-            else:
-                state.partial_transcript = ""

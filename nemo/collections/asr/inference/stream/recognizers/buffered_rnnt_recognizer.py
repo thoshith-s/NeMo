@@ -35,12 +35,12 @@ from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.enums import RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
     adjust_vad_segments,
+    create_partial_transcript,
     drop_trailing_features,
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,
     make_preprocessor_deterministic,
     normalize_features,
-    remove_leading_punctuation_spaces,
     update_punctuation_and_language_tokens_timestamps,
 )
 from nemo.collections.asr.models import ASRModel
@@ -548,7 +548,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
                 state.push_back(decoded_words, merge_first_word, self.confidence_aggregator)
                 state.cleanup_after_eou()
                 ready_state_ids.add(request.stream_id)
-        self.create_partial_transcript(states)
+        create_partial_transcript(states, self.asr_model.tokenizer, self.leading_regex_pattern)
         return ready_state_ids
 
     def shared_transcribe_step_stateful(self, requests: List[Request], encs: Tensor, enc_lens: Tensor) -> None:
@@ -654,18 +654,6 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
                 self.shared_transcribe_step_stateful(requests=frames, encs=encs, enc_lens=enc_lens)
             else:
                 self.shared_transcribe_step(requests=frames, encs=encs, enc_lens=enc_lens)
-
-    def create_partial_transcript(self, states: List[RNNTStreamingState]) -> None:
-        """Create partial transcript from the state."""
-        for state in states:
-            # state tokens represent all tokens accumulated since the EOU
-            # incomplete segment tokens are the remaining tokens on the right side of the buffer after EOU
-            all_tokens = state.tokens + state.incomplete_segment_tokens
-            if len(all_tokens) > 0:
-                pt_string = self.bpe_decoder.tokenizer.ids_to_text(all_tokens)
-                state.partial_transcript = remove_leading_punctuation_spaces(pt_string, self.leading_regex_pattern)
-            else:
-                state.partial_transcript = ""
 
     def get_request_generator(self) -> ContinuousBatchedRequestStreamer:
         """Initialize the request generator."""
