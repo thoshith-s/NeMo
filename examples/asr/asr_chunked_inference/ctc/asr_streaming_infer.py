@@ -23,7 +23,7 @@ The script performs the following steps:
     (4) Writes the transcriptions to an output json/jsonl file. Word-level output is written to a separate CTM file.
 
 Example usage:
-python asr_client.py \
+python asr_streaming_infer.py \
         --config-path=./conf \
         --config-name=config.yaml \
         audio_file=<path to audio file, directory of audio files, or manifest file> \
