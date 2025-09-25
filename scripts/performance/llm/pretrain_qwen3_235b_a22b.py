@@ -46,6 +46,10 @@ def override_recipe_configs(
     NOTE: Use fp8 precision training with caution. It might not give desirable results.
     """
     recipe = pretrain_recipe()
+
+    recipe.trainer.callbacks.append(run.Config(MegatronTokenDropCallback))
+    recipe.trainer.callbacks.append(run.Config(MegatronCommOverlapCallback, tp_comm_overlap=True))
+
     recipe = set_primary_perf_configs(
         recipe,
         "pre_train",
@@ -71,8 +75,8 @@ def override_recipe_configs(
     )
 
     # set it to use token drop config
-    recipe.trainer.callbacks.append(run.Config(MegatronTokenDropCallback))
-    recipe.trainer.callbacks.append(run.Config(MegatronCommOverlapCallback, tp_comm_overlap=True))
+    # recipe.trainer.callbacks.append(run.Config(MegatronTokenDropCallback))
+    # recipe.trainer.callbacks.append(run.Config(MegatronCommOverlapCallback, tp_comm_overlap=True))
 
     recipe.model.config.cross_entropy_fusion_impl = "te"
     recipe.model.config.cross_entropy_loss_fusion = True
@@ -85,6 +89,15 @@ def override_recipe_configs(
     recipe.model.config.recompute_granularity = None
     recipe.model.config.recompute_method = None
     recipe.model.config.recompute_num_layers = None
+    
+
+    recipe.trainer.strategy.ddp.fp8_param_gather = True
+    recipe.trainer.plugins.fp8_param_gather = True
+    # recipe.trainer.plugins.reuse_grad_buf_for_mxfp8_param_ag = True
+
+    # from .utils import get_comm_overlap_callback_idx
+    # comm_overlap_callback_idx = get_comm_overlap_callback_idx(recipe.trainer.callbacks)
+    # recipe.trainer.callbacks[comm_overlap_callback_idx].overlap_param_gather = False
 
     return recipe
 
