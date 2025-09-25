@@ -184,3 +184,5 @@ slurm*.out
 
 node_modules/
 .vite/
+
+*.jsonl

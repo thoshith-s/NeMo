@@ -55,7 +55,6 @@ def train(cfg):
     print(f"TDT joint: {type(model.tdt_joint).__name__}")
     print(f"TDT loss: {type(model.tdt_loss).__name__}")
     print(f"Pretrained ASR model: {model.cfg.pretrained_asr}")
-    print(f"Assert identical encoders: {model.perception.encoder == model.asr_model.encoder}")
 
     speech_ratio = cfg.data.train_ds.get('speech_ratio', 0.5)
     speech_dataset = HybridSALMTDTDataset(

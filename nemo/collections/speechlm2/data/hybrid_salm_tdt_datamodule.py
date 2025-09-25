@@ -55,6 +55,13 @@ class DualDataLoader:
         
         pattern_cycle = itertools.cycle(self.pattern)
         batch_count = 0
+        transcribe_count = 0
+        not_transcribe_count = 0
+        
+        print("="*100)
+        print(f"DEBUG: Starting DualDataLoader iteration with pattern: {self.pattern}")
+        print(f"DEBUG: Transcribe ratio: {self.transcribe_ratio}")
+        print("="*100)
         
         while True:
             try:
@@ -63,22 +70,28 @@ class DualDataLoader:
                 if use_transcribe:
                     try:
                         batch = next(transcribe_iter)
-                        logging.debug(f"Batch {batch_count}: Using transcribe data")
+                        transcribe_count += 1
+                        if batch_count % 50 == 0:  # Print every 50 batches
+                            print(f"DEBUG: Batch {batch_count}: Using transcribe data (transcribe: {transcribe_count}, not_transcribe: {not_transcribe_count})")
                         yield batch
                     except StopIteration:
                         # Restart transcribe loader
                         transcribe_iter = iter(self.transcribe_loader)
                         batch = next(transcribe_iter)
+                        transcribe_count += 1
                         yield batch
                 else:
                     try:
                         batch = next(not_transcribe_iter)
-                        logging.debug(f"Batch {batch_count}: Using not_transcribe data")
+                        not_transcribe_count += 1
+                        if batch_count % 50 == 0:  # Print every 50 batches
+                            print(f"DEBUG: Batch {batch_count}: Using not_transcribe data (transcribe: {transcribe_count}, not_transcribe: {not_transcribe_count})")
                         yield batch
                     except StopIteration:
                         # Restart not_transcribe loader
                         not_transcribe_iter = iter(self.not_transcribe_loader)
                         batch = next(not_transcribe_iter)
+                        not_transcribe_count += 1
                         yield batch
                 
                 batch_count += 1
@@ -162,11 +175,24 @@ class HybridSALMTDTDataModule(LightningDataModule):
                 logging.warning(f"Skipping dataset without prompt label: {input_config.get('type', 'unknown')}")
                 continue
         
-        # Ensure we have data for both loaders
+        # Handle case when all datasets have the same prompt
+        if not transcribe_input_cfg and not_transcribe_input_cfg:
+            # All datasets are not_transcribe, duplicate them as transcribe
+            logging.warning("All datasets have prompt='not_transcribe'. Duplicating them as transcribe datasets for balanced training.")
+            transcribe_input_cfg = not_transcribe_input_cfg.copy()
+        elif not not_transcribe_input_cfg and transcribe_input_cfg:
+            # All datasets are transcribe, duplicate them as not_transcribe
+            logging.warning("All datasets have prompt='transcribe'. Duplicating them as not_transcribe datasets for balanced training.")
+            not_transcribe_input_cfg = transcribe_input_cfg.copy()
+        elif not transcribe_input_cfg and not not_transcribe_input_cfg:
+            # No datasets with explicit prompt labels
+            raise ValueError("No datasets with prompt='transcribe' or prompt='not_transcribe' found! All datasets need explicit prompt labels.")
+        
+        # Ensure we have data for both loaders (after fallback handling)
         if not transcribe_input_cfg:
-            raise ValueError("No datasets with prompt='transcribe' found! All transcribe datasets need explicit prompt labels.")
+            raise ValueError("No datasets with prompt='transcribe' found after fallback handling!")
         if not not_transcribe_input_cfg:
-            raise ValueError("No datasets with prompt='not_transcribe' found! All not_transcribe datasets need explicit prompt labels.")
+            raise ValueError("No datasets with prompt='not_transcribe' found after fallback handling!")
         
         # Update configs
         with open_dict(transcribe_cfg):
@@ -176,6 +202,32 @@ class HybridSALMTDTDataModule(LightningDataModule):
         
         logging.info(f"Creating transcribe dataloader with {len(transcribe_input_cfg)} datasets")
         logging.info(f"Creating not_transcribe dataloader with {len(not_transcribe_input_cfg)} datasets")
+        
+        # Check if we used fallback duplication
+        original_transcribe_count = len([cfg for cfg in self.cfg.train_ds.input_cfg if cfg.get('prompt') == 'transcribe'])
+        original_not_transcribe_count = len([cfg for cfg in self.cfg.train_ds.input_cfg if cfg.get('prompt') == 'not_transcribe'])
+        
+        if original_transcribe_count == 0 and original_not_transcribe_count > 0:
+            logging.info(f"FALLBACK: Duplicated {len(not_transcribe_input_cfg)} not_transcribe datasets as transcribe datasets")
+        elif original_not_transcribe_count == 0 and original_transcribe_count > 0:
+            logging.info(f"FALLBACK: Duplicated {len(transcribe_input_cfg)} transcribe datasets as not_transcribe datasets")
+        
+        # Debug: Print dataset configurations with weights
+        print("="*100)
+        print("DEBUG: Transcribe datasets configuration:")
+        for i, cfg in enumerate(transcribe_input_cfg):
+            weight = cfg.get('weight', 'Not specified')
+            manifest_path = cfg.get('manifest_filepath', 'Unknown')
+            print(f"  Dataset {i+1}: weight={weight}, manifest={manifest_path}")
+        print("="*100)
+        
+        print("="*100)
+        print("DEBUG: Not-transcribe datasets configuration:")
+        for i, cfg in enumerate(not_transcribe_input_cfg):
+            weight = cfg.get('weight', 'Not specified')
+            manifest_path = cfg.get('manifest_filepath', 'Unknown')
+            print(f"  Dataset {i+1}: weight={weight}, manifest={manifest_path}")
+        print("="*100)
         
         # Create separate data loaders - each gets its own FallbackDataset instance
         transcribe_loader = get_lhotse_dataloader_from_config(

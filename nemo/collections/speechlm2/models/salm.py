@@ -67,7 +67,7 @@ class SALM(LightningModule, HFHubMixin):
         del self.llm.model.embed_tokens
         maybe_install_lora(self)
 
-        self.asr_model = load_pretrained_nemo(ASRModel, self.cfg.pretrained_asr).eval()
+        self._asr_model = self.cfg.pretrained_asr
         # Load the pretrained streaming ASR model and copy its parameters into the audio perception module.
         setup_speech_encoder(self, pretrained_weights=self.cfg.pretrained_weights)
 
@@ -440,7 +440,7 @@ class SALM(LightningModule, HFHubMixin):
             token_embeds = self.embed_tokens(tokens_to_embed)
             # TODO: temporary workaround to perform batch_size=1 inference for audio encoder
             #   due to accuracy issues at bs>1
-            audio_embeds, audio_embed_lens = self.perception(audios, audio_lens)
+            _, _, audio_embeds, audio_embed_lens = self.perception(audios, audio_lens)
             audio_embeds = [audio_embeds[i, :elen] for i, elen in enumerate(audio_embed_lens)]
             # Insert audio embeddings into relevant positions in text embeddings.
             input_embeds, _, attention_mask = replace_placeholders_and_build_targets(

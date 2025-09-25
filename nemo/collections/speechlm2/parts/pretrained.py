@@ -89,12 +89,13 @@ def setup_speech_encoder(model: torch.nn.Module, pretrained_weights: bool = True
     with a pretrained NeMo ``ASRModel``.
     The result is assigned to ``model.perception`` attribute and is trainable.
     """
+    asr_model = load_pretrained_nemo(ASRModel, model.cfg.pretrained_asr).eval()
     if pretrained_weights:
         with open_dict(model.cfg):
-            model.cfg.perception.preprocessor = model.asr_model.cfg.preprocessor
-            model.cfg.perception.encoder = model.asr_model.cfg.encoder
+            model.cfg.perception.preprocessor = asr_model.cfg.preprocessor
+            model.cfg.perception.encoder = asr_model.cfg.encoder
             model.cfg.perception.output_dim = model.llm.config.hidden_size
         model.perception = AudioPerceptionModule(model.cfg.perception).train()
-        model.perception.load_state_dict(model.asr_model.state_dict(), strict=False)
+        model.perception.load_state_dict(asr_model.state_dict(), strict=False)
     else:
         model.perception = AudioPerceptionModule(model.cfg.perception).train()

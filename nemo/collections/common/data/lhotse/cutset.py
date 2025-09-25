@@ -403,7 +403,21 @@ def parse_and_combine_datasets(
         if (w := item.get("weight")) is not None:
             weights.append(w)
 
-    print("Weights are successfully appended")
+    print("="*80)
+    print("DEBUG: Dataset weights processing:")
+    print(f"Number of datasets: {len(cuts)}")
+    print(f"Number of weights: {len(weights)}")
+    if weights:
+        print("Dataset weights:")
+        for i, (cut, weight) in enumerate(zip(cuts, weights)):
+            print(f"  Dataset {i+1}: weight={weight}")
+            # Try to get dataset name from manifest path if available
+            if hasattr(cut, 'data') and hasattr(cut.data, 'sources'):
+                for source in cut.data.sources:
+                    if hasattr(source, 'source') and 'manifest' in str(source.source):
+                        print(f"    -> {source.source}")
+    else:
+        print("No weights specified - using uniform sampling")
     
     all_same_tarred_status = all(t == tarred_status[0] for t in tarred_status)
     if not all_same_tarred_status:
@@ -424,6 +438,15 @@ def parse_and_combine_datasets(
     ), "Missing dataset weight. When weighting datasets, every dataset must have a specified weight."
 
     if len(cuts) > 1:
+        print("="*80)
+        print("DEBUG: Creating weighted multiplexer:")
+        print(f"Number of cuts: {len(cuts)}")
+        print(f"Weights: {weights}")
+        print(f"Max open streams: {propagate_attrs['max_open_streams']}")
+        print(f"Seed: {propagate_attrs['shard_seed']}")
+        print(f"Force finite: {propagate_attrs['force_finite'] or propagate_attrs['metadata_only']}")
+        print("="*80)
+        
         cuts = mux(
             *cuts,
             weights=weights if weights else None,

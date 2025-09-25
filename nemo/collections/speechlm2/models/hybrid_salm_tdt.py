@@ -50,7 +50,7 @@ class HybridSALMTDT(SALM):
 
     def _setup_tdt_head(self):
         # Use the already loaded ASR model
-        asr_model = self.asr_model
+        asr_model = load_pretrained_nemo(ASRModel, self.cfg.pretrained_asr).eval()
         logging.debug("Setting up TDT components from already loaded ASR model")
         
         # Extract TDT components
@@ -294,7 +294,7 @@ class HybridSALMTDT(SALM):
         audio_encoded, audio_encoded_len = self.perception(audios, audio_lens, apply_modality_adapter=False)
         
         # TDT decoding
-        hypotheses = self.tdt_decoding(
+        hypotheses = self.tdt_decoding.rnnt_decoder_predictions_tensor(
             encoder_output=audio_encoded,
             encoded_lengths=audio_encoded_len,
         )
