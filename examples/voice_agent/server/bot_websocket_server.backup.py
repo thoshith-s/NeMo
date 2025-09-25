@@ -35,7 +35,6 @@ logger.add("bot_server.log", rotation="1 day", level="DEBUG")
 # Global flag for graceful shutdown
 shutdown_event = asyncio.Event()
 
-from config_manager import ConfigManager
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.frames.frames import EndTaskFrame
 from pipecat.pipeline.pipeline import Pipeline
@@ -55,47 +54,136 @@ from nemo.agents.voice_agent.pipecat.transports.network.websocket_server import 
     WebsocketServerTransport,
 )
 from nemo.agents.voice_agent.pipecat.utils.text.simple_text_aggregator import SimpleSegmentedTextAggregator
-from nemo.agents.voice_agent.utils.config_manager import ConfigManager
 
-# Initialize configuration manager
-config_manager = ConfigManager(server_base_path=__file__)
-server_config = config_manager.get_server_config()
+SERVER_CONFIG_PATH = os.environ.get(
+    "SERVER_CONFIG_PATH", f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/default.yaml"
+)
+
+server_config = OmegaConf.load(SERVER_CONFIG_PATH)
+server_config = OmegaConf.to_container(server_config, resolve=True)
+server_config = OmegaConf.create(server_config)
 
 logger.info(f"Server config: {server_config}")
 
-# Access configuration parameters from ConfigManager
-SAMPLE_RATE = config_manager.SAMPLE_RATE
-RAW_AUDIO_FRAME_LEN_IN_SECS = config_manager.RAW_AUDIO_FRAME_LEN_IN_SECS
-SYSTEM_PROMPT = config_manager.SYSTEM_PROMPT
-SYSTEM_ROLE = config_manager.SYSTEM_ROLE
+# Default Configuration
+SAMPLE_RATE = 16000  # Standard sample rate for speech recognition
+RAW_AUDIO_FRAME_LEN_IN_SECS = 0.016  # 16ms for websocket transport
+SYSTEM_PROMPT = """
+You are a helpful AI agent named Lisa. 
+Start by greeting the user warmly and introducing yourself within one sentence. 
+Your answer should be concise and to the point.
+"""
 
-# Transport configuration
-TRANSPORT_AUDIO_OUT_10MS_CHUNKS = config_manager.TRANSPORT_AUDIO_OUT_10MS_CHUNKS
+################ Start of Configuration #################
 
-# VAD configuration
-vad_params = config_manager.get_vad_params()
+### Transport
+TRANSPORT_AUDIO_OUT_10MS_CHUNKS = server_config.transport.audio_out_10ms_chunks
 
-# STT configuration
-STT_MODEL_PATH = config_manager.STT_MODEL_PATH
-STT_DEVICE = config_manager.STT_DEVICE
-stt_params = config_manager.get_stt_params()
 
-# Diarization configuration
-DIAR_MODEL = config_manager.DIAR_MODEL
-USE_DIAR = config_manager.USE_DIAR
-diar_params = config_manager.get_diar_params()
+### VAD
+vad_params = VADParams(
+    confidence=server_config.vad.confidence,
+    start_secs=server_config.vad.start_secs,
+    stop_secs=server_config.vad.stop_secs,
+    min_volume=server_config.vad.min_volume,
+)
 
-# Turn taking configuration
-TURN_TAKING_BACKCHANNEL_PHRASES_PATH = config_manager.TURN_TAKING_BACKCHANNEL_PHRASES_PATH
-TURN_TAKING_MAX_BUFFER_SIZE = config_manager.TURN_TAKING_MAX_BUFFER_SIZE
-TURN_TAKING_BOT_STOP_DELAY = config_manager.TURN_TAKING_BOT_STOP_DELAY
 
-# TTS configuration
-TTS_MAIN_MODEL_ID = config_manager.TTS_MAIN_MODEL_ID
-TTS_SUB_MODEL_ID = config_manager.TTS_SUB_MODEL_ID
-TTS_DEVICE = config_manager.TTS_DEVICE
-TTS_THINK_TOKENS = config_manager.TTS_THINK_TOKENS
-TTS_EXTRA_SEPARATOR = config_manager.TTS_EXTRA_SEPARATOR
+### STT
+STT_MODEL_PATH = server_config.stt.model
+STT_DEVICE = server_config.stt.device
+if server_config.stt.type == "nemo" and "stt_en_fastconformer" in server_config.stt.model:
+    stt_config = OmegaConf.load(f"server/server_configs/stt_configs/nemo_cache_aware_streaming.yaml")
+    server_config.stt = OmegaConf.merge(server_config.stt, stt_config)
+else:
+    error_msg=f"STT model {server_config.stt.model} with type {server_config.stt.type} is not supported configuration."
+    logger.error(error_msg)
+    raise ValueError(error_msg)
+
+stt_params = NeMoSTTInputParams(
+    att_context_size=server_config.stt.att_context_size,
+    frame_len_in_secs=server_config.stt.frame_len_in_secs,
+    raw_audio_frame_len_in_secs=RAW_AUDIO_FRAME_LEN_IN_SECS,
+)
+
+### Diarization
+DIAR_MODEL = server_config.diar.model
+USE_DIAR = server_config.diar.enabled
+diar_params = NeMoDiarInputParams(
+    frame_len_in_secs=server_config.diar.frame_len_in_secs,
+    threshold=server_config.diar.threshold,
+)
+
+
+### Turn taking
+TURN_TAKING_BACKCHANNEL_PHRASES_PATH = server_config.turn_taking.backchannel_phrases
+TURN_TAKING_MAX_BUFFER_SIZE = server_config.turn_taking.max_buffer_size
+TURN_TAKING_BOT_STOP_DELAY = server_config.turn_taking.bot_stop_delay
+
+
+### LLM
+SUPPORTED_LLM_IDS = {
+    "nvidia/NVIDIA-Nemotron-Nano-9B-v2": {
+        "yaml_id": "nemotron_nano_v2.yaml",
+        "reasoning_supported": False,
+    },
+    "Qwen/Qwen2.5-7B-Instruct": {
+        "yaml_id": "qwen2.5-7B.yaml",
+        "reasoning_supported": False,
+    },
+    "Qwen/Qwen3-8B": {
+        "yaml_id": "qwen3-8B.yaml",
+        "reasoning_supported": True,
+    },
+}
+# If the llm is not supported, go with the default llm config
+if server_config.llm.model not in SUPPORTED_LLM_IDS:
+    logger.warning(f"LLM model {server_config.llm.model} is not supported. Using default LLM config.")
+    server_config.llm = SUPPORTED_LLM_IDS["Qwen/Qwen2.5-7B-Instruct"]
+else:
+    yaml_path = f"server/server_configs/llm_configs/{SUPPORTED_LLM_IDS[server_config.llm.model]['yaml_id']}"
+    if SUPPORTED_LLM_IDS[server_config.llm.model]['reasoning_supported']:
+        yaml_path = yaml_path.replace(".yaml", "_think.yaml")
+    llm_config = OmegaConf.load(yaml_path)
+    server_config.llm = OmegaConf.merge(server_config.llm, llm_config)
+
+
+SYSTEM_ROLE = server_config.llm.get("system_role", "system")
+if server_config.llm.get("system_prompt", None) is not None:
+    system_prompt = server_config.llm.system_prompt
+    if os.path.isfile(system_prompt):
+        with open(system_prompt, "r") as f:
+            system_prompt = f.read()
+    SYSTEM_PROMPT = system_prompt
+logger.info(f"System prompt: {SYSTEM_PROMPT}")
+
+
+SUPPORTED_TTS_MODELS = {
+    "fastpitch-hifigan": {
+        "yaml_id": "nemo_fastpitch-hifigan.yaml",
+    },
+}
+
+### TTS
+if server_config.tts.model not in SUPPORTED_TTS_MODELS:
+    logger.warning(f"TTS model {server_config.tts.model} is not supported. Using default TTS config.")
+    server_config.tts = SUPPORTED_TTS_MODELS["fastpitch-hifigan"]
+else:
+    yaml_path = f"server/server_configs/tts_configs/{SUPPORTED_TTS_MODELS[server_config.tts.model]['yaml_id']}"
+    tts_config = OmegaConf.load(yaml_path)
+    server_config.tts = OmegaConf.merge(server_config.tts, tts_config)
+    
+TTS_FASTPITCH_MODEL = server_config.tts.fastpitch_model
+TTS_HIFIGAN_MODEL = server_config.tts.hifigan_model
+TTS_DEVICE = server_config.tts.device
+TTS_THINK_TOKENS = server_config.tts.get("think_tokens", None)
+if TTS_THINK_TOKENS is not None:
+    TTS_THINK_TOKENS = OmegaConf.to_container(TTS_THINK_TOKENS)
+TTS_EXTRA_SEPARATOR = server_config.tts.get("extra_separator", None)
+if TTS_EXTRA_SEPARATOR is not None:
+    TTS_EXTRA_SEPARATOR = OmegaConf.to_container(TTS_EXTRA_SEPARATOR)
+
+################ End of Configuration #################
 
 
 def signal_handler(signum, frame):
@@ -187,8 +275,8 @@ async def run_bot_websocket_server():
     text_aggregator = SimpleSegmentedTextAggregator(punctuation_marks=TTS_EXTRA_SEPARATOR)
 
     tts = NeMoFastPitchHiFiGANTTSService(
-        fastpitch_model=TTS_MAIN_MODEL_ID,
-        hifigan_model=TTS_SUB_MODEL_ID,
+        fastpitch_model=TTS_FASTPITCH_MODEL,
+        hifigan_model=TTS_HIFIGAN_MODEL,
         device=TTS_DEVICE,
         text_aggregator=text_aggregator,
         think_tokens=TTS_THINK_TOKENS,
