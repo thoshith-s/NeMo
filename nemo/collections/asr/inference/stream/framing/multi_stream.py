@@ -189,7 +189,7 @@ class ContinuousBatchedFrameStreamer:
         # Update the progress bar
         self.update_progress_bar()
 
-    def __next__(self) -> List[Frame] | None:
+    def __next__(self) -> List[Frame]:
         """
         Get the next batch of frames, continuously adding streams
         Returns:
