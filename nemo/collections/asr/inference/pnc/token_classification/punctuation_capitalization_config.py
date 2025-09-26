@@ -303,9 +303,6 @@ def legacy_model_config_to_new_model_config(model_cfg: DictConfig) -> DictConfig
         model config which follows dataclass
             :class:`~nemo.collections.nlp.models.token_classification.punctuation_capitalization_config.PunctuationCapitalizationModelConfig`
     """
-    train_ds = model_cfg.get('train_ds')
-    validation_ds = model_cfg.get('validation_ds')
-    test_ds = model_cfg.get('test_ds')
     dataset = model_cfg.dataset
     punct_head_config = model_cfg.get('punct_head', {})
     capit_head_config = model_cfg.get('capit_head', {})

@@ -114,7 +114,7 @@ class RNNTGreedyDecoder(GreedyDecoder):
                     output["last_token_idx"] = t
 
         if compute_confidence and len(log_probs) > 0:
-            log_probs = [l.unsqueeze(0) for l in log_probs]
+            log_probs = [logprob.unsqueeze(0) for logprob in log_probs]
             log_probs = torch.cat(log_probs, dim=0)  # (T, V)
             log_probs = log_probs.unsqueeze(0)  # (1, T, V)
             log_probs = normalize_log_probs(log_probs).cpu()  # 1 x T x N

@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
 
 import math
-from typing import List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple
 
 import numpy as np
 import torch
@@ -43,6 +44,10 @@ from nemo.collections.asr.inference.utils.recognizer_utils import (
 )
 from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 
+if TYPE_CHECKING:
+    from nemo.collections.asr.inference.itn.inverse_normalizer import AlignmentPreservingInverseNormalizer
+    from nemo.collections.asr.inference.pnc.punctuation_capitalizer import PunctuationCapitalizer
+
 
 class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
 
@@ -50,8 +55,8 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         self,
         cfg: DictConfig,
         asr_model: CacheAwareRNNTInference,
-        pnc_model: Optional["PunctuationCapitalizer"] = None,
-        itn_model: Optional["AlignmentPreservingInverseNormalizer"] = None,
+        pnc_model: Optional[PunctuationCapitalizer] = None,
+        itn_model: Optional[AlignmentPreservingInverseNormalizer] = None,
     ):
 
         # ASR Related fields

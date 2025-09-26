@@ -44,7 +44,7 @@ class BufferedSpeechRecognizerBuilder(BaseBuilder):
         elif asr_decoding_type is ASRDecodingType.CTC:
             return cls.build_buffered_ctc_speech_recognizer(cfg)
 
-        raise ValueError(f"Invalid asr decoding type for buffered streaming. Need to be one of ['CTC', 'RNNT']")
+        raise ValueError("Invalid asr decoding type for buffered streaming. Need to be one of ['CTC', 'RNNT']")
 
     @classmethod
     def get_rnnt_decoding_cfg(cls, cfg: DictConfig) -> RNNTDecodingConfig:
@@ -112,7 +112,7 @@ class BufferedSpeechRecognizerBuilder(BaseBuilder):
         # building ITN model
         itn_model = cls._build_itn(cfg, input_is_lower_cased=True)
         if itn_model is not None:
-            logging.info(f"ITN model loaded")
+            logging.info("ITN model loaded")
 
         # building RNNT recognizer
         rnnt_recognizer = RNNTBufferedSpeechRecognizer(cfg, asr_model, pnc_model, itn_model)
@@ -147,7 +147,7 @@ class BufferedSpeechRecognizerBuilder(BaseBuilder):
         # building ITN model
         itn_model = cls._build_itn(cfg, input_is_lower_cased=True)
         if itn_model is not None:
-            logging.info(f"ITN model loaded")
+            logging.info("ITN model loaded")
 
         # building CTC recognizer
         ctc_recognizer = CTCBufferedSpeechRecognizer(cfg, asr_model, pnc_model, itn_model)

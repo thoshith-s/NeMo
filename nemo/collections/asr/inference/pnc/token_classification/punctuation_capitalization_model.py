@@ -184,8 +184,8 @@ class PunctuationCapitalizationModel(NLPModel):
             punct_labels_file = self.register_artifact('class_labels.punct_labels_file', str(punct_label_vocab_file))
             if punct_labels_file is None:
                 logging.warning(
-                    f"The artifact `class_labels.punct_labels_file` was not found in checkpoint. Will rely on "
-                    f"`punct_label_ids` parameter"
+                    "The artifact `class_labels.punct_labels_file` was not found in checkpoint. Will rely on "
+                    "`punct_label_ids` parameter"
                 )
                 self.punct_label_ids = OmegaConf.to_container(self._cfg.common_dataset_parameters.punct_label_ids)
             else:
@@ -196,18 +196,18 @@ class PunctuationCapitalizationModel(NLPModel):
             self.punct_label_ids = OmegaConf.to_container(self._cfg.common_dataset_parameters.punct_label_ids)
         else:
             raise ValueError(
-                f"Could not set attribute `punct_label_ids`. Config parameters "
-                f"`model.common_dataset_parameters.punct_label_ids`, "
-                f"`model.common_dataset_parameters.punct_label_vocab_file` are not set. Another way to set "
-                f"`punct_label_ids` is calling method `setup_training_data`. That way punctuation label ids will be "
-                f"inferred from training set."
+                "Could not set attribute `punct_label_ids`. Config parameters "
+                "`model.common_dataset_parameters.punct_label_ids`, "
+                "`model.common_dataset_parameters.punct_label_vocab_file` are not set. Another way to set "
+                "`punct_label_ids` is calling method `setup_training_data`. That way punctuation label ids will be "
+                "inferred from training set."
             )
         if capit_label_vocab_file is not None:
             capit_labels_file = self.register_artifact('class_labels.capit_labels_file', str(capit_label_vocab_file))
             if capit_labels_file is None:
                 logging.warning(
-                    f"The artifact `class_labels.capit_labels_file` was not found in checkpoint. Will rely on "
-                    f"`capit_label_ids` parameter"
+                    "The artifact `class_labels.capit_labels_file` was not found in checkpoint. Will rely on "
+                    "`capit_label_ids` parameter"
                 )
                 self.capit_label_ids = OmegaConf.to_container(self._cfg.common_dataset_parameters.capit_label_ids)
             else:
@@ -218,11 +218,11 @@ class PunctuationCapitalizationModel(NLPModel):
             self.capit_label_ids = OmegaConf.to_container(self._cfg.common_dataset_parameters.capit_label_ids)
         else:
             raise ValueError(
-                f"Could not set attribute `capit_label_ids`. Config parameters "
-                f"`model.common_dataset_parameters.capit_label_ids`, "
-                f"`model.common_dataset_parameters.capit_label_vocab_file` are not set. Another way to set "
-                f"`capit_label_ids` is calling method `setup_training_data`. That way capitalization label ids will "
-                f"be inferred from training set."
+                "Could not set attribute `capit_label_ids`. Config parameters "
+                "`model.common_dataset_parameters.capit_label_ids`, "
+                "`model.common_dataset_parameters.capit_label_vocab_file` are not set. Another way to set "
+                "`capit_label_ids` is calling method `setup_training_data`. That way capitalization label ids will "
+                "be inferred from training set."
             )
         self.label_ids_are_set = True
 

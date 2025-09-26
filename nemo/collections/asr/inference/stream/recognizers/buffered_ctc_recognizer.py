@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import torch
 from omegaconf import DictConfig
@@ -43,6 +45,10 @@ from nemo.collections.asr.inference.utils.recognizer_utils import (
 )
 from nemo.collections.asr.models import ASRModel
 
+if TYPE_CHECKING:
+    from nemo.collections.asr.inference.itn.inverse_normalizer import AlignmentPreservingInverseNormalizer
+    from nemo.collections.asr.inference.pnc.punctuation_capitalizer import PunctuationCapitalizer
+
 
 class CTCBufferedSpeechRecognizer(BaseRecognizer):
 
@@ -50,8 +56,8 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         self,
         cfg: DictConfig,
         asr_model: CTCInference,
-        pnc_model: Optional["PunctuationCapitalizer"] = None,
-        itn_model: Optional["AlignmentPreservingInverseNormalizer"] = None,
+        pnc_model: Optional[PunctuationCapitalizer] = None,
+        itn_model: Optional[AlignmentPreservingInverseNormalizer] = None,
     ):
 
         # ASR Related fields

@@ -45,7 +45,7 @@ class CacheAwareSpeechRecognizerBuilder(BaseBuilder):
         elif asr_decoding_type is ASRDecodingType.CTC:
             return cls.build_cache_aware_ctc_speech_recognizer(cfg)
 
-        raise ValueError(f"Invalid asr decoding type for cache aware streaming. Need to be one of ['CTC', 'RNNT']")
+        raise ValueError("Invalid asr decoding type for cache aware streaming. Need to be one of ['CTC', 'RNNT']")
 
     @classmethod
     def get_rnnt_decoding_cfg(cls) -> RNNTDecodingConfig:
@@ -101,7 +101,7 @@ class CacheAwareSpeechRecognizerBuilder(BaseBuilder):
         # building ITN model
         itn_model = cls._build_itn(cfg, input_is_lower_cased=True)
         if itn_model is not None:
-            logging.info(f"ITN model loaded")
+            logging.info("ITN model loaded")
 
         ca_rnnt_recognizer = CacheAwareRNNTSpeechRecognizer(cfg, asr_model, pnc_model=pnc_model, itn_model=itn_model)
         logging.info(f"`{type(ca_rnnt_recognizer).__name__}` recognizer loaded")
@@ -134,7 +134,7 @@ class CacheAwareSpeechRecognizerBuilder(BaseBuilder):
         # building ITN model
         itn_model = cls._build_itn(cfg, input_is_lower_cased=True)
         if itn_model is not None:
-            logging.info(f"ITN model loaded")
+            logging.info("ITN model loaded")
 
         ca_ctc_recognizer = CacheAwareCTCSpeechRecognizer(cfg, asr_model, pnc_model=pnc_model, itn_model=itn_model)
         logging.info(f"`{type(ca_ctc_recognizer).__name__}` recognizer loaded")
