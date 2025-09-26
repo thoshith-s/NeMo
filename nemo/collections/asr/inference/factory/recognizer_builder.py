@@ -39,7 +39,7 @@ class RecognizerBuilder:
             raise ValueError(f"Invalid matmul precision: {matmul_precision}. Need to be one of {choices}")
         torch.set_float32_matmul_precision(matmul_precision)
         logging.info(f"Using matmul precision: {matmul_precision}")
-    
+
     @staticmethod
     def set_log_level(log_level: int) -> None:
         """

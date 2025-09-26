@@ -14,7 +14,7 @@
 
 
 from functools import partial
-from typing import Callable, Dict, List, Set, Tuple, Optional
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from omegaconf import DictConfig
 
@@ -92,7 +92,10 @@ class StreamingTextPostprocessor:
 
         self.alignment_aware_itn_model = None
         if self.itn_enabled:
-            from nemo.collections.asr.inference.itn.batch_inverse_normalizer import BatchAlignmentPreservingInverseNormalizer
+            from nemo.collections.asr.inference.itn.batch_inverse_normalizer import (
+                BatchAlignmentPreservingInverseNormalizer,
+            )
+
             self.alignment_aware_itn_model = BatchAlignmentPreservingInverseNormalizer(
                 itn_model=self.itn_model,
                 sep=self.sep,

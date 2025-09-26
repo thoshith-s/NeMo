@@ -21,8 +21,8 @@ from omegaconf import DictConfig
 
 from nemo.collections.asr.inference.stream.buffering.audio_bufferer import AudioBufferer
 from nemo.collections.asr.inference.stream.framing.request import Frame
-from nemo.collections.asr.models import ASRModel
 from nemo.collections.asr.inference.utils.constants import LOG_MEL_ZERO
+from nemo.collections.asr.models import ASRModel
 
 
 class CacheFeatureBufferer:
