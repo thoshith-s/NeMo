@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import os
-import tempfile
 import pytest
 from pathlib import Path
-from unittest.mock import patch, mock_open, MagicMock
 from omegaconf import OmegaConf, DictConfig
 
 from nemo.agents.voice_agent.utils.config_manager import ConfigManager

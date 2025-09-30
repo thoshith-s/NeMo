@@ -28,13 +28,8 @@ class ConfigManager:
     Manages configuration for the voice agent server.
     Handles loading, merging, and providing access to all configuration parameters.
     """
-<<<<<<< HEAD:nemo/agents/voice_agent/utils/config_manager.py
     
     def __init__(self, server_base_path: Optional[str] = None):
-=======
-
-    def __init__(self, config_path: Optional[str] = None):
->>>>>>> 9e7837799dfa252f124f32ec1922911e93aea15c:examples/voice_agent/server/config_manager.py
         """
         Initialize the configuration manager.
 
@@ -42,17 +37,11 @@ class ConfigManager:
             config_path: Path to the main server configuration file.
                         If None, uses default path from environment variable.
         """
-<<<<<<< HEAD:nemo/agents/voice_agent/utils/config_manager.py
         self._server_base_path = server_base_path
         self._server_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/default.yaml"
 
         if not os.path.exists(self._server_config_path):
             raise FileNotFoundError(f"Server configuration file not found at {self._server_config_path}")
-=======
-        self.config_path = config_path or os.environ.get(
-            "SERVER_CONFIG_PATH", f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/default.yaml"
-        )
->>>>>>> 9e7837799dfa252f124f32ec1922911e93aea15c:examples/voice_agent/server/config_manager.py
 
         # Load model registry
         self.model_registry_path = f"{os.path.abspath(self._server_base_path)}/model_registry.yaml"
@@ -63,15 +52,10 @@ class ConfigManager:
 
         # Initialize configuration parameters
         self._initialize_config_parameters()
-<<<<<<< HEAD:nemo/agents/voice_agent/utils/config_manager.py
         
         self._generic_hf_llm_model_id = "hf_llm_generic.yaml"
         
         logger.info(f"Configuration loaded from: {self._server_config_path}")
-=======
-
-        logger.info(f"Configuration loaded from: {self.config_path}")
->>>>>>> 9e7837799dfa252f124f32ec1922911e93aea15c:examples/voice_agent/server/config_manager.py
         logger.info(f"Model registry loaded from: {self.model_registry_path}")
 
     def _load_model_registry(self) -> Dict[str, Any]:
@@ -168,33 +152,18 @@ class ConfigManager:
 
     def _configure_llm(self):
         """Configure LLM parameters."""
-<<<<<<< HEAD:nemo/agents/voice_agent/utils/config_manager.py
         llm_model_id = self.server_config.llm.model
         
-=======
-        llm_model = self.server_config.llm.model
-
->>>>>>> 9e7837799dfa252f124f32ec1922911e93aea15c:examples/voice_agent/server/config_manager.py
         # Get LLM configuration from registry
         if llm_model_id in self.model_registry.llm_models:
             llm_config_info = self.model_registry.llm_models[llm_model_id]
         else:
-<<<<<<< HEAD:nemo/agents/voice_agent/utils/config_manager.py
             logger.warning(f"LLM model {llm_model_id} is not included in the model registry. Using a generic HuggingFace LLM config.")
             llm_config_info = self.model_registry.llm_models[self._generic_hf_llm_model_id]
         
         # Load and merge LLM configuration
         yaml_path = f"{os.path.abspath(self._server_base_path)}/server_configs/llm_configs/{llm_config_info.yaml_id}"
         
-=======
-            llm_config_info = self.model_registry.llm_models[llm_model]
-
-        # Load and merge LLM configuration
-        yaml_path = (
-            f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/llm_configs/{llm_config_info.yaml_id}"
-        )
-
->>>>>>> 9e7837799dfa252f124f32ec1922911e93aea15c:examples/voice_agent/server/config_manager.py
         # Handle reasoning models (add _think suffix)
         if llm_config_info.get("reasoning_supported", False):
             yaml_path = yaml_path.replace(".yaml", "_think.yaml")
@@ -215,18 +184,12 @@ class ConfigManager:
 
     def _configure_tts(self):
         """Configure TTS parameters."""
-<<<<<<< HEAD:nemo/agents/voice_agent/utils/config_manager.py
         tts_model_id = self.server_config.tts.model
         
-=======
-        tts_model = self.server_config.tts.model
-
->>>>>>> 9e7837799dfa252f124f32ec1922911e93aea15c:examples/voice_agent/server/config_manager.py
         # Get TTS configuration from registry
         if tts_model_id in self.model_registry.tts_models:
             tts_config_info = self.model_registry.tts_models[tts_model_id]
         else:
-<<<<<<< HEAD:nemo/agents/voice_agent/utils/config_manager.py
             logger.warning(f"TTS model {tts_model_id} is not supported. Using default TTS config.")
         
         # Load and merge TTS configuration
@@ -240,29 +203,14 @@ class ConfigManager:
             raise ValueError(error_msg)
 
         yaml_path = f"{os.path.abspath(self._server_base_path)}/server_configs/tts_configs/{tts_config_info.yaml_id}"
-=======
-            tts_config_info = self.model_registry.tts_models[tts_model]
-
-        # Load and merge TTS configuration
-        yaml_path = (
-            f"{os.path.dirname(os.path.abspath(__file__))}/server_configs/tts_configs/{tts_config_info.yaml_id}"
-        )
->>>>>>> 9e7837799dfa252f124f32ec1922911e93aea15c:examples/voice_agent/server/config_manager.py
         tts_config = OmegaConf.load(yaml_path)
         self.server_config.tts = OmegaConf.merge(self.server_config.tts, tts_config)
 
         # Extract TTS parameters
-<<<<<<< HEAD:nemo/agents/voice_agent/utils/config_manager.py
         self.TTS_MAIN_MODEL_ID = self.server_config.tts.get("main_model_id", None)
         self.TTS_SUB_MODEL_ID = self.server_config.tts.get("sub_model_id", None)
         self.TTS_DEVICE = self.server_config.tts.get("device", None)
         
-=======
-        self.TTS_FASTPITCH_MODEL = self.server_config.tts.fastpitch_model
-        self.TTS_HIFIGAN_MODEL = self.server_config.tts.hifigan_model
-        self.TTS_DEVICE = self.server_config.tts.device
-
->>>>>>> 9e7837799dfa252f124f32ec1922911e93aea15c:examples/voice_agent/server/config_manager.py
         # Handle optional TTS parameters
         self.TTS_THINK_TOKENS = self.server_config.tts.get("think_tokens", None)
         if self.TTS_THINK_TOKENS is not None:
