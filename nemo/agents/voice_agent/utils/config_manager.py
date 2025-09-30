@@ -116,7 +116,6 @@ class ConfigManager:
         """Configure STT parameters."""
         self.STT_MODEL_PATH = self.server_config.stt.model
         self.STT_DEVICE = self.server_config.stt.device
-
         # Apply STT-specific configuration based on model type
         if self.server_config.stt.type == "nemo" and "stt_en_fastconformer" in self.model_registry.stt_models:
             stt_config_path = (
@@ -126,10 +125,12 @@ class ConfigManager:
             stt_config_path = self.server_config.stt.model_config
         else:
             error_msg = (
-                f"STT model {stt_model_id} with type {self.server_config.stt.type} is not supported configuration."
+                f"STT model {self.STT_MODEL_PATH} with type {self.server_config.stt.type} is not supported configuration."
             )
             logger.error(error_msg)
             raise ValueError(error_msg)
+        stt_config = OmegaConf.load(stt_config_path)
+        self.server_config.stt = OmegaConf.merge(self.server_config.stt, stt_config)
         self.stt_params = NeMoSTTInputParams(
             att_context_size=self.server_config.stt.att_context_size,
             frame_len_in_secs=self.server_config.stt.frame_len_in_secs,

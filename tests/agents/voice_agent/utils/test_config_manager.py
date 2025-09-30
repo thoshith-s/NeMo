@@ -44,21 +44,6 @@ class TestDefaultConfigs:
     @pytest.mark.unit
     def test_constructor_with_valid_path(self, voice_agent_server_base_path):
         """Test ConfigManager initialization with valid configuration files."""
-<<<<<<< HEAD
-=======
-        # Create test files
-        model_registry_path = os.path.join(voice_agent_server_base_path, "model_registry.yaml")
-        server_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "default.yaml")
-        stt_config_path = os.path.join(
-            voice_agent_server_base_path, "server_configs", "stt_configs", "nemo_cache_aware_streaming.yaml"
-        )
-        llm_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "llm_configs", "test_llm.yaml")
-        tts_config_path = os.path.join(
-            voice_agent_server_base_path, "server_configs", "tts_configs", "nemo_fastpitch-hifigan.yaml"
-        )
-
-        # Initialize ConfigManager
->>>>>>> 6138d39de9157be67b18197099022e81eb363d96
         config_manager = ConfigManager(voice_agent_server_base_path)
 
         # Verify initialization
@@ -89,15 +74,6 @@ class TestDefaultConfigs:
     def test_configure_stt_nemo_model(self, voice_agent_server_base_path):
         """Test STT configuration for NeMo model."""
         # Create necessary files
-<<<<<<< HEAD
-=======
-        model_registry_path = os.path.join(voice_agent_server_base_path, "model_registry.yaml")
-        server_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "default.yaml")
-        stt_config_path = os.path.join(
-            voice_agent_server_base_path, "server_configs", "stt_configs", "nemo_cache_aware_streaming.yaml"
-        )
-
->>>>>>> 6138d39de9157be67b18197099022e81eb363d96
         config_manager = ConfigManager(voice_agent_server_base_path)
 
         assert "stt_en_fastconformer" in config_manager.STT_MODEL_PATH
