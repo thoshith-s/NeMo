@@ -124,9 +124,7 @@ class ConfigManager:
         elif self.server_config.stt.get("model_config", None) is not None:
             stt_config_path = self.server_config.stt.model_config
         else:
-            error_msg = (
-                f"STT model {self.STT_MODEL_PATH} with type {self.server_config.stt.type} is not supported configuration."
-            )
+            error_msg = f"STT model {self.STT_MODEL_PATH} with type {self.server_config.stt.type} is not supported configuration."
             logger.error(error_msg)
             raise ValueError(error_msg)
         stt_config = OmegaConf.load(stt_config_path)
