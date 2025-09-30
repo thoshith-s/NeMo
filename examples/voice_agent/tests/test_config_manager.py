@@ -27,7 +27,7 @@ from nemo.agents.voice_agent.utils.config_manager import ConfigManager
 @pytest.fixture
 def voice_agent_server_base_path():
     """Retrieve the NeMo root path from __file__ variable"""
-    nemo_root_path = Path(__file__).resolve().parents[4]
+    nemo_root_path = Path(__file__).resolve().parents[3]
     subdirs = list(nemo_root_path.parts)
     # Check if "nemo", "tests", "examples", "requirements" are in the path
     if not all(sub in subdirs for sub in ["nemo", "tests", "examples", "requirements"]):
