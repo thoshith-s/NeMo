@@ -14,7 +14,7 @@
 
 
 import re
-from functools import partial
+from functools import partial, wraps
 from typing import Iterable, List, Set, Tuple, Union
 
 import torch
@@ -62,20 +62,50 @@ def normalize_features(features: Tensor, feature_lens: Tensor = None) -> Tensor:
     return torch.where(mask, normalized, LOG_MEL_ZERO)
 
 
+def memoize_normalization_mode():
+    def decorator(func):
+        mode = None  # Cache the detected format
+
+        @wraps(func)
+        def wrapper(log_probs: torch.Tensor) -> torch.Tensor:
+            nonlocal mode
+
+            if mode is None:
+                # Use mean across batch for robustness
+
+                ONE = torch.tensor(1.0, dtype=log_probs.dtype)
+                if torch.allclose(log_probs[0][0].sum(), ONE, atol=BIG_EPSILON):
+                    # assume that softmax is already applied
+                    mode = 'prob'
+                else:
+                    if not torch.allclose(log_probs[0][0].exp().sum(), ONE, atol=BIG_EPSILON):
+                        # It's neither prob nor log-softmax, need toapply log_softmax
+                        mode = "logits"
+                    else:
+                        # It's already in log-softmax form
+                        mode = "log_softmax"
+
+            # Fast-path execution
+            if mode == "prob":
+                return torch.log(log_probs + SMALL_EPSILON)
+            elif mode == 'logits':
+                return torch.log_softmax(log_probs, dim=-1)
+            else:
+                return log_probs
+
+        return wrapper
+
+    return decorator
+
+
+@memoize_normalization_mode()
 def normalize_log_probs(log_probs: torch.Tensor) -> torch.Tensor:
     """
     log_probs: (B, T, vocab_size) log probabilities
+    Returns:
+        (Tensor) normalized log probabilities. Shape is torch.Size([B, T, vocab_size]).
     """
     # Ensure log_probs are normalized
-    ONE = torch.tensor(1.0, dtype=log_probs.dtype)
-    if torch.allclose(log_probs[0][0].sum(), ONE, atol=BIG_EPSILON):
-        # assume that softmax is already applied
-        log_probs = torch.log(log_probs + SMALL_EPSILON)
-    else:
-        # Otherwise, check if it's already in log-softmax form
-        if not torch.allclose(log_probs[0][0].exp().sum(), ONE, atol=BIG_EPSILON):
-            # If it's neither prob nor log-softmax, apply log_softmax
-            log_probs = torch.log_softmax(log_probs, dim=-1)
     return log_probs
 
 

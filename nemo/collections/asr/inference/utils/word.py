@@ -213,11 +213,11 @@ class Word:
 
         return (
             self.text == other.text
-            and self.channel_id == other.channel_id
-            and self.semiotic_class == other.semiotic_class
             and abs(self.start - other.start) < BIG_EPSILON
             and abs(self.end - other.end) < BIG_EPSILON
             and abs(self.conf - other.conf) < BIG_EPSILON
+            and self.semiotic_class == other.semiotic_class
+            and self.channel_id == other.channel_id
         )
 
     def __str__(self) -> str:
