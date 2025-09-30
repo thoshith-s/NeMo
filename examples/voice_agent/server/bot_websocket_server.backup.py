@@ -96,7 +96,9 @@ if server_config.stt.type == "nemo" and "stt_en_fastconformer" in server_config.
     stt_config = OmegaConf.load(f"server/server_configs/stt_configs/nemo_cache_aware_streaming.yaml")
     server_config.stt = OmegaConf.merge(server_config.stt, stt_config)
 else:
-    error_msg=f"STT model {server_config.stt.model} with type {server_config.stt.type} is not supported configuration."
+    error_msg = (
+        f"STT model {server_config.stt.model} with type {server_config.stt.type} is not supported configuration."
+    )
     logger.error(error_msg)
     raise ValueError(error_msg)
 
@@ -172,7 +174,7 @@ else:
     yaml_path = f"server/server_configs/tts_configs/{SUPPORTED_TTS_MODELS[server_config.tts.model]['yaml_id']}"
     tts_config = OmegaConf.load(yaml_path)
     server_config.tts = OmegaConf.merge(server_config.tts, tts_config)
-    
+
 TTS_FASTPITCH_MODEL = server_config.tts.fastpitch_model
 TTS_HIFIGAN_MODEL = server_config.tts.hifigan_model
 TTS_DEVICE = server_config.tts.device

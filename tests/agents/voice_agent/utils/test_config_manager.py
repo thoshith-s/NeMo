@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import os
-import pytest
 from pathlib import Path
-from omegaconf import OmegaConf, DictConfig
 
-from nemo.agents.voice_agent.utils.config_manager import ConfigManager
+import pytest
+from omegaconf import DictConfig, OmegaConf
 from pipecat.audio.vad.silero import VADParams
-from nemo.agents.voice_agent.pipecat.services.nemo.stt import NeMoSTTInputParams
+
 from nemo.agents.voice_agent.pipecat.services.nemo.diar import NeMoDiarInputParams
+from nemo.agents.voice_agent.pipecat.services.nemo.stt import NeMoSTTInputParams
+from nemo.agents.voice_agent.utils.config_manager import ConfigManager
 
 
 @pytest.fixture
@@ -36,6 +37,7 @@ def voice_agent_server_base_path():
     voice_agent_root_path = os.path.join(nemo_root_path, "examples", "voice_agent", "server") + "/"
     return voice_agent_root_path
 
+
 class TestDefaultConfigs:
     """Test suite for ConfigManager class."""
 
@@ -45,13 +47,17 @@ class TestDefaultConfigs:
         # Create test files
         model_registry_path = os.path.join(voice_agent_server_base_path, "model_registry.yaml")
         server_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "default.yaml")
-        stt_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "stt_configs", "nemo_cache_aware_streaming.yaml")
+        stt_config_path = os.path.join(
+            voice_agent_server_base_path, "server_configs", "stt_configs", "nemo_cache_aware_streaming.yaml"
+        )
         llm_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "llm_configs", "test_llm.yaml")
-        tts_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "tts_configs", "nemo_fastpitch-hifigan.yaml")
+        tts_config_path = os.path.join(
+            voice_agent_server_base_path, "server_configs", "tts_configs", "nemo_fastpitch-hifigan.yaml"
+        )
 
         # Initialize ConfigManager
         config_manager = ConfigManager(voice_agent_server_base_path)
-        
+
         # Verify initialization
         assert config_manager._server_base_path == voice_agent_server_base_path
         assert config_manager.SAMPLE_RATE == 16000
@@ -71,7 +77,7 @@ class TestDefaultConfigs:
         """Test successful model registry loading."""
         model_registry_path = os.path.join(voice_agent_server_base_path, "model_registry.yaml")
         config_manager = ConfigManager(voice_agent_server_base_path)
-        
+
         assert config_manager.model_registry is not None
         assert "llm_models" in config_manager.model_registry
         assert "tts_models" in config_manager.model_registry
@@ -83,11 +89,13 @@ class TestDefaultConfigs:
         # Create necessary files
         model_registry_path = os.path.join(voice_agent_server_base_path, "model_registry.yaml")
         server_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "default.yaml")
-        stt_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "stt_configs", "nemo_cache_aware_streaming.yaml")
-        
+        stt_config_path = os.path.join(
+            voice_agent_server_base_path, "server_configs", "stt_configs", "nemo_cache_aware_streaming.yaml"
+        )
+
         config_manager = ConfigManager(voice_agent_server_base_path)
-        
-        assert "stt_en_fastconformer" in config_manager.STT_MODEL_PATH 
+
+        assert "stt_en_fastconformer" in config_manager.STT_MODEL_PATH
         assert isinstance(config_manager.stt_params, NeMoSTTInputParams)
 
     @pytest.mark.unit
@@ -100,7 +108,7 @@ class TestDefaultConfigs:
     def test_configure_diarization(self, voice_agent_server_base_path):
         """Test diarization configuration."""
         config_manager = ConfigManager(voice_agent_server_base_path)
-        
+
         assert hasattr(config_manager, "DIAR_MODEL") and isinstance(config_manager.DIAR_MODEL, str)
         assert hasattr(config_manager, "USE_DIAR") and isinstance(config_manager.USE_DIAR, bool)
         assert isinstance(config_manager.diar_params, NeMoDiarInputParams)
@@ -109,16 +117,24 @@ class TestDefaultConfigs:
     def test_configure_turn_taking(self, voice_agent_server_base_path):
         """Test turn taking configuration."""
         config_manager = ConfigManager(voice_agent_server_base_path)
-        assert hasattr(config_manager, "TURN_TAKING_BACKCHANNEL_PHRASES_PATH") and isinstance(config_manager.TURN_TAKING_BACKCHANNEL_PHRASES_PATH, str)
-        assert hasattr(config_manager, "TURN_TAKING_MAX_BUFFER_SIZE") and isinstance(config_manager.TURN_TAKING_MAX_BUFFER_SIZE, int)
-        assert hasattr(config_manager, "TURN_TAKING_BOT_STOP_DELAY") and isinstance(config_manager.TURN_TAKING_BOT_STOP_DELAY, float)
+        assert hasattr(config_manager, "TURN_TAKING_BACKCHANNEL_PHRASES_PATH") and isinstance(
+            config_manager.TURN_TAKING_BACKCHANNEL_PHRASES_PATH, str
+        )
+        assert hasattr(config_manager, "TURN_TAKING_MAX_BUFFER_SIZE") and isinstance(
+            config_manager.TURN_TAKING_MAX_BUFFER_SIZE, int
+        )
+        assert hasattr(config_manager, "TURN_TAKING_BOT_STOP_DELAY") and isinstance(
+            config_manager.TURN_TAKING_BOT_STOP_DELAY, float
+        )
 
     @pytest.mark.unit
     def test_configure_turn_taking_backchannel_phrases(self, voice_agent_server_base_path):
         """Test turn taking configuration."""
         config_manager = ConfigManager(voice_agent_server_base_path)
         # Load backchannel phrases yaml file
-        file_path = os.path.join(voice_agent_server_base_path, os.path.basename(config_manager.TURN_TAKING_BACKCHANNEL_PHRASES_PATH))
+        file_path = os.path.join(
+            voice_agent_server_base_path, os.path.basename(config_manager.TURN_TAKING_BACKCHANNEL_PHRASES_PATH)
+        )
         assert os.path.exists(file_path)
         with open(file_path, "r") as f:
             backchannel_phrases = OmegaConf.load(f)
@@ -130,7 +146,7 @@ class TestDefaultConfigs:
     def test_configure_llm_with_registry_model(self, voice_agent_server_base_path):
         """Test LLM configuration with model from registry."""
         config_manager = ConfigManager(voice_agent_server_base_path)
-        
+
         assert hasattr(config_manager, "SYSTEM_ROLE") and isinstance(config_manager.SYSTEM_ROLE, str)
         assert hasattr(config_manager, "SYSTEM_PROMPT") and isinstance(config_manager.SYSTEM_PROMPT, str)
 
@@ -155,7 +171,7 @@ class TestDefaultConfigs:
     def test_configure_tts_nemo_model(self, voice_agent_server_base_path):
         """Test TTS configuration for NeMo model."""
         config_manager = ConfigManager(voice_agent_server_base_path)
-        
+
         assert hasattr(config_manager, "TTS_MAIN_MODEL_ID")
         assert hasattr(config_manager, "TTS_SUB_MODEL_ID")
         assert hasattr(config_manager, "TTS_DEVICE")
@@ -164,7 +180,7 @@ class TestDefaultConfigs:
     def test_configure_tts_with_optional_params(self, voice_agent_server_base_path):
         """Test TTS configuration with optional parameters."""
         config_manager = ConfigManager(voice_agent_server_base_path)
-        
+
         assert hasattr(config_manager, "TTS_THINK_TOKENS") and isinstance(config_manager.TTS_THINK_TOKENS, list)
         assert all(isinstance(item, str) for item in config_manager.TTS_THINK_TOKENS)
         assert hasattr(config_manager, "TTS_EXTRA_SEPARATOR") and isinstance(config_manager.TTS_EXTRA_SEPARATOR, list)
@@ -175,7 +191,7 @@ class TestDefaultConfigs:
         """Test get_server_config method."""
         config_manager = ConfigManager(voice_agent_server_base_path)
         server_config = config_manager.get_server_config()
-        
+
         assert isinstance(server_config, DictConfig)
         assert hasattr(server_config.transport, "audio_out_10ms_chunks")
         assert isinstance(server_config.transport.audio_out_10ms_chunks, int)
@@ -195,7 +211,7 @@ class TestDefaultConfigs:
         """Test get_vad_params method."""
         config_manager = ConfigManager(voice_agent_server_base_path)
         vad_params = config_manager.get_vad_params()
-        
+
         assert isinstance(vad_params, VADParams)
         assert isinstance(vad_params.confidence, float) and 0.0 <= vad_params.confidence <= 1.0
         assert isinstance(vad_params.start_secs, float) and 0.0 <= vad_params.start_secs <= 1.0
@@ -207,23 +223,25 @@ class TestDefaultConfigs:
         """Test get_stt_params method."""
         config_manager = ConfigManager(voice_agent_server_base_path)
         stt_params = config_manager.get_stt_params()
-        
+
         assert isinstance(stt_params, NeMoSTTInputParams)
-        assert isinstance(stt_params.att_context_size, list) 
+        assert isinstance(stt_params.att_context_size, list)
         assert all(isinstance(item, int) for item in stt_params.att_context_size)
         assert isinstance(stt_params.frame_len_in_secs, float) and 0.0 <= stt_params.frame_len_in_secs <= 1.0
-        assert isinstance(stt_params.raw_audio_frame_len_in_secs, float) and 0.0 <= stt_params.raw_audio_frame_len_in_secs <= 1.0
+        assert (
+            isinstance(stt_params.raw_audio_frame_len_in_secs, float)
+            and 0.0 <= stt_params.raw_audio_frame_len_in_secs <= 1.0
+        )
 
     @pytest.mark.unit
     def test_get_diar_params(self, voice_agent_server_base_path):
         """Test get_diar_params method."""
         config_manager = ConfigManager(voice_agent_server_base_path)
         diar_params = config_manager.get_diar_params()
-        
+
         assert isinstance(diar_params, NeMoDiarInputParams)
         assert hasattr(diar_params, "frame_len_in_secs") and isinstance(diar_params.frame_len_in_secs, float)
         assert hasattr(diar_params, "threshold") and isinstance(diar_params.threshold, float)
-
 
     @pytest.mark.unit
     def test_transport_configuration(self, voice_agent_server_base_path):
@@ -231,5 +249,6 @@ class TestDefaultConfigs:
         config_manager = ConfigManager(voice_agent_server_base_path)
         assert hasattr(config_manager, "TRANSPORT_AUDIO_OUT_10MS_CHUNKS")
         if not isinstance(config_manager.TRANSPORT_AUDIO_OUT_10MS_CHUNKS, int):
-            raise ValueError(f"TRANSPORT_AUDIO_OUT_10MS_CHUNKS is not an integer: {config_manager.TRANSPORT_AUDIO_OUT_10MS_CHUNKS}")
-
+            raise ValueError(
+                f"TRANSPORT_AUDIO_OUT_10MS_CHUNKS is not an integer: {config_manager.TRANSPORT_AUDIO_OUT_10MS_CHUNKS}"
+            )

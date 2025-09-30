@@ -28,7 +28,7 @@ class ConfigManager:
     Manages configuration for the voice agent server.
     Handles loading, merging, and providing access to all configuration parameters.
     """
-    
+
     def __init__(self, server_base_path: Optional[str] = None):
         """
         Initialize the configuration manager.
@@ -52,9 +52,9 @@ class ConfigManager:
 
         # Initialize configuration parameters
         self._initialize_config_parameters()
-        
+
         self._generic_hf_llm_model_id = "hf_llm_generic.yaml"
-        
+
         logger.info(f"Configuration loaded from: {self._server_config_path}")
         logger.info(f"Model registry loaded from: {self.model_registry_path}")
 
@@ -119,11 +119,15 @@ class ConfigManager:
 
         # Apply STT-specific configuration based on model type
         if self.server_config.stt.type == "nemo" and "stt_en_fastconformer" in self.model_registry.stt_models:
-            stt_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
+            stt_config_path = (
+                f"{os.path.abspath(self._server_base_path)}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
+            )
         elif self.server_config.stt.get("model_config", None) is not None:
             stt_config_path = self.server_config.stt.model_config
         else:
-            error_msg = f"STT model {stt_model_id} with type {self.server_config.stt.type} is not supported configuration."
+            error_msg = (
+                f"STT model {stt_model_id} with type {self.server_config.stt.type} is not supported configuration."
+            )
             logger.error(error_msg)
             raise ValueError(error_msg)
         self.stt_params = NeMoSTTInputParams(
@@ -153,17 +157,19 @@ class ConfigManager:
     def _configure_llm(self):
         """Configure LLM parameters."""
         llm_model_id = self.server_config.llm.model
-        
+
         # Get LLM configuration from registry
         if llm_model_id in self.model_registry.llm_models:
             llm_config_info = self.model_registry.llm_models[llm_model_id]
         else:
-            logger.warning(f"LLM model {llm_model_id} is not included in the model registry. Using a generic HuggingFace LLM config.")
+            logger.warning(
+                f"LLM model {llm_model_id} is not included in the model registry. Using a generic HuggingFace LLM config."
+            )
             llm_config_info = self.model_registry.llm_models[self._generic_hf_llm_model_id]
-        
+
         # Load and merge LLM configuration
         yaml_path = f"{os.path.abspath(self._server_base_path)}/server_configs/llm_configs/{llm_config_info.yaml_id}"
-        
+
         # Handle reasoning models (add _think suffix)
         if llm_config_info.get("reasoning_supported", False):
             yaml_path = yaml_path.replace(".yaml", "_think.yaml")
@@ -185,16 +191,18 @@ class ConfigManager:
     def _configure_tts(self):
         """Configure TTS parameters."""
         tts_model_id = self.server_config.tts.model
-        
+
         # Get TTS configuration from registry
         if tts_model_id in self.model_registry.tts_models:
             tts_config_info = self.model_registry.tts_models[tts_model_id]
         else:
             logger.warning(f"TTS model {tts_model_id} is not supported. Using default TTS config.")
-        
+
         # Load and merge TTS configuration
         if self.server_config.tts.type == "nemo" and "fastpitch-hifigan" in self.server_config.tts.model:
-            stt_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
+            stt_config_path = (
+                f"{os.path.abspath(self._server_base_path)}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
+            )
         elif self.server_config.tts.get("model_config", None) is not None:
             stt_config_path = self.server_config.tts.model_config
         else:
@@ -210,7 +218,7 @@ class ConfigManager:
         self.TTS_MAIN_MODEL_ID = self.server_config.tts.get("main_model_id", None)
         self.TTS_SUB_MODEL_ID = self.server_config.tts.get("sub_model_id", None)
         self.TTS_DEVICE = self.server_config.tts.get("device", None)
-        
+
         # Handle optional TTS parameters
         self.TTS_THINK_TOKENS = self.server_config.tts.get("think_tokens", None)
         if self.TTS_THINK_TOKENS is not None:
