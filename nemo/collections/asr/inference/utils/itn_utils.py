@@ -41,19 +41,7 @@ def split_text(text: str, sep: str = " ") -> Tuple[List, int]:
         words: (List) list of words
         n_words: (int) number of words
     """
-    cur_span = []
-    words = []
-    for idx, ch in enumerate(text):
-        if ch == sep and len(cur_span) == 1:
-            cur_span.append(idx)
-            words.append(text[cur_span[0] : cur_span[1]])
-            cur_span = []
-        elif ch != sep and len(cur_span) == 0:
-            cur_span.append(idx)
-
-    if len(cur_span) > 0:
-        cur_span.append(len(text))
-        words.append(text[cur_span[0] : cur_span[1]])
+    words = [w for w in text.split(sep) if w]
     return words, len(words)
 
 

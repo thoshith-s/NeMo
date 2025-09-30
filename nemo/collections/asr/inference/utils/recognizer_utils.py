@@ -71,8 +71,6 @@ def memoize_normalization_mode():
             nonlocal mode
 
             if mode is None:
-                # Use mean across batch for robustness
-
                 ONE = torch.tensor(1.0, dtype=log_probs.dtype)
                 if torch.allclose(log_probs[0][0].sum(), ONE, atol=BIG_EPSILON):
                     # assume that softmax is already applied

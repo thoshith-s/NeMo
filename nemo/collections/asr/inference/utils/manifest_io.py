@@ -136,6 +136,8 @@ def dump_output(
 def calculate_duration(audio_filepaths: List[str]) -> float:
     """
     Calculate the duration of the audio files
+    Args:
+        audio_filepaths: (List[str]) List of audio filepaths
     Returns:
         (float) Total duration of the audio files
     """
