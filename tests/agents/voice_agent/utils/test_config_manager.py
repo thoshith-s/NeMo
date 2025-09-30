@@ -42,14 +42,6 @@ class TestDefaultConfigs:
     @pytest.mark.unit
     def test_constructor_with_valid_path(self, voice_agent_server_base_path):
         """Test ConfigManager initialization with valid configuration files."""
-        # Create test files
-        model_registry_path = os.path.join(voice_agent_server_base_path, "model_registry.yaml")
-        server_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "default.yaml")
-        stt_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "stt_configs", "nemo_cache_aware_streaming.yaml")
-        llm_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "llm_configs", "test_llm.yaml")
-        tts_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "tts_configs", "nemo_fastpitch-hifigan.yaml")
-
-        # Initialize ConfigManager
         config_manager = ConfigManager(voice_agent_server_base_path)
         
         # Verify initialization
@@ -69,7 +61,6 @@ class TestDefaultConfigs:
     @pytest.mark.unit
     def test_load_model_registry_success(self, voice_agent_server_base_path):
         """Test successful model registry loading."""
-        model_registry_path = os.path.join(voice_agent_server_base_path, "model_registry.yaml")
         config_manager = ConfigManager(voice_agent_server_base_path)
         
         assert config_manager.model_registry is not None
@@ -81,10 +72,6 @@ class TestDefaultConfigs:
     def test_configure_stt_nemo_model(self, voice_agent_server_base_path):
         """Test STT configuration for NeMo model."""
         # Create necessary files
-        model_registry_path = os.path.join(voice_agent_server_base_path, "model_registry.yaml")
-        server_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "default.yaml")
-        stt_config_path = os.path.join(voice_agent_server_base_path, "server_configs", "stt_configs", "nemo_cache_aware_streaming.yaml")
-        
         config_manager = ConfigManager(voice_agent_server_base_path)
         
         assert "stt_en_fastconformer" in config_manager.STT_MODEL_PATH 
