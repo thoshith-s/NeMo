@@ -685,7 +685,7 @@ class Qwen25VisionModel(VisionModule):
             cu_window_seqlens.extend(cu_seqlens_tmp.tolist())
             window_index_id += (grid_t * llm_grid_h * llm_grid_w).item()
         window_index = torch.cat(window_index, dim=0)
-        
+
         # Pre-compute the inverse mapping to avoid expensive argsort later
         inverse_index = torch.empty_like(window_index)
         inverse_index[window_index] = torch.arange(len(window_index), device=window_index.device)
