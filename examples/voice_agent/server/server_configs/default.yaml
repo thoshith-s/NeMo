@@ -16,6 +16,7 @@ vad:
 stt:
   type: nemo # choices in ['nemo'] currently only NeMo is supported
   model: "stt_en_fastconformer_hybrid_large_streaming_80ms"
+  model_config: "./server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
   device: "cuda"
 
 diar:
@@ -33,12 +34,17 @@ turn_taking:
 
 llm:
   type: auto  # choices in ['auto', 'hf', 'vllm']
-  # model: "nvidia/NVIDIA-Nemotron-Nano-9B-v2"  # model name for HF models, will be used via `AutoModelForCausalLM.from_pretrained()`
-  model: "Qwen/Qwen2.5-7B-Instruct" 
+  model: "Qwen/Qwen2.5-7B-Instruct" # model name for HF models, will be used via `AutoModelForCausalLM.from_pretrained()`
+  model_config: "./server_configs/llm_configs/qwen2.5-7B.yaml"
+  # model: "nvidia/NVIDIA-Nemotron-Nano-9B-v2"  
+  # model_config: "./server_configs/llm_configs/nemotron_nano_v2.yaml"
+  # model: "Qwen/Qwen3-8B"
+  # model_config: "./server_configs/llm_configs/qwen3-8B.yaml"
   device: "cuda"
   reasoning: false 
 
 tts:
   type: nemo # choices in ['nemo', 'hf']
   model: fastpitch-hifigan
+  model_config: "./server_configs/tts_configs/nemo_fastpitch-hifigan.yaml"
   device: "cuda"

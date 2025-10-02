@@ -117,16 +117,21 @@ class ConfigManager:
         self.STT_MODEL_PATH = self.server_config.stt.model
         self.STT_DEVICE = self.server_config.stt.device
         # Apply STT-specific configuration based on model type
-        if self.server_config.stt.type == "nemo" and "stt_en_fastconformer" in self.model_registry.stt_models:
-            stt_config_path = (
-                f"{os.path.abspath(self._server_base_path)}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
-            )
-        elif self.server_config.stt.get("model_config", None) is not None:
-            stt_config_path = self.server_config.stt.model_config
+        # Try to get STT config file name from server config first
+        if self.server_config.stt.get("model_config", None) is not None:
+            yaml_file_name = os.path.basename(self.server_config.stt.model_config)
         else:
-            error_msg = f"STT model {self.STT_MODEL_PATH} with type {self.server_config.stt.type} is not supported configuration."
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+            # Get STT configuration from registry
+            if self.server_config.stt.type == "nemo" and "stt_en_fastconformer" in self.model_registry.stt_models:
+                yaml_file_name = self.model_registry.stt_models[self.server_config.stt.model].yaml_id
+            else:
+                error_msg = f"STT model {self.STT_MODEL_PATH} with type {self.server_config.stt.type} is not supported configuration."
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+
+        stt_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/stt_configs/{yaml_file_name}"
+        if not os.path.exists(stt_config_path):
+            raise FileNotFoundError(f"STT config file not found at {stt_config_path}")
         stt_config = OmegaConf.load(stt_config_path)
         self.server_config.stt = OmegaConf.merge(self.server_config.stt, stt_config)
         self.stt_params = NeMoSTTInputParams(
@@ -157,23 +162,29 @@ class ConfigManager:
         """Configure LLM parameters."""
         llm_model_id = self.server_config.llm.model
 
-        # Get LLM configuration from registry
-        if llm_model_id in self.model_registry.llm_models:
-            llm_config_info = self.model_registry.llm_models[llm_model_id]
+        # Try to get LLM config file name from server config first
+        if self.server_config.llm.get("model_config", None) is not None:
+            yaml_file_name = os.path.basename(self.server_config.llm.model_config)
         else:
-            logger.warning(
-                f"LLM model {llm_model_id} is not included in the model registry. Using a generic HuggingFace LLM config."
-            )
-            llm_config_info = self.model_registry.llm_models[self._generic_hf_llm_model_id]
+            # Get LLM configuration from registry
+            if llm_model_id in self.model_registry.llm_models:
+                yaml_file_name = self.model_registry.llm_models[llm_model_id].yaml_id
+            else:
+                logger.warning(
+                    f"LLM model {llm_model_id} is not included in the model registry. Using a generic HuggingFace LLM config."
+                )
+                yaml_file_name = self.model_registry.llm_models[self._generic_hf_llm_model_id].yaml_id
 
         # Load and merge LLM configuration
-        yaml_path = f"{os.path.abspath(self._server_base_path)}/server_configs/llm_configs/{llm_config_info.yaml_id}"
+        llm_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/llm_configs/{yaml_file_name}"
+        
+        if self.model_registry.llm_models[llm_model_id].get("reasoning_supported", False) and self.server_config.llm.get("reasoning", False):
+            llm_config_path = llm_config_path.replace(".yaml", "_think.yaml")
+        
+        if not os.path.exists(llm_config_path):
+            raise FileNotFoundError(f"LLM config file not found at {llm_config_path}")
 
-        # Handle reasoning models (add _think suffix)
-        if llm_config_info.get("reasoning_supported", False):
-            yaml_path = yaml_path.replace(".yaml", "_think.yaml")
-
-        llm_config = OmegaConf.load(yaml_path)
+        llm_config = OmegaConf.load(llm_config_path)
         self.server_config.llm = OmegaConf.merge(self.server_config.llm, llm_config)
 
         # Configure system prompt
@@ -191,26 +202,22 @@ class ConfigManager:
         """Configure TTS parameters."""
         tts_model_id = self.server_config.tts.model
 
-        # Get TTS configuration from registry
-        if tts_model_id in self.model_registry.tts_models:
-            tts_config_info = self.model_registry.tts_models[tts_model_id]
+        # Try to get TTS config file name from server config first
+        if self.server_config.tts.get("model_config", None) is not None:
+            yaml_file_name = os.path.basename(self.server_config.tts.model_config)
         else:
-            logger.warning(f"TTS model {tts_model_id} is not supported. Using default TTS config.")
+            # Get TTS configuration from registry
+            if self.server_config.tts.type == "nemo" and "fastpitch-hifigan" in self.server_config.tts.model:
+                yaml_file_name = self.model_registry.tts_models[tts_model_id].yaml_id
+            else:
+                error_msg = f"TTS model {self.server_config.tts.model} with type {self.server_config.tts.type} is not supported configuration."
+                logger.error(error_msg)
+                raise ValueError(error_msg)
 
-        # Load and merge TTS configuration
-        if self.server_config.tts.type == "nemo" and "fastpitch-hifigan" in self.server_config.tts.model:
-            stt_config_path = (
-                f"{os.path.abspath(self._server_base_path)}/server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
-            )
-        elif self.server_config.tts.get("model_config", None) is not None:
-            stt_config_path = self.server_config.tts.model_config
-        else:
-            error_msg = f"TTS model {self.server_config.tts.model} with type {self.server_config.tts.type} is not supported configuration."
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-
-        yaml_path = f"{os.path.abspath(self._server_base_path)}/server_configs/tts_configs/{tts_config_info.yaml_id}"
-        tts_config = OmegaConf.load(yaml_path)
+        tts_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/tts_configs/{yaml_file_name}"
+        if not os.path.exists(tts_config_path):
+            raise FileNotFoundError(f"Default TTS config file not found at {tts_config_path}")
+        tts_config = OmegaConf.load(tts_config_path)
         self.server_config.tts = OmegaConf.merge(self.server_config.tts, tts_config)
 
         # Extract TTS parameters

@@ -35,7 +35,6 @@ logger.add("bot_server.log", rotation="1 day", level="DEBUG")
 # Global flag for graceful shutdown
 shutdown_event = asyncio.Event()
 
-from config_manager import ConfigManager
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.frames.frames import EndTaskFrame
 from pipecat.pipeline.pipeline import Pipeline
@@ -58,7 +57,7 @@ from nemo.agents.voice_agent.pipecat.utils.text.simple_text_aggregator import Si
 from nemo.agents.voice_agent.utils.config_manager import ConfigManager
 
 # Initialize configuration manager
-config_manager = ConfigManager(server_base_path=__file__)
+config_manager = ConfigManager(server_base_path=os.path.dirname(__file__))
 server_config = config_manager.get_server_config()
 
 logger.info(f"Server config: {server_config}")

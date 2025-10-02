@@ -19,6 +19,6 @@ tts_models:
     yaml_id: "nemo_fastpitch-hifigan.yaml"
 
 stt_models:
-  "stt_en_fastconformer":
+  "stt_en_fastconformer_hybrid_large_streaming_80ms":
     yaml_id: "nemo_cache_aware_streaming.yaml"
     type: "nemo"
