@@ -34,10 +34,10 @@ turn_taking:
 
 llm:
   type: auto  # choices in ['auto', 'hf', 'vllm']
-  model: "Qwen/Qwen2.5-7B-Instruct" # model name for HF models, will be used via `AutoModelForCausalLM.from_pretrained()`
-  model_config: "./server_configs/llm_configs/qwen2.5-7B.yaml"
-  # model: "nvidia/NVIDIA-Nemotron-Nano-9B-v2"  
-  # model_config: "./server_configs/llm_configs/nemotron_nano_v2.yaml"
+  model: "nvidia/NVIDIA-Nemotron-Nano-9B-v2"  
+  model_config: "./server_configs/llm_configs/nemotron_nano_v2.yaml"
+  # model: "Qwen/Qwen2.5-7B-Instruct" # model name for HF models, will be used via `AutoModelForCausalLM.from_pretrained()`
+  # model_config: "./server_configs/llm_configs/qwen2.5-7B.yaml"
   # model: "Qwen/Qwen3-8B"
   # model_config: "./server_configs/llm_configs/qwen3-8B.yaml"
   device: "cuda"

@@ -13,7 +13,12 @@
 # limitations under the License.
 
 import os
+import sys
 from pathlib import Path
+
+# Add the local NeMo directory to Python path to use development version
+nemo_root = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(nemo_root))
 
 import pytest
 from omegaconf import DictConfig, OmegaConf
@@ -28,13 +33,15 @@ from nemo.agents.voice_agent.utils.config_manager import ConfigManager
 def voice_agent_server_base_path():
     """Retrieve the NeMo root path from __file__ variable"""
     nemo_root_path = Path(__file__).resolve().parents[3]
-    subdirs = list(nemo_root_path.parts)
-    # Check if "nemo", "tests", "examples", "requirements" are in the path
-    if not all(sub in subdirs for sub in ["nemo", "tests", "examples", "requirements"]):
-        pass
-    else:
-        raise ValueError(f"{nemo_root_path} is not a NeMo root path, subdirs: {subdirs}")
-    voice_agent_root_path = os.path.join(nemo_root_path, "examples", "voice_agent", "server") + "/"
+    
+    # Check if the expected directories exist in the NeMo root
+    expected_dirs = ["nemo", "tests", "examples", "requirements"]
+    existing_dirs = [d.name for d in nemo_root_path.iterdir() if d.is_dir()]
+    
+    if not all(sub in existing_dirs for sub in expected_dirs):
+        raise ValueError(f"{nemo_root_path} is not a NeMo root path. Expected dirs: {expected_dirs}, Found dirs: {existing_dirs}")
+    
+    voice_agent_root_path = os.path.join(nemo_root_path, "examples", "voice_agent", "server") 
     return voice_agent_root_path
 
 
@@ -45,7 +52,6 @@ class TestDefaultConfigs:
     def test_constructor_with_valid_path(self, voice_agent_server_base_path):
         """Test ConfigManager initialization with valid configuration files."""
         config_manager = ConfigManager(voice_agent_server_base_path)
-
         # Verify initialization
         assert config_manager._server_base_path == voice_agent_server_base_path
         assert config_manager.SAMPLE_RATE == 16000

@@ -29,7 +29,7 @@ class ConfigManager:
     Handles loading, merging, and providing access to all configuration parameters.
     """
 
-    def __init__(self, server_base_path: Optional[str] = None):
+    def __init__(self, server_base_path: Optional[str] = None, server_config_path: Optional[str] = None):
         """
         Initialize the configuration manager.
 
@@ -38,7 +38,10 @@ class ConfigManager:
                         If None, uses default path from environment variable.
         """
         self._server_base_path = server_base_path
-        self._server_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/default.yaml"
+        if server_config_path is not None:
+            self._server_config_path = server_config_path
+        else:
+            self._server_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/default.yaml"
 
         if not os.path.exists(self._server_config_path):
             raise FileNotFoundError(f"Server configuration file not found at {self._server_config_path}")
@@ -96,7 +99,6 @@ class ConfigManager:
             stop_secs=self.server_config.vad.stop_secs,
             min_volume=self.server_config.vad.min_volume,
         )
-
         # STT configuration
         self._configure_stt()
 
