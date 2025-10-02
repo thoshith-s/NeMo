@@ -57,7 +57,9 @@ from nemo.agents.voice_agent.pipecat.utils.text.simple_text_aggregator import Si
 from nemo.agents.voice_agent.utils.config_manager import ConfigManager
 
 # Initialize configuration manager
-config_manager = ConfigManager(server_base_path=os.path.dirname(__file__), server_config_path=os.environ.get("SERVER_CONFIG_PATH", None))
+config_manager = ConfigManager(
+    server_base_path=os.path.dirname(__file__), server_config_path=os.environ.get("SERVER_CONFIG_PATH", None)
+)
 server_config = config_manager.get_server_config()
 
 logger.info(f"Server config: {server_config}")

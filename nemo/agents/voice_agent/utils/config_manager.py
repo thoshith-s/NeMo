@@ -179,10 +179,12 @@ class ConfigManager:
 
         # Load and merge LLM configuration
         llm_config_path = f"{os.path.abspath(self._server_base_path)}/server_configs/llm_configs/{yaml_file_name}"
-        
-        if self.model_registry.llm_models[llm_model_id].get("reasoning_supported", False) and self.server_config.llm.get("reasoning", False):
+
+        if self.model_registry.llm_models[llm_model_id].get(
+            "reasoning_supported", False
+        ) and self.server_config.llm.get("reasoning", False):
             llm_config_path = llm_config_path.replace(".yaml", "_think.yaml")
-        
+
         if not os.path.exists(llm_config_path):
             raise FileNotFoundError(f"LLM config file not found at {llm_config_path}")
 
