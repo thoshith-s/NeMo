@@ -685,8 +685,12 @@ class Qwen25VisionModel(VisionModule):
             cu_window_seqlens.extend(cu_seqlens_tmp.tolist())
             window_index_id += (grid_t * llm_grid_h * llm_grid_w).item()
         window_index = torch.cat(window_index, dim=0)
+        
+        # Pre-compute the inverse mapping to avoid expensive argsort later
+        inverse_index = torch.empty_like(window_index)
+        inverse_index[window_index] = torch.arange(len(window_index), device=window_index.device)
 
-        return window_index, cu_window_seqlens
+        return window_index, cu_window_seqlens, inverse_index
 
     def forward(
         self, x: torch.Tensor, grid_thw: torch.Tensor, attention_mask: Optional[torch.Tensor] = None
@@ -707,7 +711,8 @@ class Qwen25VisionModel(VisionModule):
         x = self.conv1(x).view(-1, self.visual_hidden_size)  # [seqlen, hidden_size]
         # add batch dim
 
-        window_index, cu_window_seqlens = self.get_window_index(grid_thw)
+        window_index, cu_window_seqlens, inverse_index = self.get_window_index(grid_thw)
+        self.inverse_index = inverse_index  # Store for restoring order after vision projection
         cu_window_seqlens = torch.tensor(
             cu_window_seqlens,
             device=x.device,

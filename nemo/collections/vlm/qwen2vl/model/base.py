@@ -714,7 +714,8 @@ class MCoreQwen2VLModel(MCoreLLaVAModel):
 
             image_embeddings = self.vision_projection(image_embeddings)
             if self.model_version == "qwen25-vl":
-                reverse_indices = torch.argsort(window_index)
+                # Use pre-computed inverse mapping instead of expensive argsort
+                reverse_indices = self.vision_model.inverse_index
                 image_embeddings = image_embeddings[reverse_indices, :]
 
             # TODO: Support batched inference.
