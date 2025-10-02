@@ -1,7 +1,7 @@
 # NeMo Forced Aligner (NFA)
 
 <p align="center">
-Try it out: <a href="https://huggingface.co/spaces/erastorgueva-nv/NeMo-Forced-Aligner">HuggingFace Space 🎤</a> | Tutorial: <a href="https://colab.research.google.com/github/NVIDIA/NeMo/blob/main/tutorials/tools/NeMo_Forced_Aligner_Tutorial.ipynb">"How to use NFA?" 🚀</a> | Blog post: <a href="https://nvidia.github.io/NeMo/blogs/2023/2023-08-forced-alignment/">"How does forced alignment work?" 📚</a>
+Try it out: <a href="https://huggingface.co/spaces/erastorgueva-nv/NeMo-Forced-Aligner">HuggingFace Space 🎤</a> | Tutorial: <a href="https://colab.research.google.com/github/NVIDIA/NeMo/blob/main/tutorials/tools/NeMo_Forced_Aligner_Tutorial.ipynb">"How to use NFA?" 🚀</a> | Blog post: <a href="https://nvidia-nemo.github.io/NeMo/blogs/2023/2023-08-forced-alignment/">"How does forced alignment work?" 📚</a>
 </p>
 
 <p align="center">
@@ -26,5 +26,5 @@ NFA is a tool for generating token-, word- and segment-level timestamps of speec
 	<img src="https://github.com/NVIDIA/NeMo/releases/download/v1.20.0/nfa_run.png">
 </p>
 
-## Documentation 
+## Documentation
 More documentation is available [here](https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/main/tools/nemo_forced_aligner.html).

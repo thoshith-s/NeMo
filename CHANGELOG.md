@@ -2213,7 +2213,7 @@ Prerelease: NVIDIA Neural Modules 2.1.0rc0 (2024-12-12)
 
 ##### NeMo Canary
 
-Announcement - <https://nvidia.github.io/NeMo/blogs/2024/2024-02-canary/>
+Announcement - <https://nvidia-nemo.github.io/NeMo/blogs/2024/2024-02-canary/>
 
 - <https://huggingface.co/nvidia/canary-1b>
 

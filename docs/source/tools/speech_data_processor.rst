@@ -7,4 +7,4 @@ Speech Data Processor (SDP) is a toolkit to make it easy to:
 
 SDP is hosted here: https://github.com/NVIDIA/NeMo-speech-data-processor.
 
-To learn more about SDP, please check the [documentation](https://nvidia.github.io/NeMo-speech-data-processor/).
+To learn more about SDP, please check the [documentation](https://nvidia-nemo.github.io/NeMo-speech-data-processor/).

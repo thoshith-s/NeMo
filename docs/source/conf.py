@@ -280,7 +280,7 @@ def setup(app):
 # ]
 
 # OpenGraph settings
-ogp_site_url = 'https://nvidia.github.io/NeMo/'
+ogp_site_url = 'https://nvidia-nemo.github.io/NeMo/'
 ogp_image = 'https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/main/_static/nv_logo.png'
 
 # MathJax CDN
