@@ -502,30 +502,26 @@ class SALMWithAsrDecoder(LightningModule, HFHubMixin):
             # Process each batch item separately to handle variable-length audios correctly
             audio_embeds = []
             for batch_idx in range(audios.shape[0]):
-                single_audio = audios[batch_idx:batch_idx+1]  # Keep batch dimension
-                single_audio_len = audio_lens[batch_idx:batch_idx+1]
-                
+                single_audio = audios[batch_idx : batch_idx + 1]  # Keep batch dimension
+                single_audio_len = audio_lens[batch_idx : batch_idx + 1]
+
                 num_chunks = (single_audio_len.item() + chunk_size - 1) // chunk_size
-                
+
                 # Accumulate chunks for this batch item
                 audio_chunks_embeds = []
                 transcript_chunks = []
-                
+
                 for i in range(num_chunks):
                     chunk_start = i * chunk_size
                     chunk_end = min(chunk_start + chunk_size, single_audio.shape[1])
-                    
+
                     # Skip if this chunk is beyond the audio length
                     if chunk_start >= single_audio_len.item():
                         break
-                    
+
                     chunk_audio = single_audio[:, chunk_start:chunk_end]
-                    chunk_audio_len = torch.clamp(
-                        single_audio_len - chunk_start, 
-                        min=0, 
-                        max=chunk_end - chunk_start
-                    )
-                    
+                    chunk_audio_len = torch.clamp(single_audio_len - chunk_start, min=0, max=chunk_end - chunk_start)
+
                     # Process this chunk
                     encoded_chunk, encoded_len_chunk = self.perception.forward_encoder(
                         input_signal=chunk_audio, input_signal_length=chunk_audio_len
@@ -545,11 +541,11 @@ class SALMWithAsrDecoder(LightningModule, HFHubMixin):
                     audio_embeds_chunk, audio_embed_lens_chunk = self.perception(
                         encoded=encoded_chunk, encoded_len=encoded_len_chunk
                     )
-                    
+
                     # Accumulate audio embeddings (without transcript yet)
-                    audio_chunks_embeds.append(audio_embeds_chunk[0][:audio_embed_lens_chunk[0]])
+                    audio_chunks_embeds.append(audio_embeds_chunk[0][: audio_embed_lens_chunk[0]])
                     transcript_chunks.extend(transcript_embs_chunk)
-                
+
                 # Concatenate all audio chunks, then append all transcripts at the end
                 full_audio_emb = torch.cat(audio_chunks_embeds, dim=0)
                 full_transcript_emb = torch.cat(transcript_chunks, dim=0)
