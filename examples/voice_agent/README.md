@@ -16,8 +16,8 @@ As of now, we only support English input and output, but more languages will be 
 
 
 ## 💡 Upcoming Next
+- Joint ASR and EOU detection in the same model.
 - Accuracy and robustness ASR model improvements.
-- Faster EOU detection with acoustic based models.
 - Better TTS with more natural voice (e.g., [Magpie-TTS](https://build.nvidia.com/nvidia/magpie-tts-multilingual)).
 - Combine ASR and speaker diarization model to handle overlapping speech.
 
@@ -208,7 +208,7 @@ For details of available NVIDIA NIM services, please refer to:
 
 ## Acknowledgments
 
-- This example uses the [Pipecat](https://github.com/pipecat-ai/pipecat) framework as orchestrator.
+- This example uses the [Pipecat](https://github.com/pipecat-ai/pipecat) orchestrator framework.
 
 
 
