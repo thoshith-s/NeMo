@@ -29,7 +29,7 @@ class ConfigManager:
     Handles loading, merging, and providing access to all configuration parameters.
     """
 
-    def __init__(self, server_base_path: Optional[str] = None, server_config_path: Optional[str] = None):
+    def __init__(self, server_base_path: str, server_config_path: Optional[str] = None):
         """
         Initialize the configuration manager.
 
@@ -37,6 +37,9 @@ class ConfigManager:
             config_path: Path to the main server configuration file.
                         If None, uses default path from environment variable.
         """
+        if not os.path.exists(server_base_path):
+            raise FileNotFoundError(f"Server base path not found at {server_base_path}")
+
         self._server_base_path = server_base_path
         if server_config_path is not None:
             self._server_config_path = server_config_path
@@ -56,7 +59,7 @@ class ConfigManager:
         # Initialize configuration parameters
         self._initialize_config_parameters()
 
-        self._generic_hf_llm_model_id = "hf_llm_generic.yaml"
+        self._generic_hf_llm_model_id = "hf_llm_generic"
 
         logger.info(f"Configuration loaded from: {self._server_config_path}")
         logger.info(f"Model registry loaded from: {self.model_registry_path}")
@@ -135,7 +138,17 @@ class ConfigManager:
         if not os.path.exists(stt_config_path):
             raise FileNotFoundError(f"STT config file not found at {stt_config_path}")
         stt_config = OmegaConf.load(stt_config_path)
-        self.server_config.stt = OmegaConf.merge(self.server_config.stt, stt_config)
+
+        # merge stt config with server config
+        for key in stt_config:
+            if key in self.server_config.stt and self.server_config.stt[key] != stt_config[key]:
+                logger.info(
+                    f"STT config field `{key}` is overridden from `{self.server_config.stt[key]}` to `{stt_config[key]}` by {stt_config_path}"
+                )
+            self.server_config.stt[key] = stt_config[key]
+
+        logger.info(f"Final STT config: {self.server_config.stt}")
+
         self.stt_params = NeMoSTTInputParams(
             att_context_size=self.server_config.stt.att_context_size,
             frame_len_in_secs=self.server_config.stt.frame_len_in_secs,
@@ -182,14 +195,24 @@ class ConfigManager:
 
         if self.model_registry.llm_models[llm_model_id].get(
             "reasoning_supported", False
-        ) and self.server_config.llm.get("reasoning", False):
+        ) and self.server_config.llm.get("enable_reasoning", False):
             llm_config_path = llm_config_path.replace(".yaml", "_think.yaml")
 
         if not os.path.exists(llm_config_path):
             raise FileNotFoundError(f"LLM config file not found at {llm_config_path}")
+        logger.info(f"Loading LLM config from: {llm_config_path}")
 
         llm_config = OmegaConf.load(llm_config_path)
-        self.server_config.llm = OmegaConf.merge(self.server_config.llm, llm_config)
+        # merge llm config with server config
+        # print the override keys
+        for key in llm_config:
+            if key in self.server_config.llm and self.server_config.llm[key] != llm_config[key]:
+                logger.info(
+                    f"LLM config field `{key}` is overridden from `{self.server_config.llm[key]}` to `{llm_config[key]}` by {llm_config_path}"
+                )
+            self.server_config.llm[key] = llm_config[key]
+
+        logger.info(f"Final LLM config: {self.server_config.llm}")
 
         # Configure system prompt
         self.SYSTEM_ROLE = self.server_config.llm.get("system_role", "system")
@@ -199,6 +222,12 @@ class ConfigManager:
                 with open(system_prompt, "r") as f:
                     system_prompt = f.read()
             self.SYSTEM_PROMPT = system_prompt
+        else:
+            logger.info(f"No system prompt provided, using default system prompt: {self.SYSTEM_PROMPT}")
+
+        if self.server_config.llm.get("system_prompt_suffix", None) is not None:
+            self.SYSTEM_PROMPT += self.server_config.llm.system_prompt_suffix
+            logger.info(f"Adding system prompt suffix: {self.server_config.llm.system_prompt_suffix}")
 
         logger.info(f"System prompt: {self.SYSTEM_PROMPT}")
 
@@ -222,7 +251,16 @@ class ConfigManager:
         if not os.path.exists(tts_config_path):
             raise FileNotFoundError(f"Default TTS config file not found at {tts_config_path}")
         tts_config = OmegaConf.load(tts_config_path)
-        self.server_config.tts = OmegaConf.merge(self.server_config.tts, tts_config)
+
+        # merge tts config with server config
+        for key in tts_config:
+            if key in self.server_config.tts and self.server_config.tts[key] != tts_config[key]:
+                logger.info(
+                    f"TTS config field `{key}` is overridden from `{self.server_config.tts[key]}` to `{tts_config[key]}` by {tts_config_path}"
+                )
+            self.server_config.tts[key] = tts_config[key]
+
+        logger.info(f"Final TTS config: {self.server_config.tts}")
 
         # Extract TTS parameters
         self.TTS_MAIN_MODEL_ID = self.server_config.tts.get("main_model_id", None)
