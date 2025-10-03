@@ -128,6 +128,8 @@ Most LLMs from HuggingFace are supported. A few examples are:
     - Please use `server/server_configs/qwen3-8B.yaml` as the server config.
     - Please use `server/server_configs/qwen3-8B_think.yaml` if you want to enable thinking mode.
 - [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
+    - Please use `server/server_configs/llama3.1-8B-instruct.yaml` as the server config.
+    - Note that you need to get access to the model first, and specify `export HF_TOKEN="hf_..."` when launching the server.
 - [nvidia/Llama-3.1-Nemotron-Nano-8B-v1](https://huggingface.co/nvidia/Llama-3.1-Nemotron-Nano-8B-v1) 
 - [nvidia/Nemotron-Mini-4B-Instruct](https://huggingface.co/nvidia/Nemotron-Mini-4B-Instruct)
 
