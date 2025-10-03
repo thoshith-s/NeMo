@@ -670,10 +670,10 @@ def get_llm_service_from_config(config: DictConfig) -> OpenAILLMService:
         llm_dtype = config.dtype
         llm_generation_kwargs = config.get("generation_kwargs", {})
         if llm_generation_kwargs is not None:
-            llm_generation_kwargs = OmegaConf.to_container(llm_generation_kwargs)
+            llm_generation_kwargs = OmegaConf.to_container(llm_generation_kwargs, resolve=True)
         llm_apply_chat_template_kwargs = config.get("apply_chat_template_kwargs", None)
         if llm_apply_chat_template_kwargs is not None:
-            llm_apply_chat_template_kwargs = OmegaConf.to_container(llm_apply_chat_template_kwargs)
+            llm_apply_chat_template_kwargs = OmegaConf.to_container(llm_apply_chat_template_kwargs, resolve=True)
         llm_thinking_budget = config.get("thinking_budget", 0)
         return HuggingFaceLLMService(
             model=llm_model,
