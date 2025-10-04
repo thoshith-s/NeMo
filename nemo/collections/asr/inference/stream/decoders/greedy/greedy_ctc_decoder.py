@@ -13,9 +13,7 @@
 # limitations under the License.
 
 
-from typing import Callable, Dict, List, Tuple, Union
-
-import numpy as np
+from typing import Callable, Dict, List, Tuple
 import torch
 
 from nemo.collections.asr.inference.stream.decoders.greedy.greedy_decoder import GreedyDecoder
@@ -34,40 +32,31 @@ class CTCGreedyDecoder(GreedyDecoder):
         super().__init__(vocabulary, conf_func)
 
     @staticmethod
-    def get_labels(log_probs: Union[np.ndarray, torch.Tensor]) -> List[int]:
+    def get_labels(log_probs: torch.Tensor) -> List[int]:
         """
         Perform greedy decoding on the log probabilities
         Args:
-            log_probs (Union[np.ndarray, torch.Tensor]): log probabilities
+            log_probs (torch.Tensor): log probabilities
         Returns:
             List[int]: list of tokens
         """
-
-        if isinstance(log_probs, np.ndarray):
-            log_probs = torch.from_numpy(log_probs).float()
-
         if log_probs.dim() != 2:
             raise ValueError("log_probs must be 2D tensor")
 
         labels = log_probs.argmax(dim=-1).cpu()  # T
         return labels.tolist()
 
-    def __call__(
-        self, log_probs: Union[np.ndarray, torch.Tensor], compute_confidence: bool = True, previous: int = None
-    ) -> dict:
+    def __call__(self, log_probs: torch.Tensor, compute_confidence: bool = True, previous: int = None) -> dict:
         """
         Greedy decode the log probabilities
         Args:
-            log_probs (Union[np.ndarray, torch.Tensor]): log probabilities
+            log_probs (torch.Tensor): log probabilities
             compute_confidence (bool): compute confidence or not
         Returns:
             dict: output dictionary containing tokens, timesteps, and confidences
         """
 
         compute_confidence = compute_confidence and self.conf_func is not None
-
-        if isinstance(log_probs, np.ndarray):
-            log_probs = torch.from_numpy(log_probs).float()
 
         if log_probs.dim() != 2:
             raise ValueError("log_probs must be 2D tensor")
@@ -113,19 +102,9 @@ class ClippedCTCGreedyDecoder:
         self.endpointer = endpointer
         self.tokens_per_frame = tokens_per_frame
 
-    def decode(self, log_probs: Union[np.ndarray, torch.Tensor]) -> dict:
-        """
-        Perform offline decoding on the log probabilities
-        Args:
-            log_probs (Union[np.ndarray, torch.Tensor]): log probabilities
-        Returns:
-            dict: Dictionary containing tokens, timesteps, and confidences
-        """
-        return self.greedy_decoder(log_probs)
-
     def __call__(
         self,
-        log_probs: Union[np.ndarray, torch.Tensor],
+        log_probs: torch.Tensor,
         clip_start: int,
         clip_end: int,
         is_last: bool = False,
@@ -134,11 +113,12 @@ class ClippedCTCGreedyDecoder:
         state_start_idx: int = 0,
         state_end_idx: int = 0,
         stop_history_eou: int = None,
+        compute_confidence: bool = True,
     ) -> Tuple[Dict, Dict, bool, int, int]:
         """
         Decode the log probabilities within the clip range (clip_start, clip_end)
         Args:
-            log_probs (Union[np.ndarray, torch.Tensor]): log probabilities
+            log_probs (torch.Tensor): log probabilities
             clip_start (int): start index of the clip
             clip_end (int): end index of the clip
             is_last (bool): is the last frame or not
@@ -147,6 +127,7 @@ class ClippedCTCGreedyDecoder:
             state_start_idx (int): start index from stream state
             state_end_idx (int): end index from stream state
             stop_history_eou (int): stop history of EOU, if None then use the default stop history
+            compute_confidence (bool): compute confidence or not
         Returns:
             Tuple[Dict, Dict, bool, int, int]:
                 clipped output, tail output, is_eou, updated start_idx, updated end_idx
@@ -164,7 +145,7 @@ class ClippedCTCGreedyDecoder:
         if is_start or end_idx <= clip_start:
             start_idx, end_idx = clip_start, clip_end
 
-        all_output = self.decode(log_probs)
+        all_output = self.greedy_decoder(log_probs, compute_confidence=compute_confidence)
 
         clipped_output = {"tokens": [], "timesteps": [], "confidences": [], "last_token": None, "last_token_idx": None}
         tail_output = {"tokens": []}
@@ -191,7 +172,8 @@ class ClippedCTCGreedyDecoder:
             if start_idx <= timesteps[i] < end_idx:
                 clipped_output["tokens"].append(all_output["tokens"][i])
                 clipped_output["timesteps"].append(timesteps[i])
-                clipped_output["confidences"].append(all_output["confidences"][i])
+                if compute_confidence:
+                    clipped_output["confidences"].append(all_output["confidences"][i])
             elif timesteps[i] >= end_idx:
                 break
             i += 1
