@@ -68,14 +68,13 @@ class MultiStream:
         frame_batch = []
         ids_to_remove = []
         for stream_id, stream_iter in self.streams.items():
-            try:
-                # Get n_frames_per_stream frames from each stream
-                for _ in range(self.n_frames_per_stream):
-                    frame = next(stream_iter)
-                    frame_batch.extend(frame)
-            except StopIteration:
-                ids_to_remove.append(stream_id)
-                continue
+            # Get n_frames_per_stream frames from each stream
+            for _ in range(self.n_frames_per_stream):
+                frame = next(stream_iter)[0]
+                frame_batch.append(frame)
+                if frame.is_last:
+                    ids_to_remove.append(stream_id)
+            
 
         # Remove streams that have ended
         for stream_id in ids_to_remove:
