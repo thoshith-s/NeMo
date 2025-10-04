@@ -16,7 +16,7 @@
 import os
 import re
 from multiprocessing import Manager
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import pynini
 from nemo_text_processing.inverse_text_normalization.inverse_normalize import InverseNormalizer, Normalizer
@@ -85,6 +85,24 @@ class AlignmentPreservingInverseNormalizer:
             self.DISK_TAG_CACHE = None
             self.DISK_VERB_CACHE = None
             self.caching_from_disk_enabled = False
+
+    def inverse_normalize_list(self, transcriptions: List[str], params: Dict) -> List[str]:
+        """
+        Args:
+            transcriptions: (List[str]) list of input strings.
+            params: (Dict) dictionary of runtime parameters.
+        Returns:
+            (List[str]) Returns converted list of input strings.
+        """
+        transcriptions = self.itn_model.normalize_list(
+            transcriptions,
+            verbose=params.get('verbose', False),
+            punct_pre_process=params.get("punct_pre_process", False),
+            punct_post_process=params.get("punct_post_process", False),
+            batch_size=params.get("batch_size", 1),
+            n_jobs=params.get("n_jobs", 1),
+        )
+        return transcriptions
 
     def verbalize(self, tokens: List, sep: str) -> str | None:
         """
