@@ -74,7 +74,6 @@ class MultiStream:
                 frame_batch.append(frame)
                 if frame.is_last:
                     ids_to_remove.append(stream_id)
-            
 
         # Remove streams that have ended
         for stream_id in ids_to_remove:
