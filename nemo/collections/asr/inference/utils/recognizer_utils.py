@@ -192,6 +192,11 @@ def update_punctuation_and_language_tokens_timestamps(
         raise ValueError("Tokens and timestamps must have the same length")
 
     tokens_to_move_with_underscore = tokens_to_move.union({underscore_id})
+    # If all tokens need moving, don't change timestamps (no content words to attach to)
+    only_special_tokens = all(token.item() in tokens_to_move_with_underscore for token in tokens)
+    if only_special_tokens:
+        return timestamp
+
     groups = []
     i = 0
     while i < n_tokens:
@@ -217,7 +222,8 @@ def update_punctuation_and_language_tokens_timestamps(
     updated_timestamps = timestamp.clone()
     for start_idx, end_idx, left_timestamp in groups:
         for k in range(start_idx, end_idx):
-            updated_timestamps[k] = left_timestamp + 1 + (k - start_idx)
+            # Give all tokens_to_move the same timestamp as the preceding word
+            updated_timestamps[k] = left_timestamp
 
     return updated_timestamps
 
