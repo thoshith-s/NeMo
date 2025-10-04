@@ -1,6 +1,14 @@
 # Changelog
 
 <!-- Next changelog -->
+## NVIDIA Neural Modules 1.12.0
+
+### Detailed Changelogs:
+
+NVIDIA
+NeMo
+v2.3.3
+r1.12.0
 ## NVIDIA Neural Modules 2.4.1
 
 ### Detailed Changelogs:
