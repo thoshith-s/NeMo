@@ -16,49 +16,34 @@
 from enum import Enum, auto
 
 
-class ASRDecodingType(Enum):
+class StrEnumMixin:
+    @classmethod
+    def from_str(cls, name: str):
+        """Convert a string to an Enum value (case-insensitive)."""
+        normalized = name.lower()
+        for member in cls:
+            if member.name.lower() == normalized or str(member.value).lower() == normalized:
+                return member
+
+        choices = [member.name.lower() for member in cls]
+        raise ValueError(f"Invalid {cls.__name__} `{name}`: must be one of {choices}")
+
+
+class ASRDecodingType(StrEnumMixin, Enum):
     CTC = auto()
     RNNT = auto()
 
-    @classmethod
-    def from_str(cls, type_name: str) -> 'ASRDecodingType':
-        """Convert a string to an ASRDecodingType enum value."""
-        if type_name.lower() == "ctc":
-            return ASRDecodingType.CTC
-        elif type_name.lower() == "rnnt":
-            return ASRDecodingType.RNNT
 
-        choices = [choice.name for choice in cls]
-        raise ValueError(f"Invalid ASR decoding type `{type_name}`: Need to be one of {choices}")
+class ASROutputGranularity(StrEnumMixin, Enum):
+    WORD = auto()
+    SEGMENT = auto()
 
 
-class RecognizerType(Enum):
+class RecognizerType(StrEnumMixin, Enum):
     BUFFERED = auto()
     CACHE_AWARE = auto()
 
-    @classmethod
-    def from_str(cls, type_name: str) -> 'RecognizerType':
-        """Convert a string to a RecognizerType enum value."""
-        if type_name.lower() == "buffered":
-            return RecognizerType.BUFFERED
-        elif type_name.lower() == "cache_aware":
-            return RecognizerType.CACHE_AWARE
 
-        choices = [choice.name for choice in cls]
-        raise ValueError(f"Invalid recognizer type `{type_name}`: Need to be one of {choices}")
-
-
-class RequestType(Enum):
-    FRAME = "frame"
-    FEATURE_BUFFER = "feature_buffer"
-
-    @classmethod
-    def from_str(cls, request_type: str) -> "RequestType":
-        """Convert a string to a RequestType enum value."""
-        if request_type.lower() == "frame":
-            return RequestType.FRAME
-        elif request_type.lower() == "feature_buffer":
-            return RequestType.FEATURE_BUFFER
-
-        choices = [choice.name for choice in cls]
-        raise ValueError(f"Invalid request type: {request_type}. Need to be one of {choices}")
+class RequestType(StrEnumMixin, Enum):
+    FRAME = auto()
+    FEATURE_BUFFER = auto()
