@@ -18,10 +18,6 @@ import re
 from multiprocessing import Manager
 from typing import Dict, List, Tuple
 
-import pynini
-from nemo_text_processing.inverse_text_normalization.inverse_normalize import InverseNormalizer, Normalizer
-from nemo_text_processing.text_normalization.en.graph_utils import INPUT_CASED, INPUT_LOWER_CASED
-
 from nemo.collections.asr.inference.utils.itn_utils import (
     DEFAULT_SEMIOTIC_CLASS,
     fallback_to_trivial_alignment,
@@ -34,11 +30,18 @@ from nemo.utils import logging
 IN_MEM_CACHE = Manager().dict(lock=False)
 
 try:
+    import pynini
+    from nemo_text_processing.inverse_text_normalization.inverse_normalize import InverseNormalizer, Normalizer
+    from nemo_text_processing.text_normalization.en.graph_utils import INPUT_CASED, INPUT_LOWER_CASED
+except ImportError as e:
+    raise ImportError("Failed to import pynini or nemo_text_processing.") from e
+
+try:
     import diskcache
 
     CACHING_FROM_DISK = True
-except (ImportError, ModuleNotFoundError):
-    logging.warning("diskcache is not installed, caching from disk is disabled")
+except ImportError:
+    logging.warning("diskcache package is not installed, caching from disk is disabled")
     CACHING_FROM_DISK = False
 
 
@@ -86,23 +89,23 @@ class AlignmentPreservingInverseNormalizer:
             self.DISK_VERB_CACHE = None
             self.caching_from_disk_enabled = False
 
-    def inverse_normalize_list(self, transcriptions: List[str], params: Dict) -> List[str]:
+    def inverse_normalize_list(self, texts: List[str], params: Dict) -> List[str]:
         """
         Args:
-            transcriptions: (List[str]) list of input strings.
+            texts: (List[str]) list of input strings.
             params: (Dict) dictionary of runtime parameters.
         Returns:
             (List[str]) Returns converted list of input strings.
         """
-        transcriptions = self.itn_model.normalize_list(
-            transcriptions,
+        normalized_texts = self.itn_model.normalize_list(
+            texts,
             verbose=params.get('verbose', False),
             punct_pre_process=params.get("punct_pre_process", False),
             punct_post_process=params.get("punct_post_process", False),
             batch_size=params.get("batch_size", 1),
             n_jobs=params.get("n_jobs", 1),
         )
-        return transcriptions
+        return normalized_texts
 
     def verbalize(self, tokens: List, sep: str) -> str | None:
         """
