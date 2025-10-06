@@ -19,10 +19,11 @@ from nemo.collections.asr.inference.stream.framing.request import RequestOptions
 from nemo.collections.asr.inference.utils.constants import POST_WORD_PUNCTUATION
 from nemo.collections.asr.inference.utils.state_management_utils import (
     detect_overlap,
+    merge_segment_tail,
     merge_timesteps,
     merge_word_tail,
 )
-from nemo.collections.asr.inference.utils.word import Word
+from nemo.collections.asr.inference.utils.word import TextSegment, Word
 
 CLOSE_IN_TIME_TH = 2.0
 OVERLAP_SEARCH_TH = 3
@@ -58,9 +59,10 @@ class StreamingState:
         self.partial_transcript = ""
         self.concat_with_space = True
         self.final_words = []
+        self.final_segments = []
 
         # After cleanup_after_response these lists are cleared
-        # words - list of original ASR words without any modifications
+        # words, pnc_words, itn_words, word_alignment are used when asr output is word-level
         # pnc_words - if automatic punctuation is enabled, this will contain the punctuation marks
         #                (either with external PnC model or with built-in PnC from the ASR model)
         #             If automatic punctuation is disabled, this will NOT contain any punctuation marks and capitalized words
@@ -70,6 +72,8 @@ class StreamingState:
         self.pnc_words = []
         self.itn_words = []
         self.word_alignment = []
+        self.segments = []
+        self.processed_segment_mask = []
 
         # Used in PnC logic to keep the context before the response
         self.context_before_response = []
@@ -211,21 +215,60 @@ class StreamingState:
         Cleanup the state after a response is sent
         Specifically used to clean the state after final transcript is sent
         """
-        if len(self.words) >= KEEP_LAST_N_WORDS:
-            self.context_before_response = self.words[-KEEP_LAST_N_WORDS:]
-        else:
-            self.context_before_response.extend(self.words)
-            self.context_before_response = self.context_before_response[-KEEP_LAST_N_WORDS:]
 
-        self.words.clear()
-        self.pnc_words.clear()
-        self.itn_words.clear()
-        self.word_alignment.clear()
-        self.final_words.clear()
+        if self.options.is_word_level_output():
+            if len(self.words) >= KEEP_LAST_N_WORDS:
+                self.context_before_response = self.words[-KEEP_LAST_N_WORDS:]
+            else:
+                self.context_before_response.extend(self.words)
+                self.context_before_response = self.context_before_response[-KEEP_LAST_N_WORDS:]
+
+            self.words.clear()
+            self.pnc_words.clear()
+            self.itn_words.clear()
+            self.word_alignment.clear()
+            self.final_words.clear()
+        else:
+            self.segments.clear()
+            self.processed_segment_mask.clear()
+            self.final_segments.clear()
+
         self.final_transcript = ""
         self.concat_with_space = True
 
-    def push_back(
+    def push_back_segment(
+        self,
+        segment: TextSegment,
+        need_merge: bool,
+        conf_aggregator: Callable = None,
+    ) -> None:
+        """
+        Push back the decoded segment to the state
+        Args:
+            segment: (TextSegment) The decoded segment to push back to the state
+            need_merge: (bool) Whether to merge the segment with the last segment in the state
+            conf_aggregator: (Callable) The function to aggregate the confidence
+        """
+
+        # concat_with_space is used to determine if the final transcript should be concatenated with a space
+        if len(self.final_segments) == 0 and need_merge:
+            self.concat_with_space = False
+        else:
+            self.concat_with_space = True
+
+        if need_merge and len(self.segments) > 0:
+            head = merge_segment_tail(
+                segment_head=self.segments[-1],
+                segment_tail=segment,
+                conf_aggregator=conf_aggregator,
+            )
+            self.segments[-1] = head
+            self.processed_segment_mask[-1] = False
+        else:
+            self.segments.append(segment)
+            self.processed_segment_mask.append(False)
+
+    def push_back_words(
         self,
         decoded_words: List[Word],
         merge_first_word: bool = False,
