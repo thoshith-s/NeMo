@@ -31,12 +31,13 @@ python asr_streaming_infer.py \
         lang=en \
         automatic_punctuation=False \
         verbatim_transcripts=True \
+        asr_output_granularity=segment \
         ...
         # See conf/*.yaml for all available options
 
 Note:
     The output file is a json file with the following structure:
-    {"audio_filepath": "path/to/audio/file", "text": "transcription of the audio file", "ctm_filepath": "path/to/ctm/file"}
+    {"audio_filepath": "path/to/audio/file", "text": "transcription of the audio file", "json_filepath": "path/to/json/file"}
 """
 
 
@@ -55,7 +56,7 @@ try:
     from nemo_text_processing.utils import logger as nemo_text_logger
 
     nemo_text_logger.propagate = False
-except (ImportError, ModuleNotFoundError):
+except ImportError:
     # NB: nemo_text_processing requires pynini, which is tricky to install on MacOS
     # since nemo_text_processing is not necessary for ASR, wrap the import
     logging.warning("NeMo text processing library is unavailable.")
@@ -82,11 +83,11 @@ def main(cfg):
 
     # Calculate RTFX
     data_dur = calculate_duration(audio_filepaths)
-    rtfx = data_dur / exec_dur
+    rtfx = data_dur / exec_dur if exec_dur > 0 else float('inf')
     logging.info(f"RTFX: {rtfx:.2f} ({data_dur:.2f}s / {exec_dur:.2f}s)")
 
     # Dump the transcriptions to a output file
-    dump_output(audio_filepaths, output, cfg.output_filename, cfg.output_ctm_dir)
+    dump_output(audio_filepaths, output, cfg.output_filename, cfg.output_dir)
     logging.info(f"Transcriptions written to {cfg.output_filename}")
     logging.info("Done!")
 

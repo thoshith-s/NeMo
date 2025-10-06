@@ -13,7 +13,7 @@ defaults:
 # ========================
 confidence:
   exclude_blank: true                         # Exclude blank tokens when calculating confidence
-  aggregation: min                            # Aggregation method for confidence across time steps
+  aggregation: mean                           # Aggregation method for confidence across time steps
   method_cfg:
     name: entropy                             # Confidence estimation method: 'max_prob' or 'entropy'
     entropy_type: tsallis                     
@@ -72,9 +72,10 @@ asr_decoding_type: ctc                        # Decoding method: ctc or rnnt
 # ========================
 audio_file: null                              # Path to audio file, directory, or manifest JSON
 output_filename: null                         # Path to output transcription JSON file
-output_ctm_dir: null                          # Directory to save CTM (time-aligned) output
+output_dir: null                              # Directory to save time-aligned output
 automatic_punctuation: false                  # Whether to apply punctuation & capitalization
 verbatim_transcripts: true                    # Whether to apply inverse text normalization
+asr_output_granularity: segment               # Output granularity: word or segment
 cache_dir: null                               # Directory to store cache (e.g., .far files)
 lang: null                                    # Language code for ASR model
 return_tail_result: false                     # Whether to return the tail labels left in the right padded side of the buffer
