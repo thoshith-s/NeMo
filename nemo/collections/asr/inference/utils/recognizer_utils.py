@@ -164,6 +164,20 @@ def get_leading_punctuation_regex_pattern(puncts: Set[str]) -> str:
     return r'\s+(' + escaped_puncts + ')'
 
 
+def get_repeated_punctuation_regex_pattern(puncts: Set[str]) -> str:
+    """
+    Get the regex pattern for the repeated punctuation marks.
+    Args:
+        puncts (Set[str]): Set of punctuation marks.
+    Returns:
+        (str) Regex pattern for the repeated punctuation marks.
+    """
+    if not puncts:
+        return ""
+    escaped_puncts = ''.join(re.escape(p) for p in puncts)
+    return r'([' + escaped_puncts + r']){2,}'
+
+
 def remove_leading_punctuation_spaces(text: str, pattern: str) -> str:
     """
     Remove spaces before punctuation marks in the text.
@@ -172,6 +186,20 @@ def remove_leading_punctuation_spaces(text: str, pattern: str) -> str:
         pattern (str): Regex pattern for the punctuation marks.
     Returns:
         (str) Text with spaces before punctuation marks removed.
+    """
+    if not pattern or text == "":
+        return text
+    return re.sub(pattern, r'\1', text)
+
+
+def remove_repeated_punctuation(text: str, pattern: str) -> str:
+    """
+    Remove repeated punctuation marks in the text.
+    Args:
+        text (str): Text to remove repeated punctuation marks from.
+        pattern (str): Regex pattern for the punctuation marks.
+    Returns:
+        (str) Text with repeated punctuation marks removed.
     """
     if not pattern or text == "":
         return text

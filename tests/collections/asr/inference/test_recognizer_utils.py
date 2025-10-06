@@ -19,7 +19,9 @@ import torch
 from nemo.collections.asr.inference.utils.recognizer_utils import (
     drop_trailing_features,
     get_leading_punctuation_regex_pattern,
+    get_repeated_punctuation_regex_pattern,
     remove_leading_punctuation_spaces,
+    remove_repeated_punctuation,
 )
 
 
@@ -37,6 +39,10 @@ class TestRecognizerUtils:
     @pytest.mark.parametrize(
         "text, expected_text",
         [
+            ("", ""),
+            (" ", " "),
+            ("simple text", "simple text"),
+            ("just a 2nd . Yeah, I hope", "just a 2nd. Yeah, I hope"),
             ("Hello , world ! How are you ?", "Hello, world! How are you?"),
             ("The quick, brown fox jumps ? over the lazy ! dog.", "The quick, brown fox jumps? over the lazy! dog."),
         ],
@@ -45,3 +51,19 @@ class TestRecognizerUtils:
         puncts = {"!", "?", ".", ","}
         pattern = get_leading_punctuation_regex_pattern(puncts)
         assert remove_leading_punctuation_spaces(text, pattern) == expected_text
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "text, expected_text",
+        [
+            ("", ""),
+            (" ", " "),
+            ("simple text", "simple text"),
+            ("Hello, world!! How are you???", "Hello, world! How are you?"),
+            ("The quick,, brown fox jumps? over the lazy! dog..", "The quick, brown fox jumps? over the lazy! dog."),
+        ],
+    )
+    def test_remove_repeated_punctuation(self, text, expected_text):
+        puncts = {"!", "?", ".", ","}
+        pattern = get_repeated_punctuation_regex_pattern(puncts)
+        assert remove_repeated_punctuation(text, pattern) == expected_text
