@@ -23,7 +23,7 @@ from nemo.collections.asr.inference.utils.state_management_utils import (
     merge_timesteps,
     merge_word_tail,
 )
-from nemo.collections.asr.inference.utils.word import TextSegment, Word
+from nemo.collections.asr.inference.utils.text_segment import TextSegment, Word
 
 CLOSE_IN_TIME_TH = 2.0
 OVERLAP_SEARCH_TH = 3

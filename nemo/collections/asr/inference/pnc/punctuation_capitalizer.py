@@ -21,7 +21,7 @@ from nemo.collections.asr.inference.pnc.token_classification.punctuation_capital
     PunctuationCapitalizationModel,
 )
 from nemo.collections.asr.inference.utils.device_utils import setup_device
-from nemo.collections.asr.inference.utils.word import Word, join_words
+from nemo.collections.asr.inference.utils.text_segment import Word, join_segments
 
 
 class PunctuationCapitalizer:
@@ -47,6 +47,7 @@ class PunctuationCapitalizer:
         self.device_str, self.device_id, self.compute_dtype = setup_device(device, device_id, compute_dtype)
         self.use_amp = use_amp
         self.pnc_model = self.load_model()
+        self.supported_punctuation = {'.', ',', '?'}
 
     def load_model(self) -> PunctuationCapitalizationModel:
         """
@@ -113,7 +114,7 @@ class PunctuationCapitalizer:
             return words
 
         pnc_words_list = [[w.copy() for w in sample_words] for sample_words in words]
-        pnc_transcriptions = join_words(pnc_words_list, sep)
+        pnc_transcriptions = join_segments(pnc_words_list, sep)
         pnc_transcriptions = self.add_punctuation_capitalization_list(pnc_transcriptions, params)
         for i, text in enumerate(pnc_transcriptions):
             if text == "":

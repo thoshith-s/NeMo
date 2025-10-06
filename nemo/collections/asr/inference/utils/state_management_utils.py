@@ -16,7 +16,7 @@
 from typing import Callable, List, Tuple
 
 from nemo.collections.asr.inference.utils.constants import POST_WORD_PUNCTUATION, PRE_WORD_PUNCTUATION
-from nemo.collections.asr.inference.utils.word import Word
+from nemo.collections.asr.inference.utils.text_segment import TextSegment, Word
 
 
 def merge_timesteps(timesteps1: List, timesteps2: List) -> List:
@@ -59,6 +59,39 @@ def merge_timesteps(timesteps1: List, timesteps2: List) -> List:
     if (gap := timesteps2[0] - timesteps1[-1]) <= 0:
         return timesteps1 + [t + abs(gap) + 1 for t in timesteps2]
     return timesteps1 + timesteps2
+
+
+def merge_segment_tail(
+    segment_head: TextSegment,
+    segment_tail: TextSegment,
+    conf_aggregator: Callable = None,
+) -> TextSegment:
+    """
+    Merge the segment_tail into the segment_head
+    Args:
+        segment_head: (TextSegment) The head segment
+        segment_tail: (TextSegment) The tail segment
+        conf_aggregator: (Callable) The function to aggregate the confidence
+    Returns:
+        (TextSegment) The merged segment
+    """
+    head = segment_head.copy()
+
+    # for models that have built-in punctuation, we need to rm the last punctuation before merging
+    if head.text and (last_char := head.text[-1]) and last_char in POST_WORD_PUNCTUATION:
+        head.text = head.text.rstrip(last_char)
+
+    # merge the segment_tail text
+    head.text += segment_tail.text
+
+    # update the end timestep
+    head.end = segment_tail.end
+
+    # update the confidence
+    if conf_aggregator is not None:
+        head.conf = conf_aggregator([head.conf, segment_tail.conf])
+
+    return head
 
 
 def merge_word_tail(

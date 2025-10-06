@@ -18,10 +18,11 @@ import pytest
 from nemo.collections.asr.inference.utils.state_management_utils import (
     detect_overlap,
     find_max_overlap,
+    merge_segment_tail,
     merge_timesteps,
     merge_word_tail,
 )
-from nemo.collections.asr.inference.utils.word import Word
+from nemo.collections.asr.inference.utils.text_segment import TextSegment, Word
 
 
 class TestStateManagementUtils:
@@ -95,3 +96,14 @@ class TestStateManagementUtils:
         assert new_pnc_head.start == 0.0
         assert new_pnc_head.end == 2.0
         assert new_pnc_head.conf == 0.5
+
+    @pytest.mark.unit
+    def test_merge_segment_tail(self):
+        seg1 = TextSegment(text="Good morn", start=0.0, end=1.0, conf=0.5)
+        seg2 = TextSegment(text="ing", start=1.0, end=2.0, conf=0.6)
+        merged_seg = merge_segment_tail(seg1, seg2, conf_aggregator=min)
+
+        assert merged_seg.text == "Good morning"
+        assert merged_seg.start == 0.0
+        assert merged_seg.end == 2.0
+        assert merged_seg.conf == 0.5

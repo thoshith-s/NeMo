@@ -14,7 +14,7 @@
 
 
 import pytest
-from nemo.collections.asr.inference.utils.word import Word, join_words, normalize_words_inplace
+from nemo.collections.asr.inference.utils.text_segment import Word, join_segments, normalize_segments_inplace
 
 
 class TestWord:
@@ -52,13 +52,13 @@ class TestWord:
             [Word('hello', 0, 1, 0.5), Word('world', 1, 2, 0.5)],
             [Word('how', 2, 3, 0.5), Word('are', 3, 4, 0.5), Word('you', 4, 5, 0.5)],
         ]
-        transcriptions = join_words(words, sep=' ')
+        transcriptions = join_segments(words, sep=' ')
         assert transcriptions == ['hello world', 'how are you']
 
     @pytest.mark.unit
     def test_normalize_words_inplace(self):
         words = [Word('Hello!', 0, 1, 0.5), Word('world?', 1, 2, 0.5)]
-        normalize_words_inplace(words, punct_marks=set("!?"), sep=' ')
+        normalize_segments_inplace(words, punct_marks=set("!?"), sep=' ')
         assert words[0].text == 'hello'
         assert words[1].text == 'world'
 

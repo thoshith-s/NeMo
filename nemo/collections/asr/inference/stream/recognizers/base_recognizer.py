@@ -21,7 +21,7 @@ from nemo.collections.asr.inference.stream.framing.request import FeatureBuffer,
 from nemo.collections.asr.inference.stream.framing.request_options import ASRRequestOptions
 from nemo.collections.asr.inference.stream.recognizers.recognizer_interface import RecognizerInterface
 from nemo.collections.asr.inference.utils.progressbar import ProgressBar
-from nemo.collections.asr.inference.utils.word import Word
+from nemo.collections.asr.inference.utils.text_segment import TextSegment
 
 
 class RecognizerOutput:
@@ -29,11 +29,11 @@ class RecognizerOutput:
     Class to store the output of the recognizer.
     """
 
-    def __init__(self, texts: List[str] = None, words: List[List[Word]] = None):
-        if texts is None and words is None:
-            raise ValueError("At least one of the 'texts' or 'words' should be provided.")
+    def __init__(self, texts: List[str] = None, segments: List[List[TextSegment]] = None):
+        if texts is None and segments is None:
+            raise ValueError("At least one of the 'texts' or 'segments' should be provided.")
         self.texts = texts
-        self.words = words
+        self.segments = segments
 
 
 class BaseRecognizer(RecognizerInterface):
@@ -125,7 +125,7 @@ class BaseRecognizer(RecognizerInterface):
             options: List of RequestOptions for each stream.
             progress_bar: Progress bar to show the progress. Default is None.
         Returns:
-            RecognizerOutput: A dataclass containing transcriptions and words.
+            RecognizerOutput: A dataclass containing transcriptions and segments.
         """
         if progress_bar is not None and not isinstance(progress_bar, ProgressBar):
             raise ValueError("progress_bar must be an instance of ProgressBar.")
@@ -153,14 +153,18 @@ class BaseRecognizer(RecognizerInterface):
 
     def pack_output(self) -> RecognizerOutput:
         """Pack the output from the internal state pool."""
-        texts, words = [], []
+        texts, segments = [], []
         for stream_id in sorted(self._state_pool):
             state = self.get_state(stream_id)
-            # by default, we will store final words in pnc_words
-            # and itn-ed words in itn_words
-            attr_name = "itn_words" if state.options.enable_itn else "pnc_words"
-            state_words = getattr(state, attr_name)
-            state_text = self.get_sep().join(word.text for word in state_words)
+            if state.options.is_word_level_output():
+                attr_name = "itn_words" if state.options.enable_itn else "pnc_words"
+                state_segments = getattr(state, attr_name)
+                state_text = self.get_sep().join(word.text for word in state_segments)
+            else:
+                # Segment-level output branch
+                state_segments = getattr(state, "segments")
+                state_text = self.get_sep().join(segment.text for segment in state_segments)
             texts.append(state_text)
-            words.append(state_words)
-        return RecognizerOutput(texts=texts, words=words)
+            segments.append(state_segments)
+
+        return RecognizerOutput(texts=texts, segments=segments)
