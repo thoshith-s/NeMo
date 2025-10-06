@@ -68,6 +68,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         self.blank_id = self.asr_model.get_blank_id()
         self.vocabulary = self.asr_model.get_vocabulary()
         self.sep = self.asr_model.word_separator
+        self.asr_output_granularity = cfg.asr_output_granularity
 
         # Set the attention context size if it is provided
         if cfg.streaming.att_context_size is not None:
@@ -204,23 +205,16 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         self.context_manager.reset()
         super().reset_session()
 
-    def augment_options_with_defaults(self, options: ASRRequestOptions) -> ASRRequestOptions:
-        """Augment the options with the default values."""
-        enable_itn = self.text_postprocessor.is_itn_enabled() if options.enable_itn is None else options.enable_itn
-        enable_pnc = self.text_postprocessor.is_pnc_enabled() if options.enable_pnc is None else options.enable_pnc
-        stop_history_eou = (
-            self.stop_history_eou_in_millisecs if options.stop_history_eou is None else options.stop_history_eou
-        )
-
-        return ASRRequestOptions(
-            enable_itn=enable_itn, enable_pnc=enable_pnc, stop_history_eou=stop_history_eou  # In milliseconds
-        )
-
     def create_state(self, options: ASRRequestOptions) -> CacheAwareRNNTStreamingState:
         """Create new empty state."""
         state = CacheAwareRNNTStreamingState()
         state.set_global_offset(0)
-        new_options = self.augment_options_with_defaults(options)
+        new_options = options.augment_with_defaults(
+            default_enable_itn=self.text_postprocessor.is_itn_enabled(),
+            default_enable_pnc=self.text_postprocessor.is_pnc_enabled(),
+            default_stop_history_eou=self.stop_history_eou_in_millisecs,
+            default_asr_output_granularity=self.asr_output_granularity,
+        )
 
         eou_label_buffer_size = 0
         if new_options.stop_history_eou > 0:
@@ -280,7 +274,6 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             )
 
         state.update_state(cur_output, eou_detected=eou_detected)
-        state.increment_global_offset(self.tokens_per_frame)
         return eou_detected
 
     def alignment_decode_step(
@@ -297,11 +290,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             eou_detected = self.run_greedy_decoder(state, frame, hyp)
 
             if eou_detected:
-                # form words and push them to the state
-                decoded_words, merge_first_word = self.bpe_decoder.bpe_decode(
-                    state.tokens, state.timesteps, state.confidences
-                )
-                state.push_back(decoded_words, merge_first_word, self.confidence_aggregator)
+                self.bpe_decoder.decode_bpe_tokens(state)
                 state.cleanup_after_eou()
 
                 # state is ready for text post-processing

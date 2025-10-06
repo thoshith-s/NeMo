@@ -75,6 +75,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         self.punctuation_ids = self.asr_model.get_punctuation_ids()
         self.language_token_ids = self.asr_model.get_language_token_ids
         self.tokens_to_move = self.punctuation_ids.union(self.language_token_ids)
+        self.asr_output_granularity = cfg.asr_output_granularity
 
         self.asr_model_cfg = self.asr_model.copy_asr_config()
         self.asr_model_cfg = make_preprocessor_deterministic(self.asr_model_cfg)
@@ -98,18 +99,21 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         self.buffer_size_in_secs = self.chunk_size + self.left_padding_size + self.right_padding_size
         self.expected_feature_buffer_len = int(self.buffer_size_in_secs / self.window_stride)
 
-        self.tokens_per_frame = math.ceil(self.chunk_size / self.model_stride_in_secs)
-        self.tokens_per_frame_float = self.chunk_size / self.model_stride_in_secs
-        self.tokens_per_buffer_float = self.buffer_size_in_secs / self.model_stride_in_secs
-        self.tokens_per_right_padding_float = self.right_padding_size / self.model_stride_in_secs
         self.mid_delay = math.ceil((self.chunk_size + self.right_padding_size) / self.model_stride_in_secs)
+        self.tokens_per_frame_float = self.chunk_size / self.model_stride_in_secs
         self.tokens_per_left_padding_float = self.left_padding_size / self.model_stride_in_secs
+        self.tokens_per_right_padding_float = self.right_padding_size / self.model_stride_in_secs
+        self.tokens_per_frame = math.ceil(self.tokens_per_frame_float)
         self.tokens_per_left_padding = math.ceil(self.tokens_per_left_padding_float)
         self.tokens_per_right_padding = math.ceil(self.tokens_per_right_padding_float)
+
         if self.stateful:
             effective_buffer_size_in_secs = self.chunk_size + self.right_padding_size
+            self.initial_delay = self.right_padding_size / self.model_stride_in_secs
         else:
             effective_buffer_size_in_secs = self.buffer_size_in_secs
+            self.initial_delay = (self.left_padding_size + self.right_padding_size) / self.model_stride_in_secs
+
         if self.stateful and (
             abs(self.tokens_per_frame_float - self.tokens_per_frame) > 1e-5
             or abs(self.tokens_per_left_padding_float - self.tokens_per_left_padding) > 1e-5
@@ -117,7 +121,6 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         ):
             self.tokens_per_frame_float = self.tokens_per_frame
             self.tokens_per_left_padding_float = self.tokens_per_left_padding
-            self.tokens_per_right_padding_float = self.tokens_per_right_padding
             self.left_padding_size = self.tokens_per_left_padding * self.model_stride_in_secs
             self.chunk_size = self.tokens_per_frame * self.model_stride_in_secs
             self.right_padding_size = self.tokens_per_right_padding * self.model_stride_in_secs
@@ -226,23 +229,16 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         self.bufferer.reset()
         super().reset_session()
 
-    def augment_options_with_defaults(self, options: ASRRequestOptions) -> ASRRequestOptions:
-        """Augment the options with the default values."""
-        enable_itn = self.text_postprocessor.is_itn_enabled() if options.enable_itn is None else options.enable_itn
-        enable_pnc = self.text_postprocessor.is_pnc_enabled() if options.enable_pnc is None else options.enable_pnc
-        stop_history_eou = (
-            self.stop_history_eou_in_millisecs if options.stop_history_eou is None else options.stop_history_eou
-        )
-
-        return ASRRequestOptions(
-            enable_itn=enable_itn, enable_pnc=enable_pnc, stop_history_eou=stop_history_eou  # In milliseconds
-        )
-
     def create_state(self, options: ASRRequestOptions) -> RNNTStreamingState:
         """Create new empty state."""
         state = RNNTStreamingState()
-        state.set_global_offset(-self.tokens_per_right_padding_float)
-        new_options = self.augment_options_with_defaults(options)
+        state.set_global_offset(-self.initial_delay)
+        new_options = options.augment_with_defaults(
+            default_enable_itn=self.text_postprocessor.is_itn_enabled(),
+            default_enable_pnc=self.text_postprocessor.is_pnc_enabled(),
+            default_stop_history_eou=self.stop_history_eou_in_millisecs,
+            default_asr_output_granularity=self.asr_output_granularity,
+        )
         state.set_options(new_options)
         return state
 
@@ -547,10 +543,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
                 eou_detected = self.run_greedy_decoder(state, request, alignment, start, end)
 
             if eou_detected:
-                decoded_words, merge_first_word = self.bpe_decoder.bpe_decode(
-                    state.tokens, state.timesteps, state.confidences
-                )
-                state.push_back(decoded_words, merge_first_word, self.confidence_aggregator)
+                self.bpe_decoder.decode_bpe_tokens(state)
                 state.cleanup_after_eou()
                 ready_state_ids.add(request.stream_id)
         create_partial_transcript(states, self.asr_model.tokenizer, self.leading_regex_pattern)

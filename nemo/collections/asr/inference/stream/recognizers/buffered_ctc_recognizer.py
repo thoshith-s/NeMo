@@ -69,6 +69,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         self.blank_id = self.asr_model.get_blank_id()
         self.vocabulary = self.asr_model.get_vocabulary()
         self.sep = self.asr_model.word_separator
+        self.asr_output_granularity = cfg.asr_output_granularity  # Global flag for word level output
 
         self.asr_model_cfg = self.asr_model.copy_asr_config()
         self.asr_model_cfg = make_preprocessor_deterministic(self.asr_model_cfg)
@@ -89,10 +90,10 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         self.buffer_size_in_secs = self.chunk_size + self.left_padding_size + self.right_padding_size
         self.expected_feature_buffer_len = int(self.buffer_size_in_secs / self.window_stride)
 
-        self.tokens_per_frame = math.ceil(self.chunk_size / self.model_stride_in_secs)
         self.tokens_per_frame_float = self.chunk_size / self.model_stride_in_secs
-        self.tokens_per_buffer_float = self.buffer_size_in_secs / self.model_stride_in_secs
-        self.tokens_per_right_padding_float = self.right_padding_size / self.model_stride_in_secs
+        self.tokens_per_frame = math.ceil(self.tokens_per_frame_float)
+
+        self.initial_delay = (self.left_padding_size + self.right_padding_size) / self.model_stride_in_secs
         self.mid_delay = math.ceil((self.chunk_size + self.right_padding_size) / self.model_stride_in_secs)
 
         # Request type
@@ -189,23 +190,16 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         self.bufferer.reset()
         super().reset_session()
 
-    def augment_options_with_defaults(self, options: ASRRequestOptions) -> ASRRequestOptions:
-        """Augment the options with the default values."""
-        enable_itn = self.text_postprocessor.is_itn_enabled() if options.enable_itn is None else options.enable_itn
-        enable_pnc = self.text_postprocessor.is_pnc_enabled() if options.enable_pnc is None else options.enable_pnc
-        stop_history_eou = (
-            self.stop_history_eou_in_millisecs if options.stop_history_eou is None else options.stop_history_eou
-        )
-
-        return ASRRequestOptions(
-            enable_itn=enable_itn, enable_pnc=enable_pnc, stop_history_eou=stop_history_eou  # In milliseconds
-        )
-
     def create_state(self, options: ASRRequestOptions) -> CTCStreamingState:
         """Create new empty state."""
         state = CTCStreamingState()
-        state.set_global_offset(-self.tokens_per_right_padding_float)
-        new_options = self.augment_options_with_defaults(options)
+        state.set_global_offset(-self.initial_delay)
+        new_options = options.augment_with_defaults(
+            default_enable_itn=self.text_postprocessor.is_itn_enabled(),
+            default_enable_pnc=self.text_postprocessor.is_pnc_enabled(),
+            default_stop_history_eou=self.stop_history_eou_in_millisecs,
+            default_asr_output_granularity=self.asr_output_granularity,
+        )
         state.set_options(new_options)
         return state
 
@@ -303,7 +297,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
                     log_probs[i][:lpad, :] = self.zero_log_probs[:lpad, :]
         return log_probs
 
-    def buffer_frames(self, frames: List[Frame]) -> Tensor:
+    def compute_logprobs_from_frames(self, frames: List[Frame]) -> Tensor:
         """Buffer the frames and get the log probabilities."""
         raw_signals, left_paddings = self.bufferer.update(frames)
         log_probs = None
@@ -311,7 +305,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
             log_probs = self.get_logprobs_given_raw_signals(frames, raw_signals, left_paddings)
         return log_probs
 
-    def buffer_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> Tensor:
+    def compute_logprobs_from_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> Tensor:
         """Buffer the feature buffers and get the log probabilities."""
         processed_signals = self.bufferer.update(fbuffers)
         log_probs = None
@@ -333,6 +327,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
             state_start_idx=state.decoder_start_idx,
             state_end_idx=state.decoder_end_idx,
             stop_history_eou=state.options.stop_history_eou,
+            compute_confidence=True,
         )
 
         state.update_state(clipped_output, eou_detected)
@@ -369,15 +364,12 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
                 eou_detected = self.run_greedy_decoder(state, request, lp, start, end)
 
                 if eou_detected:
-                    # Form words and push them to the state
-                    decoded_words, merge_first_word = self.bpe_decoder.bpe_decode(
-                        state.tokens, state.timesteps, state.confidences
-                    )
-                    state.push_back(decoded_words, merge_first_word, self.confidence_aggregator)
+                    self.bpe_decoder.decode_bpe_tokens(state)
                     state.cleanup_after_eou()
 
                     # If there are multiple streams, we need to wait until all streams are ready
                     ready_state_ids.add(stream_id)
+
             states = [self.get_state(request.stream_id) for request in requests]
             create_partial_transcript(states, self.asr_model.tokenizer, self.leading_regex_pattern)
             if len(ready_state_ids) > 0:
@@ -393,7 +385,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         Args:
             fbuffers: List of feature buffers to transcribe.
         """
-        log_probs = self.buffer_feature_buffers(fbuffers)
+        log_probs = self.compute_logprobs_from_feature_buffers(fbuffers)
         if log_probs is not None:
             log_probs = normalize_log_probs(log_probs)
             self.shared_transcribe_step(requests=fbuffers, log_probs=log_probs)
@@ -404,7 +396,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         Args:
             frames: List of frames to transcribe.
         """
-        log_probs = self.buffer_frames(frames)
+        log_probs = self.compute_logprobs_from_frames(frames)
         if log_probs is not None:
             log_probs = normalize_log_probs(log_probs)
             self.shared_transcribe_step(requests=frames, log_probs=log_probs)

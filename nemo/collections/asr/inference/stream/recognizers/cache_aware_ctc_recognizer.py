@@ -68,6 +68,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         self.blank_id = self.asr_model.get_blank_id()
         self.vocabulary = self.asr_model.get_vocabulary()
         self.sep = self.asr_model.word_separator
+        self.asr_output_granularity = cfg.asr_output_granularity
 
         # Set the attention context size if it is provided
         if cfg.streaming.att_context_size is not None:
@@ -204,23 +205,16 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         self.context_manager.reset()
         super().reset_session()
 
-    def augment_options_with_defaults(self, options: ASRRequestOptions) -> ASRRequestOptions:
-        """Augment the options with the default values."""
-        enable_itn = self.text_postprocessor.is_itn_enabled() if options.enable_itn is None else options.enable_itn
-        enable_pnc = self.text_postprocessor.is_pnc_enabled() if options.enable_pnc is None else options.enable_pnc
-        stop_history_eou = (
-            self.stop_history_eou_in_millisecs if options.stop_history_eou is None else options.stop_history_eou
-        )
-
-        return ASRRequestOptions(
-            enable_itn=enable_itn, enable_pnc=enable_pnc, stop_history_eou=stop_history_eou  # In milliseconds
-        )
-
     def create_state(self, options: ASRRequestOptions) -> CacheAwareCTCStreamingState:
         """Create new empty state."""
         state = CacheAwareCTCStreamingState()
         state.set_global_offset(0)
-        new_options = self.augment_options_with_defaults(options)
+        new_options = options.augment_with_defaults(
+            default_enable_itn=self.text_postprocessor.is_itn_enabled(),
+            default_enable_pnc=self.text_postprocessor.is_pnc_enabled(),
+            default_stop_history_eou=self.stop_history_eou_in_millisecs,
+            default_asr_output_granularity=self.asr_output_granularity,
+        )
 
         eou_label_buffer_size = 0
         if new_options.stop_history_eou > 0:
@@ -257,8 +251,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         eou_detected = frame.is_last
         last_token = state.label_buffer[-1] if len(state.label_buffer) > 0 else self.blank_id
         cur_output = self.ctc_decoder(log_probs, compute_confidence=True, previous=last_token)
-        cur_labels = self.ctc_decoder.get_labels(log_probs)
-        state.update_label_buffer(cur_labels)
+        state.update_label_buffer(cur_output["labels"])
 
         if not eou_detected:
             emissions = state.get_label_buffer()
@@ -280,11 +273,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             eou_detected = self.run_greedy_decoder(state, frame, log_probs[idx])
 
             if eou_detected:
-                # Form words and push them to the state
-                decoded_words, merge_first_word = self.bpe_decoder.bpe_decode(
-                    state.tokens, state.timesteps, state.confidences
-                )
-                state.push_back(decoded_words, merge_first_word, self.confidence_aggregator)
+                self.bpe_decoder.decode_bpe_tokens(state)
                 state.cleanup_after_eou()
 
                 # Add the state to the ready state ids
@@ -330,6 +319,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             valid_out_len=self.valid_out_len,
             return_tail_result=self.return_tail_result,
         )
+
         if log_probs is not None:
             log_probs = normalize_log_probs(log_probs)
         self.context_manager.update_cache(stream_ids, new_context, mapping)
