@@ -21,7 +21,13 @@ from omegaconf import DictConfig
 
 from nemo.collections.asr.inference.stream.state.state import StreamingState
 from nemo.collections.asr.inference.utils.constants import POST_WORD_PUNCTUATION
-from nemo.collections.asr.inference.utils.word import Word, normalize_words_inplace
+from nemo.collections.asr.inference.utils.recognizer_utils import (
+    get_leading_punctuation_regex_pattern,
+    get_repeated_punctuation_regex_pattern,
+    remove_leading_punctuation_spaces,
+    remove_repeated_punctuation,
+)
+from nemo.collections.asr.inference.utils.text_segment import Word, normalize_segments_inplace
 from nemo.utils import logging
 
 if TYPE_CHECKING:
@@ -91,9 +97,15 @@ class StreamingTextPostprocessor:
         self.asr_supported_puncts_str = ''.join(self.asr_supported_puncts)
         self.sep = sep
         self.segment_separators = segment_separators
-        self.rm_punctuation_capitalization_from_words_fn = partial(
-            normalize_words_inplace, punct_marks=self.asr_supported_puncts, sep=self.sep
+        self.rm_punctuation_capitalization_from_segments_fn = partial(
+            normalize_segments_inplace, punct_marks=self.asr_supported_puncts, sep=self.sep
         )
+
+        puncts_to_process = self.asr_supported_puncts
+        if self.pnc_model is not None:
+            puncts_to_process = puncts_to_process | self.pnc_model.supported_punctuation
+        self.leading_punctuation_regex_pattern = get_leading_punctuation_regex_pattern(puncts_to_process)
+        self.repeated_punctuation_regex_pattern = get_repeated_punctuation_regex_pattern(puncts_to_process)
 
         self.alignment_aware_itn_model = None
         if self.itn_enabled:
@@ -141,10 +153,114 @@ class StreamingTextPostprocessor:
         Args:
             states: (List[StreamingState]) List of StreamingState objects
         """
-        self._process(states)
-        self.generate_final_transcript(states)
+        word_boundary_states, segment_boundary_states = [], []
+        for state in states:
+            if state.options.is_word_level_output():
+                word_boundary_states.append(state)
+            else:
+                segment_boundary_states.append(state)
 
-    def _process(self, states: List[StreamingState]) -> None:
+        # Process states with word boundaries
+        if word_boundary_states:
+            self.process_states_with_word_boundaries(word_boundary_states)
+
+        # Process states with segment boundaries
+        if segment_boundary_states:
+            self.process_states_with_segment_boundaries(segment_boundary_states)
+
+        # Generate final transcript
+        self.generate_final_transcript(word_boundary_states, segment_boundary_states)
+
+    def process_states_with_segment_boundaries(self, states: List[StreamingState]) -> None:
+        """
+        Process states with segment boundaries.
+        Args:
+            states: List of StreamingState objects that have segments
+        """
+        states_with_text = [state for state in states if len(state.segments) > 0]
+        if len(states_with_text) == 0:
+            return
+
+        # if PnC & ITN DISABLED globally, remove PnC from the words if ASR supports punctuation
+        if not self.is_enabled():
+            if self.supports_punctuation:
+                segments = []
+                for state in states_with_text:
+                    for i, seg in enumerate(state.segments):
+                        if not state.processed_segment_mask[i]:
+                            segments.append(seg)
+                            state.processed_segment_mask[i] = True
+                self.rm_punctuation_capitalization_from_segments_fn(segments)
+            return
+
+        # Remove PnC from states where PnC is disabled
+        for state in states_with_text:
+            if (not state.options.enable_pnc) or (not self.is_pnc_enabled()):
+                if self.supports_punctuation:
+                    self.rm_punctuation_capitalization_from_segments_fn(state.segments)
+
+        # Apply ITN
+        if self.is_itn_enabled():  # If ITN ENABLED globally
+            # collect texts
+            texts = []
+            for i, state in enumerate(states_with_text):
+                # if ITN is disabled for this state
+                if not state.options.enable_itn:
+                    continue
+
+                for j, seg in enumerate(state.segments):
+                    if state.processed_segment_mask[j]:  # if the segment is already processed, skip it
+                        continue
+                    texts.append((i, j, seg.text))
+
+            if len(texts) > 0:
+                # apply ITN
+                processed_texts = self.itn_model.inverse_normalize_list(
+                    texts=[text for _, _, text in texts], params=self.itn_params
+                )
+                # update states with ITN-processed texts
+                for (i, j, _), processed_text in zip(texts, processed_texts):
+                    states_with_text[i].segments[j].text = processed_text
+
+        # Apply PnC
+        if self.is_pnc_enabled():  # If PnC ENABLED globally
+            texts = []
+            for i, state in enumerate(states_with_text):
+                # if PnC is disabled for this state
+                if not state.options.enable_pnc:
+                    continue
+
+                # if ASR does not support PnC -> process the text
+                # or
+                # if ASR supports PnC but we force to use the BERT-based PnC model -> process the text
+                should_process = not self.supports_punctuation
+                if self.supports_punctuation and self.force_to_use_pnc_model:
+                    should_process = True
+
+                if should_process:
+                    for j, seg in enumerate(state.segments):
+                        if state.processed_segment_mask[j]:  # if the segment is already processed, skip it
+                            continue
+                        texts.append((i, j, seg.text))
+
+            if len(texts) > 0:
+                # apply PnC
+                processed_texts = self.pnc_model.add_punctuation_capitalization_list(
+                    transcriptions=[text for _, _, text in texts], params=self.pnc_params
+                )
+                # update states with PnC-processed texts
+                for (i, j, _), processed_text in zip(texts, processed_texts):
+                    states_with_text[i].segments[j].text = processed_text
+
+        # mark all segments as processed
+        for state in states_with_text:
+            if state.options.enable_pnc:
+                for seg in state.segments:
+                    seg.text = remove_leading_punctuation_spaces(seg.text, self.leading_punctuation_regex_pattern)
+                    seg.text = remove_repeated_punctuation(seg.text, self.repeated_punctuation_regex_pattern)
+            state.processed_segment_mask = [True] * len(state.segments)
+
+    def process_states_with_word_boundaries(self, states: List[StreamingState]) -> None:
         """
         Apply PnC and ITN on the states.
         Args:
@@ -169,7 +285,7 @@ class StreamingTextPostprocessor:
             else:
                 # if PnC is disabled for particular states, remove PnC from the words if ASR supports punctuation
                 if self.supports_punctuation:
-                    self.rm_punctuation_capitalization_from_words_fn(asr_words_list[jdx])
+                    self.rm_punctuation_capitalization_from_segments_fn(asr_words_list[jdx])
                 pnc_words_list[jdx] = asr_words_list[jdx]
 
         for jdx, pnc_words in zip(subset_indices, self.apply_pnc(subset_to_punctuate)):
@@ -317,7 +433,7 @@ class StreamingTextPostprocessor:
         In such cases, remove Punctuation and Capitalization from the words.
         """
         if self.supports_punctuation:
-            self.rm_punctuation_capitalization_from_words_fn(asr_words_list)
+            self.rm_punctuation_capitalization_from_segments_fn(asr_words_list)
 
         for idx, jdx, z, n_x in indices:
             z = z - n_x
@@ -337,14 +453,14 @@ class StreamingTextPostprocessor:
             if self.force_to_use_pnc_model:
                 logging.info("Forcing to use BERT-based PnC model.")
                 if self.supports_punctuation:
-                    self.rm_punctuation_capitalization_from_words_fn(asr_words_list)
+                    self.rm_punctuation_capitalization_from_segments_fn(asr_words_list)
                 return self.add_pnc_to_words(asr_words_list, self.pnc_params)
 
             if not self.supports_punctuation:
                 return self.add_pnc_to_words(asr_words_list, self.pnc_params)
 
         elif self.supports_punctuation:
-            self.rm_punctuation_capitalization_from_words_fn(asr_words_list)
+            self.rm_punctuation_capitalization_from_segments_fn(asr_words_list)
         return asr_words_list
 
     def apply_itn(self, states: List[StreamingState], indices: List[Tuple]) -> None:
@@ -406,16 +522,27 @@ class StreamingTextPostprocessor:
             state.itn_words = state.itn_words[:cut_point] + spans
             assert len(state.word_alignment) == len(state.itn_words)
 
-    def generate_final_transcript(self, states: List[StreamingState]) -> None:
+    def generate_final_transcript(
+        self, word_boundary_states: List[StreamingState], segment_boundary_states: List[StreamingState]
+    ) -> None:
         """
         Generate final transcript based on enabled features and word count.
         Args:
-            states (List[StreamingState]): The streaming state containing words
+            word_boundary_states (List[StreamingState]): The streaming state containing words
+            segment_boundary_states (List[StreamingState]): The streaming state containing segments
         """
-        for state in states:
+        # Generate final transcript for word boundary states
+        for state in word_boundary_states:
             attr_name = "itn_words" if state.options.enable_itn else "pnc_words"
             words = getattr(state, attr_name)
             for word in words:
                 state.final_words.append(word.copy())
                 state.final_transcript += word.text + self.sep
+            state.final_transcript = state.final_transcript.rstrip(self.sep)
+
+        # Generate final transcript for segment boundary states
+        for state in segment_boundary_states:
+            for segment in state.segments:
+                state.final_segments.append(segment.copy())
+                state.final_transcript += segment.text + self.sep
             state.final_transcript = state.final_transcript.rstrip(self.sep)
