@@ -14,16 +14,17 @@
 
 
 from functools import lru_cache
-from typing import Callable, List, Set, Tuple
+from typing import Callable, List, Optional, Set, Tuple
 
 import numpy as np
 
+from nemo.collections.asr.inference.stream.state.state import StreamingState
 from nemo.collections.asr.inference.utils.constants import (
     POST_WORD_PUNCTUATION,
     ROUND_PRECISION,
     SENTENCEPIECE_UNDERSCORE,
 )
-from nemo.collections.asr.inference.utils.word import Word
+from nemo.collections.asr.inference.utils.text_segment import TextSegment, Word
 from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 
 
@@ -58,9 +59,9 @@ class BPEDecoder:
         }
 
     @lru_cache(maxsize=10000)
-    def cached_tokenizer(self, tokens_slice: Tuple[int]) -> str:
+    def cached_ids_to_text(self, tokens_slice: Tuple[int]) -> str:
         """
-        Cached tokenizer to avoid repeated calls to the tokenizer.
+        Cached tokenizer output to avoid repeated calls to the tokenizer.
         Args:
             tokens_slice (tuple): Tuple of token indices to be detokenized.
         Returns:
@@ -69,7 +70,64 @@ class BPEDecoder:
         word_text = self.tokenizer.ids_to_text(list(tokens_slice)).strip()
         return word_text
 
-    def bpe_decode(self, tokens: List, timesteps: List, confidences: List) -> Tuple[List[Word], bool]:
+    def decode_bpe_tokens(self, state: StreamingState) -> None:
+        """
+        Decodes BPE tokens into words or segments with timestamps and confidence scores.
+        Args:
+            state (StreamingState): The state object containing the BPE tokens, timestamps, and confidence scores.
+        """
+        if state.options.is_word_level_output():
+            # Form words and push them to the state
+            decoded_words, need_merge = self.group_tokens_into_words(state.tokens, state.timesteps, state.confidences)
+            state.push_back_words(decoded_words, need_merge, self.confidence_aggregator)
+        elif state.options.is_segment_level_output():
+            # Form text segment and push it to the state
+            if state.tokens:
+                decoded_segment, need_merge = self.group_tokens_into_segment(
+                    state.tokens, state.timesteps, state.confidences
+                )
+                state.push_back_segment(decoded_segment, need_merge, self.confidence_aggregator)
+        else:
+            raise ValueError(f"Invalid output granularity: {state.options.asr_output_granularity}")
+
+    def group_tokens_into_segment(self, tokens: List, timesteps: List, confidences: List) -> Tuple[TextSegment, bool]:
+        """
+        Group tokens into a text segment with timestamps and confidence scores.
+        Args:
+            tokens (list): List of token indices.
+            timesteps (list): List of token timestamps.
+            confidences (list): List of token confidence scores.
+        Returns:
+            TextSegment: Text segment with text, start time, end time, and confidence score.
+            need_merge: True if the text segment should be merged with the last segment stored in the state
+        """
+        n_tokens = len(tokens)
+
+        if n_tokens != len(timesteps) or n_tokens != len(confidences):
+            raise ValueError("tokens, timesteps and confidences must have the same length")
+
+        if n_tokens == 0:
+            return None, False
+
+        need_merge = not bool(self.start_of_word_cache[tokens[0]])
+
+        # Get the segment text
+        segment_text = self.tokenizer.ids_to_text(tokens).strip()
+
+        # Refine the start and end timestamps of the text segment
+        start, end = self.refine_text_segment_timestamp(tokens, timesteps)
+
+        # Convert token timestamps to seconds
+        start = round(start * self.token_duration_in_secs, ROUND_PRECISION)
+        end = round(end * self.token_duration_in_secs, ROUND_PRECISION)
+
+        # Aggregate the confidence score of the text segment
+        conf = self.confidence_aggregator(confidences)
+
+        # Create a text segment
+        return TextSegment(text=segment_text, start=start, end=end, conf=conf), need_merge
+
+    def group_tokens_into_words(self, tokens: List, timesteps: List, confidences: List) -> Tuple[List[Word], bool]:
         """
         Decodes BPE tokens into words with timestamps and confidence scores.
         Args:
@@ -78,7 +136,7 @@ class BPEDecoder:
             confidences (list): List of token confidence scores.
         Returns:
             list: List of decoded words with text, start time, end time, and confidence score.
-            merge_first_word: True if the first word should be merged with the last word stored in the state
+            need_merge: True if the first word should be merged with the last word stored in the state
         """
         n_tokens = len(tokens)
 
@@ -98,7 +156,7 @@ class BPEDecoder:
         decoded_words, prev_word_end = [], None
 
         # If the first word is the start of a word, we need to merge it with the last word stored in the state
-        merge_first_word = not bool(is_start_mask[0])
+        need_merge = not bool(is_start_mask[0])
 
         for start_idx, end_idx in zip(start_indices, end_indices):
 
@@ -106,7 +164,7 @@ class BPEDecoder:
             time_slice = timesteps[start_idx:end_idx]
             conf_slice = confidences[start_idx:end_idx]
 
-            word_text = self.cached_tokenizer(tuple(tokens_slice))
+            word_text = self.cached_ids_to_text(tuple(tokens_slice))
 
             # Ignore empty text
             if not word_text:
@@ -119,12 +177,14 @@ class BPEDecoder:
                 continue
 
             # Refine timestamps
-            word_start_tms, word_end_tms = self.refine_word_timestamp(
-                current_word_tokens=tokens_slice,
-                current_word_timesteps=time_slice,
-                next_word_start_timestep=timesteps[end_idx] if end_idx < n_tokens else None,
-                is_next_word_start_of_word=(self.start_of_word_cache[tokens[end_idx]] if end_idx < n_tokens else None),
-                prev_word_end=prev_word_end,
+            word_start_tms, word_end_tms = self.refine_text_segment_timestamp(
+                current_tokens=tokens_slice,
+                current_timesteps=time_slice,
+                next_segment_start_timestep=timesteps[end_idx] if end_idx < n_tokens else None,
+                need_merge_with_next_segment=(
+                    self.start_of_word_cache[tokens[end_idx]] if end_idx < n_tokens else None
+                ),
+                prev_segment_end=prev_word_end,
             )
             prev_word_end = word_end_tms
 
@@ -137,63 +197,60 @@ class BPEDecoder:
 
             decoded_words.append(Word(text=word_text, start=start_sec, end=end_sec, conf=word_conf))
 
-        return decoded_words, merge_first_word
+        return decoded_words, need_merge
 
-    def refine_word_timestamp(
+    def refine_text_segment_timestamp(
         self,
-        current_word_tokens: List[int],
-        current_word_timesteps: List[float],
-        next_word_start_timestep: float | None,
-        is_next_word_start_of_word: bool | None,
-        prev_word_end: float | None,
+        current_tokens: List[int],
+        current_timesteps: List[float],
+        next_segment_start_timestep: Optional[float] = None,
+        need_merge_with_next_segment: Optional[bool] = None,
+        prev_segment_end: Optional[float] = None,
     ) -> Tuple[float, float]:
         """
-        Refines the word timestamp based on the current word tokens, timestamps, and the next word start timestamp.
+        Refines the text segment timestamp based on the current tokens, timestamps, and the next segment start timestamp.
         Args:
-            current_word_tokens (list): List of token indices.
-            current_word_timesteps (list): List of token timestamps.
-            next_word_start_timestep (float): The start timestamp of the next word.
-            is_next_word_start_of_word (bool): True if the next word is the start of a word.
-            prev_word_end (float): The end timestamp of the previous word.
+            current_tokens (list): List of token indices.
+            current_timesteps (list): List of token timestamps.
+            next_segment_start_timestep (float): The start timestamp of the next segment.
+            need_merge_with_next_segment (bool): True if the current segment should be merged with the next segment.
+            prev_segment_end (float): The end timestamp of the previous segment.
         Returns:
             tuple (float, float): The refined start and end timestamps.
         """
 
-        start, end = current_word_timesteps[0], current_word_timesteps[-1]
+        start, end = current_timesteps[0], current_timesteps[-1]
 
         # --- Correct the start timestamp if the first token is underscore or punctuation ---
-        first_token = current_word_tokens[0]
+        first_token = current_tokens[0]
         if self.punct_cache[first_token][1]:
             start = next(
-                (
-                    tms
-                    for tms, token in zip(current_word_timesteps, current_word_tokens)
-                    if not self.punct_cache[token][1]
-                ),
+                (tms for tms, token in zip(current_timesteps, current_tokens) if not self.punct_cache[token][1]),
                 start,
             )
 
         # --- Correct the end timestamp if the last token is punctuation ---
-        last_token = current_word_tokens[-1]
+        last_token = current_tokens[-1]
         if self.punct_cache[last_token][0]:
             end = next(
                 (
-                    current_word_timesteps[i]
-                    for i in reversed(range(len(current_word_tokens)))
-                    if not self.punct_cache[current_word_tokens[i]][0]
+                    current_timesteps[i]
+                    for i in reversed(range(len(current_tokens)))
+                    if not self.punct_cache[current_tokens[i]][0]
                 ),
                 end,
             )
 
-        # --- If the next word is close to the end of the current word, merge timestamps ---
-        if next_word_start_timestep is not None and is_next_word_start_of_word:
-            if next_word_start_timestep - end <= self.word_boundary_tolerance:
-                end = next_word_start_timestep
+        # --- If the next segment is close to the end of the current segment, merge timestamps ---
+        if next_segment_start_timestep is not None and need_merge_with_next_segment:
+            if next_segment_start_timestep - end <= self.word_boundary_tolerance:
+                end = next_segment_start_timestep
 
+        # --- Adjust the start and end timestamps based on the previous segment end ---
         delta = 0
-        if prev_word_end is not None:
-            if prev_word_end > start:
-                delta = prev_word_end - start
+        if prev_segment_end is not None:
+            if prev_segment_end > start:
+                delta = prev_segment_end - start
 
         start = start + delta
         end = end + delta
