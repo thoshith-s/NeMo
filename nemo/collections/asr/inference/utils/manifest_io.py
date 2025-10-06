@@ -19,6 +19,7 @@ from typing import List, Optional
 import soundfile as sf
 
 from nemo.collections.asr.inference.stream.recognizers.base_recognizer import RecognizerOutput
+from nemo.collections.asr.inference.utils.constants import DEFAULT_OUTPUT_DIR_NAME
 from nemo.collections.common.parts.preprocessing.manifest import get_full_path
 
 
@@ -97,7 +98,7 @@ def get_stem(file_path: str) -> str:
 
 
 def dump_output(
-    audio_filepaths: List[str], output: RecognizerOutput, output_filename: str, output_ctm_dir: Optional[str] = None
+    audio_filepaths: List[str], output: RecognizerOutput, output_filename: str, output_dir: Optional[str] = None
 ) -> None:
     """
     Dump the transcriptions to a output file
@@ -105,29 +106,27 @@ def dump_output(
         audio_filepaths: (List[str]) List of audio file
         output (RecognizerOutput): Recognizer output
         output_filename: (str) Path to the output file
-        output_ctm_dir: (str | None) Path to the output CTM directory, if None, will write at the same level as the output file
+        output_dir: (str | None) Path to the output directory, if None, will write at the same level as the output file
     """
+    if output_dir is None:
+        # Create default output directory, if not provided
+        output_dir = os.path.dirname(output_filename)
+        output_dir = os.path.join(output_dir, DEFAULT_OUTPUT_DIR_NAME)
 
-    if output_ctm_dir is None:
-        # Create the output CTM directory, if not provided
-        output_ctm_dir = os.path.dirname(output_filename)
-        output_ctm_dir = os.path.join(output_ctm_dir, "ctm")
-
-    os.makedirs(output_ctm_dir, exist_ok=True)
-
+    os.makedirs(output_dir, exist_ok=True)
     with open(output_filename, 'w') as fout:
-        for audio_filepath, text, words in zip(audio_filepaths, output.texts, output.words):
+        for audio_filepath, text, segments in zip(audio_filepaths, output.texts, output.segments):
 
             stem = get_stem(audio_filepath)
             stem = os.path.splitext(stem)[0]
-            ctm_filepath = os.path.join(output_ctm_dir, f"{stem}.ctm")
-            ctm_filepath = make_abs_path(ctm_filepath)
-            with open(ctm_filepath, 'w') as ctm_fout:
-                for word in words:
-                    ctm_line = word.get_ctm_line()
-                    ctm_fout.write(f"{stem} {ctm_line}\n")
+            json_filepath = os.path.join(output_dir, f"{stem}.json")
+            json_filepath = make_abs_path(json_filepath)
+            with open(json_filepath, 'w') as json_fout:
+                for segment in segments:
+                    json_line = json.dumps(segment.to_dict(), ensure_ascii=False)
+                    json_fout.write(f"{json_line}\n")
 
-            item = {"audio_filepath": audio_filepath, "text": text, "ctm_filepath": ctm_filepath}
+            item = {"audio_filepath": audio_filepath, "text": text, "json_filepath": json_filepath}
             json.dump(item, fout, ensure_ascii=False)
             fout.write('\n')
             fout.flush()

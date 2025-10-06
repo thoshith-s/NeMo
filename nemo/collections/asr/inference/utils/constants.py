@@ -28,3 +28,6 @@ SENTENCEPIECE_UNDERSCORE = "▁"
 
 # ITN related constants
 DEFAULT_SEMIOTIC_CLASS = "name"
+
+# Default output directory name
+DEFAULT_OUTPUT_DIR_NAME = "jsons"
