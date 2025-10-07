@@ -10,12 +10,13 @@ vad:
   type: silero
   confidence: 0.6  # VAD threshold for detecting speech versus non-speech
   start_secs: 0.1  # min amount of speech to trigger UserStartSpeaking
-  stop_secs: 0.8  # min amount of silence to trigger UserStopSpeaking
+  stop_secs: 1.2  # min amount of silence to trigger UserStopSpeaking
   min_volume: 0.4  # Microphone volumn threshold for VAD
 
 stt:
   type: nemo # choices in ['nemo'] currently only NeMo is supported
-  model: "stt_en_fastconformer_hybrid_large_streaming_80ms"
+  # model: "stt_en_fastconformer_hybrid_large_streaming_80ms"
+  model: /media/data3/pretrained_models/nemo_asr/parakeet_rnnt_realtime_eou_120m_hf930.nemo
   model_config: "./server_configs/stt_configs/nemo_cache_aware_streaming.yaml"
   device: "cuda"
 

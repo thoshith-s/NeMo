@@ -48,6 +48,7 @@ class NeMoTurnTakingService(FrameProcessor):
         use_diar: bool = False,
         max_buffer_size: int = 3,
         bot_stop_delay: float = 0.5,
+        ignore_interim_transcription: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -57,6 +58,7 @@ class NeMoTurnTakingService(FrameProcessor):
         self.use_vad = use_vad
         self.use_diar = use_diar
         self.max_buffer_size = max_buffer_size
+        self.ignore_interim_transcription = ignore_interim_transcription
 
         self.backchannel_phrases = self._load_backchannel_phrases(backchannel_phrases)
         self.backchannel_phrases_nopc = set([self.clean_text(phrase) for phrase in self.backchannel_phrases])
@@ -130,7 +132,10 @@ class NeMoTurnTakingService(FrameProcessor):
                 self._bot_speaking = False
 
         if isinstance(frame, (TranscriptionFrame, InterimTranscriptionFrame)):
-            await self._handle_transcription(frame, direction)
+            if self.ignore_interim_transcription and isinstance(frame, InterimTranscriptionFrame):
+                logger.debug("Ignoring interim transcription frame")
+            else:
+                await self._handle_transcription(frame, direction)
         elif isinstance(frame, VADUserStartedSpeakingFrame):
             await self._handle_user_started_speaking(frame, direction)
         elif isinstance(frame, VADUserStoppedSpeakingFrame):
