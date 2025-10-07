@@ -53,4 +53,44 @@ dataset_meta_info = {
         'audio_dir': '/',
         'feature_dir': None,
     },
+    'es_unseen_small': {
+        'manifest_path': '/lustre/fsw/llmservice_nemo_speechlm/data/TTS/evaluation_manifests/es/test_unseen_withAudioCodes_codec21Khz_no_eliz_filtered_100subset.json',
+        'audio_dir': '/lustre/fsw/llmservice_nemo_speechlm/data/TTS/CML/cml_tts_dataset_spanish_v0.1/',
+        'feature_dir': None,
+        'whisper_language': 'es',
+        'tokenizer_names': ['spanish_phoneme'],
+        'load_cached_codes_if_available': False
+    },
+    'fr_unseen_small': {
+        'manifest_path': '/lustre/fsw/llmservice_nemo_speechlm/data/TTS/evaluation_manifests/fr/test_withAudioCodes_codec21Khz_no_eliz_filtered_100subset.json',
+        'audio_dir': '/lustre/fsw/llmservice_nemo_speechlm/data/TTS/CML/cml_tts_dataset_french_v0.1/',
+        'feature_dir': None,
+        'whisper_language': 'fr',
+        'tokenizer_names': ['french_chartokenizer'],
+        'load_cached_codes_if_available': False
+    },
+    'zh_seen_small': {
+        'manifest_path': '/lustre/fsw/llmservice_nemo_speechlm/data/TTS/evaluation_manifests/zh/test_rivespeakers_zh_100subset.json',
+        'audio_dir': '/lustre/fsw/llmservice_nemo_speechlm/data/TTS/riva/zh/',
+        'feature_dir': None,
+        'whisper_language': 'zh',
+        'tokenizer_names': ['mandarin_phoneme'],
+        'load_cached_codes_if_available': False
+    },
+    'vi_seen_small': {
+        'manifest_path': '/lustre/fsw/llmservice_nemo_speechlm/data/TTS/evaluation_manifests/vi/manifest_long.json',
+        'audio_dir': '/lustre/fsw/llmservice_nemo_speechlm/data/TTS/VietnameseEvaluationData/vi',
+        'feature_dir': None,
+        'whisper_language': 'vi',
+        'tokenizer_names': ['vietnamese_phoneme'],
+        'load_cached_codes_if_available': False
+    },
+    'hi_unseen_small': {
+        'manifest_path': '/lustre/fsw/llmservice_nemo_speechlm/data/TTS/evaluation_manifests/hi/hindi_100_test.json',
+        'audio_dir': '/',
+        'feature_dir': None,
+        'whisper_language': 'hi',
+        'tokenizer_names': ['hindi_phoneme'],
+        'load_cached_codes_if_available': False
+    },
 }
