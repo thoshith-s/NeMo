@@ -21,13 +21,11 @@ import torch
 from omegaconf import DictConfig, open_dict
 from torch import Tensor
 
-from nemo.collections.asr.inference.stream.state.state import StreamingState
 from nemo.collections.asr.inference.utils.constants import BIG_EPSILON, LOG_MEL_ZERO, SMALL_EPSILON
 from nemo.collections.asr.parts.utils.asr_confidence_utils import (
     get_confidence_aggregation_bank,
     get_confidence_measure_bank,
 )
-from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 
 
 def normalize_features(features: Tensor, feature_lens: Tensor = None) -> Tensor:
@@ -289,24 +287,3 @@ def seconds_to_frames(
         return [int(s / model_stride_in_secs) for s in seconds]
 
     raise ValueError(f"Invalid type for seconds: {type(seconds)}")
-
-
-def update_partial_transcript(
-    states: List[StreamingState], tokenizer: TokenizerSpec, leading_regex_pattern: str
-) -> None:
-    """
-    Create partial transcript from the state.
-    Args:
-        states (List[StreamingState]): List of StreamingState objects.
-        tokenizer (TokenizerSpec): Used to convert tokens into text
-        leading_regex_pattern (str): Regex pattern for the punctuation marks.
-    """
-    for state in states:
-        # state tokens represent all tokens accumulated since the EOU
-        # incomplete segment tokens are the remaining tokens on the right side of the buffer after EOU
-        all_tokens = state.tokens + state.incomplete_segment_tokens
-        if len(all_tokens) > 0:
-            pt_string = tokenizer.ids_to_text(all_tokens)
-            state.partial_transcript = apply_regex_substitution(pt_string, leading_regex_pattern, r'\1')
-        else:
-            state.partial_transcript = ""

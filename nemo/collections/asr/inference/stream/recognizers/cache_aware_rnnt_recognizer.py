@@ -40,7 +40,6 @@ from nemo.collections.asr.inference.utils.recognizer_utils import (
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,
     make_preprocessor_deterministic,
-    update_partial_transcript,
 )
 from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 
@@ -292,8 +291,6 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             if eou_detected:
                 self.bpe_decoder.decode_bpe_tokens(state)
                 state.cleanup_after_eou()
-
-                # state is ready for text post-processing
                 ready_state_ids.add(frame.stream_id)
 
         return ready_state_ids
@@ -401,9 +398,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
             ready_state_ids.clear()
 
-        update_partial_transcript(
-            [self.get_state(frame.stream_id) for frame in frames], self.asr_model.tokenizer, self.leading_regex_pattern
-        )
+        self.update_partial_transcript(frames, self.asr_model.tokenizer, self.leading_regex_pattern)
 
     def get_request_generator(self) -> ContinuousBatchedRequestStreamer:
         """Initialize the request generator."""

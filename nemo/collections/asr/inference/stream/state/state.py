@@ -42,7 +42,7 @@ class StreamingState:
         # Global offset is used to keep track of the timestamps
         self.global_offset = 0
 
-        # All tokens, timestamps and conf scores that have been processed so far
+        # All tokens, timestamps and conf scores that have been processed since the last EOU
         self.tokens = []
         self.timesteps = []
         self.confidences = []
@@ -54,20 +54,26 @@ class StreamingState:
         # Tokens left in the right padding segment of the buffer
         self.incomplete_segment_tokens = []
 
-        # final_transcript, partial_transcript and final_words will be sent to the client
+        # final_transcript, partial_transcript, final_words and final_segments will be sent to the client
         self.final_transcript = ""
         self.partial_transcript = ""
         self.concat_with_space = True
         self.final_words = []
         self.final_segments = []
 
-        # After cleanup_after_response these lists are cleared
-        # words, pnc_words, itn_words, word_alignment are used when asr output is word-level
-        # pnc_words - if automatic punctuation is enabled, this will contain the punctuation marks
-        #                (either with external PnC model or with built-in PnC from the ASR model)
-        #             If automatic punctuation is disabled, this will NOT contain any punctuation marks and capitalized words
-        #                (even if ASR output contains punctuation marks, they will be removed)
-        # itn_words - list of words after PnC+ITN
+        # Word-level ASR output attributes (cleared after cleanup_after_response):
+        # - words: Raw word-level ASR output
+        # - pnc_words: Words with punctuation and capitalization applied
+        #   * When automatic punctuation is ENABLED: Contains punctuation marks and capitalization
+        #     (from either external PnC model or built-in ASR model PnC)
+        #   * When automatic punctuation is DISABLED: No punctuation or capitalization
+        #     (any punctuation in raw ASR output will be removed)
+        # - itn_words: Words after applying both PnC and ITN (Inverse Text Normalization)
+        # - word_alignment: ITN word alignment
+        # Segment-level ASR output attributes (cleared after cleanup_after_response):
+        # - segments: Raw segment-level ASR output
+        # - processed_segment_mask: Mask indicating which segments have been processed
+        # - final_segments: Final segment-level ASR output
         self.words = []
         self.pnc_words = []
         self.itn_words = []
@@ -164,8 +170,9 @@ class StreamingState:
             return
 
         timesteps = completed_output["timesteps"]
-        for i, t in enumerate(timesteps):
-            timesteps[i] = t + self.global_offset
+        if self.global_offset > 0:
+            for i, t in enumerate(timesteps):
+                timesteps[i] = t + self.global_offset
 
         overlap = 0
         if not self.eou_detected_before:

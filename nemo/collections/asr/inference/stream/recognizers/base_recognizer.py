@@ -21,7 +21,9 @@ from nemo.collections.asr.inference.stream.framing.request import FeatureBuffer,
 from nemo.collections.asr.inference.stream.framing.request_options import ASRRequestOptions
 from nemo.collections.asr.inference.stream.recognizers.recognizer_interface import RecognizerInterface
 from nemo.collections.asr.inference.utils.progressbar import ProgressBar
+from nemo.collections.asr.inference.utils.recognizer_utils import apply_regex_substitution
 from nemo.collections.asr.inference.utils.text_segment import TextSegment
+from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 
 
 class RecognizerOutput:
@@ -110,6 +112,27 @@ class BaseRecognizer(RecognizerInterface):
             self.transcribe_step_for_feature_buffers(fbuffers=requests)
         else:
             raise ValueError(f"Invalid request type: {type(requests[0])}")
+
+    def update_partial_transcript(
+        self, requests: List[Request], tokenizer: TokenizerSpec, leading_regex_pattern: str
+    ) -> None:
+        """
+        Update partial transcript from the state.
+        Args:
+            requests (List[Request]): List of Request objects.
+            tokenizer (TokenizerSpec): Used to convert tokens into text
+            leading_regex_pattern (str): Regex pattern for the punctuation marks.
+        """
+        for request in requests:
+            state = self.get_state(request.stream_id)
+            # state tokens represent all tokens accumulated since the EOU
+            # incomplete segment tokens are the remaining tokens on the right side of the buffer after EOU
+            all_tokens = state.tokens + state.incomplete_segment_tokens
+            if len(all_tokens) > 0:
+                pt_string = tokenizer.ids_to_text(all_tokens)
+                state.partial_transcript = apply_regex_substitution(pt_string, leading_regex_pattern, r'\1')
+            else:
+                state.partial_transcript = ""
 
     def run(
         self,

@@ -41,7 +41,6 @@ from nemo.collections.asr.inference.utils.recognizer_utils import (
     get_leading_punctuation_regex_pattern,
     make_preprocessor_deterministic,
     normalize_log_probs,
-    update_partial_transcript,
 )
 
 if TYPE_CHECKING:
@@ -275,8 +274,6 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             if eou_detected:
                 self.bpe_decoder.decode_bpe_tokens(state)
                 state.cleanup_after_eou()
-
-                # Add the state to the ready state ids
                 ready_state_ids.add(frame.stream_id)
 
             if tail_log_probs is not None:
@@ -336,7 +333,6 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
 
         ready_state_ids = set()
         if len(all_fbuffers) > 0:
-            # streams that contains multiple frames
             nonfinal_frames, nonfinal_fbuffers = [], []
             final_frames, final_fbuffers = [], []
             final_right_paddings = []
@@ -364,9 +360,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
             ready_state_ids.clear()
 
-        update_partial_transcript(
-            [self.get_state(frame.stream_id) for frame in frames], self.asr_model.tokenizer, self.leading_regex_pattern
-        )
+        self.update_partial_transcript(frames, self.asr_model.tokenizer, self.leading_regex_pattern)
 
     def transcribe_step_for_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> None:
         """Transcribe a step for feature buffers"""
@@ -374,7 +368,6 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
 
     def get_request_generator(self) -> ContinuousBatchedRequestStreamer:
         """Initialize the request generator."""
-        # for cache aware streaming we need to process one frame at a time -> n_frames_per_stream=1
         request_generator = ContinuousBatchedRequestStreamer(
             n_frames_per_stream=1,
             frame_size_in_secs=self.chunk_size_in_secs,

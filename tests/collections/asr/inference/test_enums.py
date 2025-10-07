@@ -17,6 +17,7 @@ import pytest
 from nemo.collections.asr.inference.utils.enums import (
     ASRDecodingType,
     ASROutputGranularity,
+    FeatureBufferPaddingMode,
     RecognizerType,
     RequestType,
 )
@@ -51,3 +52,10 @@ class TestEnums:
         assert RequestType.from_str("feature_buffer") == RequestType.FEATURE_BUFFER
         with pytest.raises(ValueError):
             RequestType.from_str("invalid")
+
+    @pytest.mark.unit
+    def test_FeatureBufferPaddingMode(self):
+        assert FeatureBufferPaddingMode.from_str("left") == FeatureBufferPaddingMode.LEFT
+        assert FeatureBufferPaddingMode.from_str("right") == FeatureBufferPaddingMode.RIGHT
+        with pytest.raises(ValueError):
+            FeatureBufferPaddingMode.from_str("invalid")

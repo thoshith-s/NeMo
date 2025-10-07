@@ -33,7 +33,7 @@ from nemo.collections.asr.inference.stream.recognizers.base_recognizer import Ba
 from nemo.collections.asr.inference.stream.state.ctc_state import CTCStreamingState
 from nemo.collections.asr.inference.stream.text.text_processing import StreamingTextPostprocessor
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
-from nemo.collections.asr.inference.utils.enums import RequestType
+from nemo.collections.asr.inference.utils.enums import FeatureBufferPaddingMode, RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
     drop_trailing_features,
     get_confidence_utils,
@@ -41,7 +41,6 @@ from nemo.collections.asr.inference.utils.recognizer_utils import (
     make_preprocessor_deterministic,
     normalize_features,
     normalize_log_probs,
-    update_partial_transcript,
 )
 from nemo.collections.asr.models import ASRModel
 
@@ -160,10 +159,8 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         )
 
         # Keep small amount of extra padding
-        self.padding_mode = self.streaming_cfg.padding_mode
-        if self.padding_mode not in ["left", "right"]:
-            raise ValueError(f"Unknown padding mode: {self.padding_mode}")
-        self.right_padding = self.padding_mode == "right"
+        self.padding_mode = FeatureBufferPaddingMode.from_str(self.streaming_cfg.padding_mode)
+        self.right_padding = self.padding_mode is FeatureBufferPaddingMode.RIGHT
         self.tail_padding_in_samples = int(self.chunk_size * self.sample_rate * 0.45)
         self.tail_padding_in_samples = max(self.tail_padding_in_samples, 6400)
         self.zero_log_probs = None
@@ -366,18 +363,16 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
                 if eou_detected:
                     self.bpe_decoder.decode_bpe_tokens(state)
                     state.cleanup_after_eou()
-
-                    # If there are multiple streams, we need to wait until all streams are ready
                     ready_state_ids.add(stream_id)
 
-            states = [self.get_state(request.stream_id) for request in requests]
-            update_partial_transcript(states, self.asr_model.tokenizer, self.leading_regex_pattern)
             if len(ready_state_ids) > 0:
                 self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
                 ready_state_ids.clear()
 
             postponed_requests = next_postponed_requests.copy()
             next_postponed_requests.clear()
+
+        self.update_partial_transcript(requests, self.asr_model.tokenizer, self.leading_regex_pattern)
 
     def transcribe_step_for_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> None:
         """
