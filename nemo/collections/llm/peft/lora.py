@@ -180,7 +180,7 @@ if HAVE_TE_FUSED_LORA:
                 else:
                     raise ValueError(f"Unsupported normalization ({norm_type})")
                 main_branch.append(op)
-                main_branch.append(te.ops.Quantize(forward=True, backward=False))
+                # main_branch.append(te.ops.Quantize(forward=True, backward=False))
 
             # Fork to LoRA branch
             # Note: GEMM with beta=1 in backward pass
