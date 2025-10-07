@@ -48,6 +48,7 @@ class RequestType(StrEnumMixin, Enum):
     FRAME = auto()
     FEATURE_BUFFER = auto()
 
+
 class FeatureBufferPaddingMode(StrEnumMixin, Enum):
     LEFT = auto()
     RIGHT = auto()
