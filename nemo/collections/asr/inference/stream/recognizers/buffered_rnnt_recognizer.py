@@ -70,9 +70,9 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         self.blank_id = self.asr_model.get_blank_id()
         self.vocabulary = self.asr_model.get_vocabulary()
         self.sep = self.asr_model.word_separator
-        self.underscore_id = self.asr_model.get_underscore_id
-        self.punctuation_ids = self.asr_model.get_punctuation_ids()
-        self.language_token_ids = self.asr_model.get_language_token_ids
+        self.underscore_id = self.asr_model.underscore_id
+        self.punctuation_ids = self.asr_model.punctuation_ids
+        self.language_token_ids = self.asr_model.language_token_ids
         self.tokens_to_move = self.punctuation_ids.union(self.language_token_ids)
         self.asr_output_granularity = cfg.asr_output_granularity
 

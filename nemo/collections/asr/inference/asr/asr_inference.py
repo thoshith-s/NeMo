@@ -141,7 +141,8 @@ class ASRInference:
             raise ValueError("ASR model is not initialized.")
         return self.tokenizer.supported_punctuation - set("'")
 
-    def get_punctuation_ids(self) -> Set:
+    @cached_property
+    def punctuation_ids(self) -> Set:
         """
         Returns:
             (set) Set of punctuation ids.
@@ -153,7 +154,7 @@ class ASRInference:
         return punctuation_ids
 
     @cached_property
-    def get_underscore_id(self) -> int:
+    def underscore_id(self) -> int:
         """
         Returns:
             (int) underscore id for the model.
@@ -164,7 +165,7 @@ class ASRInference:
             return self.asr_model.tokenizer.tokens_to_ids(SENTENCEPIECE_UNDERSCORE)
 
     @cached_property
-    def get_language_token_ids(self) -> Set:
+    def language_token_ids(self) -> Set:
         """
         This property is used for some Riva models that have language tokens included in their vocabulary.
         Returns:

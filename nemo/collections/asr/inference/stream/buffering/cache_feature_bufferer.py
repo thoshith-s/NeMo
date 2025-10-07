@@ -159,14 +159,6 @@ class CacheFeatureBufferer:
         self._update_feature_buffer(features[:, -self.feature_chunk_len :])
         self.right_padding = right_padding
 
-    def get_buffer(self) -> torch.Tensor:
-        """
-        Get the current sample buffer
-        Returns:
-            torch.Tensor: current state of the buffer
-        """
-        return self.sample_buffer.get_buffer()
-
     def get_feature_buffer(self) -> torch.Tensor:
         """
         Get the current feature buffer

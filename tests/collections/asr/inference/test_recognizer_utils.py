@@ -13,11 +13,12 @@
 # limitations under the License.
 
 
+import re
+
 import pytest
 import torch
 
 from nemo.collections.asr.inference.utils.recognizer_utils import (
-    apply_regex_substitution,
     drop_trailing_features,
     get_leading_punctuation_regex_pattern,
     get_repeated_punctuation_regex_pattern,
@@ -49,7 +50,7 @@ class TestRecognizerUtils:
     def test_remove_leading_punctuation_spaces(self, text, expected_text):
         puncts = {"!", "?", ".", ","}
         pattern = get_leading_punctuation_regex_pattern(puncts)
-        assert apply_regex_substitution(text, pattern, r'\1') == expected_text
+        assert re.sub(pattern, r'\1', text) == expected_text
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -65,4 +66,4 @@ class TestRecognizerUtils:
     def test_remove_repeated_punctuation(self, text, expected_text):
         puncts = {"!", "?", ".", ","}
         pattern = get_repeated_punctuation_regex_pattern(puncts)
-        assert apply_regex_substitution(text, pattern, r'\1') == expected_text
+        assert re.sub(pattern, r'\1', text) == expected_text

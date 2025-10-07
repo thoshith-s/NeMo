@@ -176,21 +176,6 @@ def get_repeated_punctuation_regex_pattern(puncts: Set[str]) -> str:
     return r'([' + escaped_puncts + r']){2,}'
 
 
-def apply_regex_substitution(text: str, pattern: str, replacement: str = r'\1') -> str:
-    """
-    Apply regex substitution to the text.
-    Args:
-        text (str): Text to apply regex substitution to.
-        pattern (str): Regex pattern to apply.
-        replacement (str): Replacement string.
-    Returns:
-        (str) Text with regex substitution applied.
-    """
-    if not pattern or not text:
-        return text
-    return re.sub(pattern, replacement, text)
-
-
 def update_punctuation_and_language_tokens_timestamps(
     tokens: Tensor, timestamp: Tensor, tokens_to_move: Set[int], underscore_id: int
 ) -> Tensor:

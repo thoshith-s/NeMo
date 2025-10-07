@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import re
 from abc import abstractmethod
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -21,7 +21,6 @@ from nemo.collections.asr.inference.stream.framing.request import FeatureBuffer,
 from nemo.collections.asr.inference.stream.framing.request_options import ASRRequestOptions
 from nemo.collections.asr.inference.stream.recognizers.recognizer_interface import RecognizerInterface
 from nemo.collections.asr.inference.utils.progressbar import ProgressBar
-from nemo.collections.asr.inference.utils.recognizer_utils import apply_regex_substitution
 from nemo.collections.asr.inference.utils.text_segment import TextSegment
 from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 
@@ -130,7 +129,9 @@ class BaseRecognizer(RecognizerInterface):
             all_tokens = state.tokens + state.incomplete_segment_tokens
             if len(all_tokens) > 0:
                 pt_string = tokenizer.ids_to_text(all_tokens)
-                state.partial_transcript = apply_regex_substitution(pt_string, leading_regex_pattern, r'\1')
+                if leading_regex_pattern:
+                    pt_string = re.sub(leading_regex_pattern, r'\1', pt_string)
+                state.partial_transcript = pt_string
             else:
                 state.partial_transcript = ""
 

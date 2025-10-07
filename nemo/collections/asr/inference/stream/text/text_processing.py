@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import re
 from functools import partial
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Tuple
 
@@ -22,7 +23,6 @@ from omegaconf import DictConfig
 from nemo.collections.asr.inference.stream.state.state import StreamingState
 from nemo.collections.asr.inference.utils.constants import POST_WORD_PUNCTUATION
 from nemo.collections.asr.inference.utils.recognizer_utils import (
-    apply_regex_substitution,
     get_leading_punctuation_regex_pattern,
     get_repeated_punctuation_regex_pattern,
 )
@@ -255,8 +255,10 @@ class StreamingTextPostprocessor:
         for state in states_with_text:
             if state.options.enable_pnc:
                 for seg in state.segments:
-                    seg.text = apply_regex_substitution(seg.text, self.leading_punctuation_regex_pattern, r'\1')
-                    seg.text = apply_regex_substitution(seg.text, self.repeated_punctuation_regex_pattern, r'\1')
+                    if self.leading_punctuation_regex_pattern:
+                        seg.text = re.sub(self.leading_punctuation_regex_pattern, r'\1', seg.text)
+                    if self.repeated_punctuation_regex_pattern:
+                        seg.text = re.sub(self.repeated_punctuation_regex_pattern, r'\1', seg.text)
             state.processed_segment_mask = [True] * len(state.segments)
 
     def process_states_with_word_boundaries(self, states: List[StreamingState]) -> None:
