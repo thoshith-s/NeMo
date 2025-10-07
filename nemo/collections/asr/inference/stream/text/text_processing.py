@@ -22,9 +22,9 @@ from omegaconf import DictConfig
 from nemo.collections.asr.inference.stream.state.state import StreamingState
 from nemo.collections.asr.inference.utils.constants import POST_WORD_PUNCTUATION
 from nemo.collections.asr.inference.utils.recognizer_utils import (
+    apply_regex_substitution,
     get_leading_punctuation_regex_pattern,
     get_repeated_punctuation_regex_pattern,
-    apply_regex_substitution,
 )
 from nemo.collections.asr.inference.utils.text_segment import Word, normalize_segments_inplace
 from nemo.utils import logging

@@ -35,13 +35,13 @@ from nemo.collections.asr.inference.stream.text.text_processing import Streaming
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.enums import RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
-    update_partial_transcript,
     drop_trailing_features,
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,
     make_preprocessor_deterministic,
     normalize_features,
     normalize_log_probs,
+    update_partial_transcript,
 )
 from nemo.collections.asr.models import ASRModel
 

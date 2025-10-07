@@ -36,12 +36,12 @@ from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.enums import RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
     adjust_vad_segments,
-    update_partial_transcript,
     drop_trailing_features,
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,
     make_preprocessor_deterministic,
     normalize_features,
+    update_partial_transcript,
     update_punctuation_and_language_tokens_timestamps,
 )
 from nemo.collections.asr.models import ASRModel
