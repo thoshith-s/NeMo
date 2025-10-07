@@ -37,7 +37,7 @@ from nemo.collections.asr.inference.utils.context_manager import CacheAwareConte
 from nemo.collections.asr.inference.utils.endpointing_utils import millisecond_to_frames
 from nemo.collections.asr.inference.utils.enums import RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
-    create_partial_transcript,
+    update_partial_transcript,
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,
     make_preprocessor_deterministic,
@@ -364,7 +364,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
             ready_state_ids.clear()
 
-        create_partial_transcript(
+        update_partial_transcript(
             [self.get_state(frame.stream_id) for frame in frames], self.asr_model.tokenizer, self.leading_regex_pattern
         )
 

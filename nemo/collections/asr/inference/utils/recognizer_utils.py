@@ -77,7 +77,7 @@ def memoize_normalization_mode():
                     mode = 'prob'
                 else:
                     if not torch.allclose(log_probs[0][0].exp().sum(), ONE, atol=BIG_EPSILON):
-                        # It's neither prob nor log-softmax, need toapply log_softmax
+                        # It's neither prob nor log-softmax, need to apply log_softmax
                         mode = "logits"
                     else:
                         # It's already in log-softmax form
@@ -178,32 +178,19 @@ def get_repeated_punctuation_regex_pattern(puncts: Set[str]) -> str:
     return r'([' + escaped_puncts + r']){2,}'
 
 
-def remove_leading_punctuation_spaces(text: str, pattern: str) -> str:
+def apply_regex_substitution(text: str, pattern: str, replacement: str = r'\1') -> str:
     """
-    Remove spaces before punctuation marks in the text.
+    Apply regex substitution to the text.
     Args:
-        text (str): Text to remove spaces before punctuation marks from.
-        pattern (str): Regex pattern for the punctuation marks.
+        text (str): Text to apply regex substitution to.
+        pattern (str): Regex pattern to apply.
+        replacement (str): Replacement string.
     Returns:
-        (str) Text with spaces before punctuation marks removed.
+        (str) Text with regex substitution applied.
     """
-    if not pattern or text == "":
+    if not pattern or not text:
         return text
-    return re.sub(pattern, r'\1', text)
-
-
-def remove_repeated_punctuation(text: str, pattern: str) -> str:
-    """
-    Remove repeated punctuation marks in the text.
-    Args:
-        text (str): Text to remove repeated punctuation marks from.
-        pattern (str): Regex pattern for the punctuation marks.
-    Returns:
-        (str) Text with repeated punctuation marks removed.
-    """
-    if not pattern or text == "":
-        return text
-    return re.sub(pattern, r'\1', text)
+    return re.sub(pattern, replacement, text)
 
 
 def update_punctuation_and_language_tokens_timestamps(
@@ -304,7 +291,7 @@ def seconds_to_frames(
     raise ValueError(f"Invalid type for seconds: {type(seconds)}")
 
 
-def create_partial_transcript(
+def update_partial_transcript(
     states: List[StreamingState], tokenizer: TokenizerSpec, leading_regex_pattern: str
 ) -> None:
     """
@@ -320,6 +307,6 @@ def create_partial_transcript(
         all_tokens = state.tokens + state.incomplete_segment_tokens
         if len(all_tokens) > 0:
             pt_string = tokenizer.ids_to_text(all_tokens)
-            state.partial_transcript = remove_leading_punctuation_spaces(pt_string, leading_regex_pattern)
+            state.partial_transcript = apply_regex_substitution(pt_string, leading_regex_pattern, r'\1')
         else:
             state.partial_transcript = ""

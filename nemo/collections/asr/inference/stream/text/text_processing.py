@@ -24,8 +24,7 @@ from nemo.collections.asr.inference.utils.constants import POST_WORD_PUNCTUATION
 from nemo.collections.asr.inference.utils.recognizer_utils import (
     get_leading_punctuation_regex_pattern,
     get_repeated_punctuation_regex_pattern,
-    remove_leading_punctuation_spaces,
-    remove_repeated_punctuation,
+    apply_regex_substitution,
 )
 from nemo.collections.asr.inference.utils.text_segment import Word, normalize_segments_inplace
 from nemo.utils import logging
@@ -256,8 +255,8 @@ class StreamingTextPostprocessor:
         for state in states_with_text:
             if state.options.enable_pnc:
                 for seg in state.segments:
-                    seg.text = remove_leading_punctuation_spaces(seg.text, self.leading_punctuation_regex_pattern)
-                    seg.text = remove_repeated_punctuation(seg.text, self.repeated_punctuation_regex_pattern)
+                    seg.text = apply_regex_substitution(seg.text, self.leading_punctuation_regex_pattern, r'\1')
+                    seg.text = apply_regex_substitution(seg.text, self.repeated_punctuation_regex_pattern, r'\1')
             state.processed_segment_mask = [True] * len(state.segments)
 
     def process_states_with_word_boundaries(self, states: List[StreamingState]) -> None:

@@ -36,7 +36,7 @@ from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.enums import RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
     adjust_vad_segments,
-    create_partial_transcript,
+    update_partial_transcript,
     drop_trailing_features,
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,
@@ -546,7 +546,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
                 self.bpe_decoder.decode_bpe_tokens(state)
                 state.cleanup_after_eou()
                 ready_state_ids.add(request.stream_id)
-        create_partial_transcript(states, self.asr_model.tokenizer, self.leading_regex_pattern)
+        update_partial_transcript(states, self.asr_model.tokenizer, self.leading_regex_pattern)
         return ready_state_ids
 
     def shared_transcribe_step_stateful(self, requests: List[Request], encs: Tensor, enc_lens: Tensor) -> None:

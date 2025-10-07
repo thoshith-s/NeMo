@@ -13,13 +13,42 @@
 # limitations under the License.
 
 
-from typing import List, Set, Union
+from functools import lru_cache
+from typing import FrozenSet, List, Set, Union
 
-from nemo.collections.asr.inference.utils.constants import (
-    BIG_EPSILON,
-    DEFAULT_SEMIOTIC_CLASS,
-    SEP_REPLACEABLE_PUNCTUATION,
-)
+from nemo.collections.asr.inference.utils.constants import DEFAULT_SEMIOTIC_CLASS, SEP_REPLACEABLE_PUNCTUATION
+
+
+@lru_cache(maxsize=5)
+def get_translation_table(punct_marks_frozen: FrozenSet[str], sep: str) -> dict:
+    """
+    Create and cache translation table for text normalization.
+
+    Args:
+        punct_marks_frozen: Frozen set of punctuation marks to process
+        sep: Separator to replace certain punctuation marks
+
+    Returns:
+        Translation table for str.translate()
+    """
+    replace_map = {mark: sep if mark in SEP_REPLACEABLE_PUNCTUATION else "" for mark in punct_marks_frozen}
+    return str.maketrans(replace_map)
+
+
+def normalize_text(text: str, punct_marks: Set[str], sep: str) -> str:
+    """
+    Helper to normalize text by removing/replacing punctuation and lowercasing.
+
+    Args:
+        text: Text to normalize
+        punct_marks: Set of punctuation marks to process
+        sep: Separator to replace certain punctuation marks
+
+    Returns:
+        Normalized text
+    """
+    trans_table = get_translation_table(frozenset(punct_marks), sep)
+    return text.translate(trans_table).lower()
 
 
 def validate_init_params(
@@ -130,8 +159,7 @@ class TextSegment:
         Returns:
             A new TextSegment instance with identical properties
         """
-        new = TextSegment(text=self.text, start=self.start, end=self.end, conf=self.conf)
-        return new
+        return TextSegment(text=self.text, start=self.start, end=self.end, conf=self.conf)
 
     def capitalize(self) -> None:
         """Capitalize first letter of the text segment."""
@@ -148,13 +176,9 @@ class TextSegment:
         Returns:
             New TextSegment instance with normalized text
         """
-        replace_map = {mark: sep if mark in SEP_REPLACEABLE_PUNCTUATION else "" for mark in punct_marks}
-        trans_table = str.maketrans(replace_map)
-        normalized_text = self.text.translate(trans_table).lower()
-
         # Return new instance instead of modifying in place
         obj_copy = self.copy()
-        obj_copy.text = normalized_text
+        obj_copy._text = normalize_text(self._text, punct_marks, sep)  # Direct access
         return obj_copy
 
     def normalize_text_inplace(self, punct_marks: Set[str], sep: str = "") -> None:
@@ -169,29 +193,7 @@ class TextSegment:
             This method modifies the current instance. Consider using
             with_normalized_text() for a functional approach.
         """
-        replace_map = {mark: sep if mark in SEP_REPLACEABLE_PUNCTUATION else "" for mark in punct_marks}
-        trans_table = str.maketrans(replace_map)
-        self.text = self.text.translate(trans_table).lower()
-
-    def __eq__(self, other: object) -> bool:
-        """
-        Check equality with another TextSegment instance.
-
-        Args:
-            other: Another object to compare with
-
-        Returns:
-            True if both instances represent the same text segment
-        """
-        if not isinstance(other, TextSegment):
-            raise NotImplementedError(f"Cannot compare TextSegment with {type(other)}")
-
-        return (
-            self.text == other.text
-            and abs(self.start - other.start) < BIG_EPSILON
-            and abs(self.end - other.end) < BIG_EPSILON
-            and abs(self.conf - other.conf) < BIG_EPSILON
-        )
+        self._text = normalize_text(self._text, punct_marks, sep)  # Direct access
 
     def to_dict(self) -> dict:
         """
@@ -206,7 +208,7 @@ class TextSegment:
 
 
 class Word(TextSegment):
-    __slots__ = ['_text', '_start', '_end', '_conf', '_semiotic_class']
+    __slots__ = ['_semiotic_class']
 
     def __init__(
         self, text: str, start: float, end: float, conf: float, semiotic_class: str = DEFAULT_SEMIOTIC_CLASS
@@ -248,23 +250,7 @@ class Word(TextSegment):
         Returns:
             A new Word instance with identical properties
         """
-        new = Word(text=self.text, start=self.start, end=self.end, conf=self.conf, semiotic_class=self.semiotic_class)
-        return new
-
-    def __eq__(self, other: object) -> bool:
-        """
-        Check equality with another Word instance.
-
-        Args:
-            other: Another object to compare with
-
-        Returns:
-            True if both instances represent the same word
-        """
-        if not isinstance(other, Word):
-            raise NotImplementedError(f"Cannot compare Word with {type(other)}")
-
-        return super().__eq__(other) and self.semiotic_class == other.semiotic_class
+        return Word(text=self.text, start=self.start, end=self.end, conf=self.conf, semiotic_class=self.semiotic_class)
 
     def to_dict(self) -> dict:
         """

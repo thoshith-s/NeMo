@@ -35,7 +35,7 @@ from nemo.collections.asr.inference.stream.text.text_processing import Streaming
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.enums import RequestType
 from nemo.collections.asr.inference.utils.recognizer_utils import (
-    create_partial_transcript,
+    update_partial_transcript,
     drop_trailing_features,
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,
@@ -371,7 +371,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
                     ready_state_ids.add(stream_id)
 
             states = [self.get_state(request.stream_id) for request in requests]
-            create_partial_transcript(states, self.asr_model.tokenizer, self.leading_regex_pattern)
+            update_partial_transcript(states, self.asr_model.tokenizer, self.leading_regex_pattern)
             if len(ready_state_ids) > 0:
                 self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
                 ready_state_ids.clear()
