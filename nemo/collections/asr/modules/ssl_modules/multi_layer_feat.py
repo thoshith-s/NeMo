@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torch.distributed
@@ -25,7 +25,6 @@ from nemo.collections.asr.modules import (
 )
 from nemo.core.classes import Exportable, NeuralModule
 from nemo.core.classes.mixins import AccessMixin
-from nemo.utils import logging
 
 
 class Aggregator(nn.Module):
