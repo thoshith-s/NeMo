@@ -80,10 +80,9 @@ class CacheAwareStreamingState(StreamingState):
         if len(completed_output) == 0 or len(completed_output["tokens"]) == 0:
             return
 
-        if self.global_offset > 0:
-            timesteps = completed_output["timesteps"]
-            for i, t in enumerate(timesteps):
-                timesteps[i] = t + self.global_offset
+        timesteps = completed_output["timesteps"]
+        for i, t in enumerate(timesteps):
+            timesteps[i] = t + self.global_offset
 
         # we will not perform overlap aware merging of the tokens for CacheAware Models
         # It is too error-prone to do this in the streaming mode -> skip=0

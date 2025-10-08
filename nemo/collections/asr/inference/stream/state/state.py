@@ -170,9 +170,8 @@ class StreamingState:
             return
 
         timesteps = completed_output["timesteps"]
-        if self.global_offset > 0:
-            for i, t in enumerate(timesteps):
-                timesteps[i] = t + self.global_offset
+        for i, t in enumerate(timesteps):
+            timesteps[i] = t + self.global_offset
 
         overlap = 0
         if not self.eou_detected_before:

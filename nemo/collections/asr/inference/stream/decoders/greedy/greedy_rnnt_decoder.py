@@ -18,7 +18,6 @@ from typing import Callable, Dict, List, Tuple
 import torch
 
 from nemo.collections.asr.inference.stream.decoders.greedy.greedy_decoder import GreedyDecoder
-from nemo.collections.asr.inference.utils.recognizer_utils import normalize_log_probs
 
 
 class RNNTGreedyDecoder(GreedyDecoder):
@@ -32,31 +31,14 @@ class RNNTGreedyDecoder(GreedyDecoder):
         """
         super().__init__(vocabulary, conf_func)
 
-    @staticmethod
-    def get_labels(alignment: List[List[Tuple[torch.Tensor, torch.Tensor]]]) -> List[int]:
-        """
-        Get the first emitted labels from each timestep
-        Args:
-            alignment (List[List[Tuple[torch.Tensor, torch.Tensor]]]): alignment
-        Returns:
-            List[int]: list of first emitted labels
-        """
-        tokens = []
-        for t in range(len(alignment)):
-            _, token_id = alignment[t][0]
-            tokens.append(int(token_id))
-        return tokens
-
-    def __call_with_timestamps__(
+    def __call__(
         self,
         global_timestamps: torch.Tensor | List[int],
         tokens: torch.Tensor | List[int],
         length: int,
         offset: int = 0,
     ):
-        """
-        Decode the RNNT alignment with timestamps
-        """
+        """Decode the RNNT hypothesis using timestamps"""
         if isinstance(global_timestamps, list):
             global_timestamps = torch.tensor(global_timestamps)
         if isinstance(tokens, list):
@@ -85,46 +67,6 @@ class RNNTGreedyDecoder(GreedyDecoder):
             cur_labels[t % length] = token
         return output, cur_labels, new_offset
 
-    def __call__(self, alignment, compute_confidence: bool = True) -> Dict:
-        """
-        Greedy decode the RNNT alignment
-        Args:
-            alignment (List[List[Tuple[torch.Tensor, torch.Tensor]]]):
-                where alignment[t][u] is a tuple of tensors indicating log_probs and token_id
-            compute_confidence (bool): compute confidence or not
-        Returns:
-            dict: output dictionary containing tokens, timesteps, and confidences
-        """
-
-        compute_confidence = compute_confidence and self.conf_func is not None
-
-        output = {"tokens": [], "timesteps": [], "confidences": [], "last_token": None, "last_token_idx": None}
-
-        log_probs = []
-        for t in range(len(alignment)):
-            for u in range(len(alignment[t])):
-                logprob, token_id = alignment[t][u]  # (logprob, token_id)
-                token_id = int(token_id)
-                if token_id != self.blank_id:
-                    output["tokens"].append(token_id)
-                    output["timesteps"].append(t)
-                    log_probs.append(logprob)
-
-                    output["last_token"] = token_id
-                    output["last_token_idx"] = t
-
-        if compute_confidence and len(log_probs) > 0:
-            log_probs = [logprob.unsqueeze(0) for logprob in log_probs]
-            log_probs = torch.cat(log_probs, dim=0)  # (T, V)
-            log_probs = log_probs.unsqueeze(0)  # (1, T, V)
-            log_probs = normalize_log_probs(log_probs).cpu()  # 1 x T x N
-            confidences = self.conf_func(log_probs[0], v=log_probs.shape[2])  # 1 x T
-            if confidences.dim() == 2 and confidences.shape[0] == 1:
-                confidences = confidences.squeeze(0).tolist()
-            output["confidences"] = confidences.tolist()
-
-        return output
-
 
 class ClippedRNNTGreedyDecoder:
 
@@ -140,97 +82,6 @@ class ClippedRNNTGreedyDecoder:
         self.greedy_decoder = RNNTGreedyDecoder(vocabulary, conf_func)
         self.endpointer = endpointer
         self.tokens_per_frame = tokens_per_frame
-
-    def extract_tail_tokens(self, alignment: List, start_idx: int, end_idx: int) -> List[int]:
-        """
-        Extract non-blank tokens from alignment between start_idx and end_idx
-        Args:
-            alignment (List): alignment
-            start_idx (int): start index
-            end_idx (int): end index
-        Returns:
-            List[int]: list of non-blank tokens
-        """
-        tokens = []
-        for t in range(start_idx, end_idx):
-            for u in range(len(alignment[t])):
-                _, token_id = alignment[t][u]
-                token_id = int(token_id)
-                if token_id != self.greedy_decoder.blank_id:
-                    tokens.append(token_id)
-        return tokens
-
-    def __call__(
-        self,
-        alignment,
-        clip_start: int,
-        clip_end: int,
-        is_last: bool = False,
-        is_start: bool = True,
-        return_tail_result: bool = False,
-        state_start_idx: int = 0,
-        state_end_idx: int = 0,
-        stop_history_eou: int = None,
-    ) -> Tuple[Dict, Dict, bool, int, int]:
-        """
-        Decode the alignment within the clip range (clip_start, clip_end)
-        Args:
-            alignment (List[List[Tuple[torch.Tensor, torch.Tensor]]]):
-                where alignment[t][u] is a tuple of tensors indicating log_probs and token_id
-            clip_start (int): start index of the clip
-            clip_end (int): end index of the clip
-            is_last (bool): is the last frame or not.
-            is_start (bool): is the first frame for this stream or not.
-            return_tail_result (bool): return tail result left after clip_end in the buffer
-            state_start_idx (int): start index from stream state
-            state_end_idx (int): end index from stream state
-            stop_history_eou (int): stop history of EOU, if None then use the default stop history
-        Returns:
-            Tuple[Dict, Dict, bool, int, int]:
-                clipped output, tail output, is_eou, updated start_idx, updated end_idx
-        """
-        # Initialize end-of-utterance state based on input parameters
-        is_eou = is_last
-        eou_detected_at = len(alignment)
-
-        # Initialize state tracking variables from input parameters
-        start_idx, end_idx = state_start_idx, state_end_idx
-        # Update indices for next processing step
-        if end_idx > clip_start:
-            end_idx -= self.tokens_per_frame
-            start_idx = end_idx
-
-        if is_start or end_idx <= clip_start:
-            start_idx, end_idx = clip_start, clip_end
-
-        # If not already at end of utterance and endpointer exists, try to detect end of utterance
-        if not is_eou and self.endpointer is not None:
-            is_eou, eou_detected_at = self.endpointer.detect_eou(
-                alignment=alignment,
-                pivot_point=start_idx,
-                search_start_point=clip_start,
-                stop_history_eou=stop_history_eou,
-            )
-
-        # If end of utterance is detected beyond current end index, extend end index to include it
-        if is_eou and eou_detected_at > end_idx:
-            end_idx = eou_detected_at
-
-        # If the end index is within the clip range, set the end index to the clip end
-        if clip_start <= end_idx < clip_end:
-            end_idx = clip_end
-            is_eou = False
-
-        # Create a clipped alignment from start to end index and decode it
-        clipped_alignment = alignment[start_idx:end_idx]
-        clipped_output = self.greedy_decoder(clipped_alignment, compute_confidence=True)
-
-        # If requested, extract tokens after end index for partial results
-        tail_output = {"tokens": []}
-        if return_tail_result:
-            tail_output = {"tokens": self.extract_tail_tokens(alignment, end_idx, len(alignment))}
-
-        return clipped_output, tail_output, is_eou, start_idx, end_idx
 
     @staticmethod
     def extract_clipped_and_tail_single_pass(
@@ -252,7 +103,7 @@ class ClippedRNNTGreedyDecoder:
 
         return clipped_timesteps, clipped_tokens, tail_tokens
 
-    def __call_with_timestamps__(
+    def __call__(
         self,
         global_timesteps: torch.Tensor,
         tokens: torch.Tensor,

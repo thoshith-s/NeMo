@@ -159,8 +159,8 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
             residue_tokens_at_end=cfg.endpointing.residue_tokens_at_end,
         )
 
-        # Alignment decoder
-        self.greedy_alignment_decoder = ClippedRNNTGreedyDecoder(
+        # Greedy RNNT decoder
+        self.greedy_rnnt_decoder = ClippedRNNTGreedyDecoder(
             vocabulary=self.vocabulary,
             conf_func=self.conf_func,
             endpointer=self.endpointer,
@@ -356,33 +356,6 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         return encs, enc_lens
 
     def run_greedy_decoder(
-        self, state: RNNTStreamingState, request: Request, alignment: List, start: int, end: int
-    ) -> bool:
-        """Greedy RNN-T alignment decoder."""
-
-        clipped_output, tail_output, eou_detected, start_idx, end_idx = self.greedy_alignment_decoder(
-            alignment=alignment,
-            clip_start=start,
-            clip_end=end,
-            is_last=request.is_last,
-            is_start=request.is_first,
-            return_tail_result=self.return_tail_result,
-            state_start_idx=state.decoder_start_idx,
-            state_end_idx=state.decoder_end_idx,
-            stop_history_eou=state.options.stop_history_eou,
-        )
-
-        state.update_state(clipped_output, eou_detected)
-        state.update_from_decoder_results(start_idx, end_idx)
-        if self.stateless:
-            # For stateless mode, we need to set the last token, it will be used for filtering duplicate tokens
-            state.set_last_token(clipped_output["last_token"], clipped_output["last_token_idx"])
-            # For stateless mode, we need to increment the global offset
-            state.increment_global_offset(self.tokens_per_frame_float)
-        state.set_incomplete_segment_tokens(tail_output["tokens"])
-        return eou_detected
-
-    def run_timestamp_decoder(
         self,
         state: RNNTStreamingState,
         request: Request,
@@ -394,26 +367,24 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         timestamp_offset: int = 0,
         vad_segments: torch.Tensor = None,
     ) -> bool:
-        """Timestamp-based RNN-T decoder."""
+        """Greedy RNN-T decoder."""
         if self.stateful and vad_segments is not None:
             vad_segments = adjust_vad_segments(vad_segments, self.left_padding_size)
 
-        clipped_output, tail_output, eou_detected, start_idx, end_idx = (
-            self.greedy_alignment_decoder.__call_with_timestamps__(
-                global_timesteps=timesteps,
-                tokens=tokens,
-                alignment_length=alignment_length,
-                clip_start=start,
-                clip_end=end,
-                is_last=request.is_last,
-                is_start=request.is_first,
-                return_tail_result=self.return_tail_result,
-                state_start_idx=state.decoder_start_idx,
-                state_end_idx=state.decoder_end_idx,
-                timestamp_offset=timestamp_offset,
-                vad_segments=vad_segments,
-                stop_history_eou=state.options.stop_history_eou,
-            )
+        clipped_output, tail_output, eou_detected, start_idx, end_idx = self.greedy_rnnt_decoder(
+            global_timesteps=timesteps,
+            tokens=tokens,
+            alignment_length=alignment_length,
+            clip_start=start,
+            clip_end=end,
+            is_last=request.is_last,
+            is_start=request.is_first,
+            return_tail_result=self.return_tail_result,
+            state_start_idx=state.decoder_start_idx,
+            state_end_idx=state.decoder_end_idx,
+            timestamp_offset=timestamp_offset,
+            vad_segments=vad_segments,
+            stop_history_eou=state.options.stop_history_eou,
         )
         state.update_state(clipped_output, eou_detected)
         state.update_from_decoder_results(start_idx, end_idx)
@@ -435,7 +406,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         states = [self.get_state(request.stream_id) for request in requests]
         best_hyp = self.asr_model.decode(encs, enc_lens, partial_hypotheses=None)
         # For stateless mode, use zero timestamp offsets since we don't track timestamps
-        ready_states = self.alignment_decode_step(best_hyp, requests, states)
+        ready_states = self.decode_step(best_hyp, requests, states)
         ready_state_ids.update(ready_states)
 
     def stateful_transcribe_step(
@@ -477,34 +448,28 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
             for state, hyp in zip(states, best_hyp):
                 state.hyp_decoding_state = hyp.dec_state
 
-        ready_states = self.alignment_decode_step(best_hyp, requests, states)
+        ready_states = self.decode_step(best_hyp, requests, states)
         for curr_state in states:
             curr_state.timestamp_offset += self.tokens_per_frame_float
         ready_state_ids.update(ready_states)
 
-    def alignment_decode_step(self, best_hyp: List, requests: List[Request], states: List[RNNTStreamingState]) -> Set:
+    def decode_step(self, best_hyp: List, requests: List[Request], states: List[RNNTStreamingState]) -> Set:
         """
-        Perform alignment decoding to get the best hypothesis and update the state.
+        Perform greedy RNNT decoding to get the best hypothesis and update the state.
         If EOU is detected, push the words to the state and cleanup the state.
         """
-
-        # run greedy alignment decoder for each frame-state-alignment tuple
         ready_state_ids = set()
         for idx, hyp in enumerate(best_hyp):
             state = states[idx]
             request = requests[idx]
-            if hyp.alignments is None:
-                # Perform timestamp based decoding for the hypothesis
-                if self.stateful:
-                    alignment_length = self.tokens_per_right_padding + self.tokens_per_frame
-                else:
-                    if self.request_type is RequestType.FEATURE_BUFFER:
-                        alignment_length = math.ceil(request.size / self.subsampling_factor)
-                    else:  # RequestType.FRAME
-                        alignment_length = math.ceil(self.expected_feature_buffer_len / self.subsampling_factor)
+            # Perform timestamp based decoding for the hypothesis
+            if self.stateful:
+                alignment_length = self.tokens_per_right_padding + self.tokens_per_frame
             else:
-                # Perform greedy alignment decoding for the hypothesis
-                alignment_length = len(hyp.alignments)
+                if self.request_type is RequestType.FEATURE_BUFFER:
+                    alignment_length = math.ceil(request.size / self.subsampling_factor)
+                else:  # RequestType.FRAME
+                    alignment_length = math.ceil(self.expected_feature_buffer_len / self.subsampling_factor)
 
             if self.stateful:
                 start, end = 0, self.tokens_per_frame
@@ -515,29 +480,25 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
                 else:
                     start, end = self.get_cut_off_range(alignment_length, request.is_last)
 
-            if hasattr(hyp, 'timestamp') and hyp.timestamp is not None:
-                timestamp = hyp.timestamp
-                tokens = hyp.y_sequence
-                timestamp = torch.tensor(timestamp) if isinstance(timestamp, list) else timestamp
-                tokens = torch.tensor(tokens) if isinstance(tokens, list) else tokens
-                timestamp = update_punctuation_and_language_tokens_timestamps(
-                    tokens, timestamp, self.tokens_to_move, self.underscore_id
-                )
-                vad_segments = request.vad_segments
-                eou_detected = self.run_timestamp_decoder(
-                    state=state,
-                    request=request,
-                    timesteps=timestamp,
-                    tokens=tokens,
-                    start=start,
-                    end=end,
-                    alignment_length=alignment_length,
-                    timestamp_offset=state.timestamp_offset,
-                    vad_segments=vad_segments,
-                )
-            else:
-                alignment = hyp.alignments
-                eou_detected = self.run_greedy_decoder(state, request, alignment, start, end)
+            timestamp = hyp.timestamp
+            tokens = hyp.y_sequence
+            timestamp = torch.tensor(timestamp) if isinstance(timestamp, list) else timestamp
+            tokens = torch.tensor(tokens) if isinstance(tokens, list) else tokens
+            timestamp = update_punctuation_and_language_tokens_timestamps(
+                tokens, timestamp, self.tokens_to_move, self.underscore_id
+            )
+            vad_segments = request.vad_segments
+            eou_detected = self.run_greedy_decoder(
+                state=state,
+                request=request,
+                timesteps=timestamp,
+                tokens=tokens,
+                start=start,
+                end=end,
+                alignment_length=alignment_length,
+                timestamp_offset=state.timestamp_offset,
+                vad_segments=vad_segments,
+            )
 
             if eou_detected:
                 self.bpe_decoder.decode_bpe_tokens(state)

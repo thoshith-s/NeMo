@@ -170,8 +170,8 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             token_duration_in_secs=self.model_stride_in_secs,
         )
 
-        # RNNT gready alignment decoder
-        self.greedy_alignment_decoder = RNNTGreedyDecoder(vocabulary=self.vocabulary, conf_func=self.conf_func)
+        # RNNT gready decoder
+        self.greedy_rnnt_decoder = RNNTGreedyDecoder(vocabulary=self.vocabulary, conf_func=self.conf_func)
 
         # Endpointing
         self.stop_history_eou_in_millisecs = cfg.endpointing.stop_history_eou
@@ -243,7 +243,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
 
     def run_greedy_decoder(self, state: CacheAwareRNNTStreamingState, frame: Frame, hyp: Hypothesis) -> bool:
         """
-        Run the greedy RNNT decoder on the alignment and update the state
+        Run the greedy RNNT decoder on the hypothesis and update the state
         Args:
             state: The state of the stream
             frame: The current frame
@@ -252,18 +252,13 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             updates the state and returns a boolean indicating if EOU is detected
         """
         eou_detected = frame.is_last
-
-        if hyp.alignments is not None:
-            cur_output = self.greedy_alignment_decoder(hyp.alignments, compute_confidence=True)
-            cur_labels = self.greedy_alignment_decoder.get_labels(hyp.alignments)
-        else:
-            cur_output, cur_labels, new_offset = self.greedy_alignment_decoder.__call_with_timestamps__(
-                global_timestamps=hyp.timestamp,
-                tokens=hyp.y_sequence,
-                length=self.tokens_per_frame,
-                offset=state.offset,
-            )
-            state.set_offset(new_offset)
+        cur_output, cur_labels, new_offset = self.greedy_rnnt_decoder(
+            global_timestamps=hyp.timestamp,
+            tokens=hyp.y_sequence,
+            length=self.tokens_per_frame,
+            offset=state.offset,
+        )
+        state.set_offset(new_offset)
 
         # cur labels contains blank tokens as well, it is needed for EOU detection
         state.update_label_buffer(cur_labels)
@@ -277,26 +272,6 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
 
         state.update_state(cur_output, eou_detected=eou_detected)
         return eou_detected
-
-    def alignment_decode_step(
-        self, best_hyp: List[Hypothesis], frames: List[Frame], states: List[CacheAwareRNNTStreamingState]
-    ) -> Set:
-        """
-        Perform alignment decoding to get the best hypothesis and update the state.
-        If EOU is detected, push the words to the state and cleanup the state.
-        """
-
-        # run greedy alignment decoder for each frame-state-alignment tuple
-        ready_state_ids = set()
-        for frame, state, hyp in zip(frames, states, best_hyp):
-            eou_detected = self.run_greedy_decoder(state, frame, hyp)
-
-            if eou_detected:
-                self.bpe_decoder.decode_bpe_tokens(state)
-                state.cleanup_after_eou()
-                ready_state_ids.add(frame.stream_id)
-
-        return ready_state_ids
 
     def cache_aware_transcribe_step(
         self,
@@ -316,7 +291,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         4. Perform a streaming step with the ASR model
         5. Update the cache and reset the cache slots for the streams that has ended
         6. Update the previous hypothesis and reset the previous hypothesis for the streams that has ended
-        7. Perform alignment decoding to get the best hypothesis and update the states
+        7. Perform greedy RNNT decoding to get the best hypothesis and update the states
         8. Update the ready states to indicate that the state is ready for text post-processing
         """
 
@@ -353,8 +328,13 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             else:
                 state.set_previous_hypothesis(hyp)
 
-        ready_states = self.alignment_decode_step(best_hyp, frames, states)
-        ready_state_ids.update(ready_states)
+        # run greedy decoder for each frame-state-hypothesis tuple
+        for frame, state, hyp in zip(frames, states, best_hyp):
+            eou_detected = self.run_greedy_decoder(state, frame, hyp)
+            if eou_detected:
+                self.bpe_decoder.decode_bpe_tokens(state)
+                state.cleanup_after_eou()
+                ready_state_ids.add(frame.stream_id)
 
     def transcribe_step_for_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> None:
         """Transcribe a step for feature buffers"""

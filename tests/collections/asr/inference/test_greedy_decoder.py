@@ -80,11 +80,3 @@ class TestRNNTGreedyDecoder:
         assert decoder.count_silent_tokens([0, 1, 2, 3, 4], 0, 5) == 1
         assert decoder.count_silent_tokens([0, 1, 2, 3, 4], 0, 3) == 0
         assert decoder.first_non_silent_token([1, 2, 3, 4], 0, 5) == 0
-
-        alignment = [
-            [(None, torch.tensor(0)), (None, torch.tensor(blank_id))],
-            [(None, torch.tensor(blank_id)), (None, torch.tensor(blank_id))],
-            [(None, torch.tensor(1))],
-            [(None, torch.tensor(1)), (None, torch.tensor(blank_id))],
-        ]
-        assert decoder.get_labels(alignment) == [0, blank_id, 1, 1]
