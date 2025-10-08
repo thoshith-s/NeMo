@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,13 +30,19 @@ from nemo.core.config import hydra_runner
 from nemo.utils import logging
 
 """
-Transcribe audio file on a single CPU/GPU. Useful for transcription of moderate amounts of audio data.
+Transcribe audio manifests on distributed GPUs. Useful for transcription of moderate amounts of audio data.
+This script also supports splitting the manifest into chunks and merging the results back together.
+This script is a modified version of `transcribe_speech_distributed.py` that only takes manifest files as input.
+It is useful for transcribing a large amount of audio data that does not fit into a single job.
 
 # Arguments
   model_path: path to .nemo ASR checkpoint
   pretrained_name: name of pretrained ASR model (from NGC registry)
-  audio_dir: path to directory with audio files
-  dataset_manifest: path to dataset JSON manifest file (in NeMo formats
+  dataset_manifest: path to dataset JSON manifest file (in NeMo formats), can be a comma-separated list of manifest files
+                    or a directory containing manifest files
+  pattern: pattern to glob the manifest files if `dataset_manifest` is a directory
+  output_dir: directory to write the transcriptions
+
   compute_langs: Bool to request language ID information (if the model supports it)
   timestamps: Bool to request greedy time stamp information (if the model supports it) by default None 
 
@@ -67,23 +73,21 @@ Transcribe audio file on a single CPU/GPU. Useful for transcription of moderate 
 
 # Usage
 ASR model can be specified by either "model_path" or "pretrained_name".
-Data for transcription can be defined with either "audio_dir" or "dataset_manifest".
 append_pred - optional. Allows you to add more than one prediction to an existing .json
 pred_name_postfix - optional. The name you want to be written for the current model
 Results are returned in a JSON manifest file.
 
+```bash
 CUDA_VISIBLE_DEVICES=1 python transcribe_speech_distributed.py \
-    model_path=null \
-    pretrained_name=null \
-    audio_dir="<remove or path to folder of audio files>" \
+    model_path=<path to .nemo ASR checkpoint> \
     dataset_manifest="<remove or path to manifest>" \
+    output_dir="<output directory>" \
     output_filename="<remove or specify output filename>" \
     clean_groundtruth_text=True \
     langid='en' \
     batch_size=32 \
     timestamps=False \
     compute_langs=False \
-    cuda=0 \
     amp=True \
     append_pred=False \
     pred_name_postfix="<remove or use another model name for output filename>" \
@@ -92,6 +96,16 @@ CUDA_VISIBLE_DEVICES=1 python transcribe_speech_distributed.py \
     node_idx=0 \
     num_gpus_per_node=1 \
     gpu_idx=0
+```
+
+If you use Slurm, you can use this params to configure the script:
+```bash
+    gpu_idx=\$SLURM_LOCALID \
+    num_gpus_per_node=\$SLURM_GPUS_ON_NODE \
+    num_nodes=\$SLURM_JOB_NUM_NODES \
+    node_idx=\$SLURM_NODEID
+```
+
 """
 
 
@@ -115,14 +129,16 @@ class TranscriptionConfig(SingleTranscribeConfig):
     output_dir: str = "transcribe_output/"
 
     # Distributed config
-    num_nodes: int = 1
-    node_idx: int = 0
-    num_gpus_per_node: int = 1
-    gpu_idx: int = 0
-    bind_gpu_to_cuda: bool = False
+    num_nodes: int = 1  # total number of nodes
+    node_idx: int = 0  # index of the current node
+    num_gpus_per_node: int = 1  # number of GPUs per node
+    gpu_idx: int = 0  # index of the current GPU
+    bind_gpu_to_cuda: bool = (
+        False  # If False, the script will just do .cuda() on the model, otherwise it will do .to(f"cuda:{gpu_idx}")
+    )
 
     # handle long manifest
-    split_size: int = -1  # -1 means no split
+    split_size: int = -1  # -1 means no split, otherwise split the manifest into chunks of this size
 
 
 def get_unfinished_manifest(manifest_list: List[Path], output_dir: Path):
@@ -217,6 +233,10 @@ def run_distributed_transcribe(cfg: TranscriptionConfig):
 
     logging.info(f"Running distributed transcription with config: {cfg}")
 
+    if cfg.dataset_manifest is None:
+        raise ValueError("`dataset_manifest` is required")
+
+    # load the manifest
     if isinstance(cfg.dataset_manifest, str) and "," in cfg.dataset_manifest:
         manifest_list = cfg.dataset_manifest.split(",")
     elif isinstance(cfg.dataset_manifest, (ListConfig, list)):

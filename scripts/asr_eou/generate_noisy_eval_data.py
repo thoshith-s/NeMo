@@ -59,38 +59,6 @@ from nemo.collections.common.parts.preprocessing import parsers
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
 
-# Dummy labels for the dummy tokenizer
-labels = [
-    " ",
-    "a",
-    "b",
-    "c",
-    "d",
-    "e",
-    "f",
-    "g",
-    "h",
-    "i",
-    "j",
-    "k",
-    "l",
-    "m",
-    "n",
-    "o",
-    "p",
-    "q",
-    "r",
-    "s",
-    "t",
-    "u",
-    "v",
-    "w",
-    "x",
-    "y",
-    "z",
-    "'",
-]
-
 
 @hydra_runner(config_path="conf/", config_name="data")
 def main(cfg):
@@ -174,7 +142,7 @@ def process_manifest(data_cfg, output_dir):
         pre_pad_dur = None
 
     # Load the dataset
-    tokenizer = parsers.make_parser(labels)  # dummy tokenizer
+    tokenizer = parsers.make_parser()  # dummy tokenizer
     dataset = LhotseSpeechToTextBpeEOUDataset(cfg=data_cfg, tokenizer=tokenizer, return_cuts=True)
 
     dataloader = get_lhotse_dataloader_from_config(

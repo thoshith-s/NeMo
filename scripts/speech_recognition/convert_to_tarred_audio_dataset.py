@@ -85,7 +85,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from io import BytesIO
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 import numpy as np
 import soundfile
@@ -563,7 +563,7 @@ class ASRTarredDatasetBuilder:
         metadata_yaml = OmegaConf.structured(metadata)
         OmegaConf.save(metadata_yaml, new_metadata_path, resolve=True)
 
-    def _read_manifest(self, manifest_path: str | list, config: ASRTarredDatasetConfig):
+    def _read_manifest(self, manifest_path: Union[str, List[str]], config: ASRTarredDatasetConfig):
         """Read and filters data from the manifest"""
         entries = []
         total_duration = 0.0

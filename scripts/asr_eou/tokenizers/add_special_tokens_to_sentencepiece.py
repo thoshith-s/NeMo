@@ -107,7 +107,8 @@ def edit_spt_model(input_file, output_dir, tokens, is_userdefined, extract_only=
         token_type = 4
 
     model = spt.ModelProto()
-    model.ParseFromString(open(input_file, 'rb').read())
+    with open(input_file, 'rb') as f:
+        model.ParseFromString(f.read())
 
     if not extract_only:
         for token in tokens:
@@ -126,7 +127,7 @@ def edit_spt_model(input_file, output_dir, tokens, is_userdefined, extract_only=
                 id = sp.piece_to_id(token)
                 logging.info(f"Created token '{token}' at ID {id}")
             logging.info(f"New tokenizer vocab size: {sp.get_piece_size()}")
-        except:
+        except Exception:
             logging.error(
                 "Could not appropriately configure new tokenizer. Verify if the special tokens already exist."
             )
@@ -155,9 +156,8 @@ def edit_spt_model(input_file, output_dir, tokens, is_userdefined, extract_only=
                 # skip special tokens
                 continue
             token = piece[1:] if piece.startswith("▁") else f"##{piece}"
-            if len(token) == 0:
-                tokens = piece[0]
-            f.write(f"{token}\n")  # Format follows the original vocab format
+            if len(token) > 0:
+                f.write(f"{token}\n")  # Format follows the original vocab format
     logging.info(f"Created new tokenizer vocab at: {vocab_txt_file}")
 
 

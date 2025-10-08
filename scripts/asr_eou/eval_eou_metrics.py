@@ -15,28 +15,45 @@
 """
 Example usage:
 
-The NIVA_PRED_ROOT and REFERENCE_ROOT directories should have the following structure:
+The PREDICTION_ROOT and REFERENCE_ROOT directories should have the following structure:
 
-<NIVA_PRED_ROOT>:
+<PREDICTION_ROOT>:
 ->dataset1/
     eou/
-    ctm/
+       -> sample1.json
+       -> sample2.json
 ->dataset2/
     eou/
-    ctm/
+       -> sample1.json
+       -> sample2.json
 
 <REFERENCE_ROOT>:
 ->dataset1/
+    -> sample1.json
+    -> sample2.json
 ->dataset2/
+    -> sample1.json
+    -> sample2.json
 
 
+each sample.json should contain a list of dictionaries with the following fields:
+{
+    "session_id": str,
+    "start_time": float,  # start time in seconds
+    "end_time": float,  # end time in seconds
+    "words": str,  # transcription of the utterance
+    "audio_filepath": str,  # only in prediction
+    "eou_prob": float, # only in prediction, probability of EOU in range [0.1]
+    "eou_pred": bool, # only in prediction
+    "full_text": str, # only in prediction, which is the full transcription up to the end_time
+}
+    
 ```bash
 python eval_eou_with_niva.py \
-    --prediction $NIVA_PRED_ROOT \
+    --prediction $PREDICTION_ROOT \
     --reference $REFERENCE_ROOT  \
     --multiple
 ```
-
 """
 
 
@@ -68,32 +85,38 @@ parser.add_argument(
     help="Whether to evaluate end of backchannel predictions.",
 )
 parser.add_argument(
+    "--ignore_eob",
+    action="store_true",
+    help="Whether to ignore end of backchannel predictions.",
+)
+parser.add_argument(
     "--multiple",
     action="store_true",
     help="Whether to evaluate multiple datasets.",
 )
 
 
-def load_segLST(directory: str, use_eob: bool = False) -> dict:
+def load_segLST(directory: str, use_eob: bool = False, ignore_eob: bool = False) -> dict:
     json_files = list(Path(directory).glob("*.json"))
     segLST = {}
     for json_file in json_files:
         key = json_file.stem
         with open(json_file, 'r') as f:
             data = json.load(f)
-            is_backchannel = data[0].get("is_backchannel", False) if data else False
-            if not isinstance(is_backchannel, list):
-                is_backchannel = [is_backchannel]
-            if any(is_backchannel) and not use_eob:
-                continue
+            assert isinstance(data, list), f"Data in {json_file} is not a list."
+            if not ignore_eob:
+                # get the data with the correct eob label
+                data = [x for x in data if (x.get("is_backchannel", False) == use_eob)]
             segLST[key] = data
     return segLST
 
 
-def evaluate_eou_predictions(prediction_dir: str, reference_dir: str, use_eob: bool = False) -> List[EOUResult]:
+def evaluate_eou_predictions(
+    prediction_dir: str, reference_dir: str, use_eob: bool = False, ignore_eob: bool = False
+) -> List[EOUResult]:
     prediction_dir = Path(prediction_dir) / "eou"
-    prediction_segLST = load_segLST(prediction_dir, use_eob)
-    reference_segLST = load_segLST(reference_dir, use_eob)
+    prediction_segLST = load_segLST(prediction_dir, use_eob, ignore_eob)
+    reference_segLST = load_segLST(reference_dir, use_eob, ignore_eob)
 
     eou_metrics = []
     for key, reference in reference_segLST.items():
@@ -143,7 +166,9 @@ if __name__ == "__main__":
             raise ValueError(
                 f"Reference directory {ref_dir} and prediction directory {pred_dir} must have the same name."
             )
-        results = evaluate_eou_predictions(prediction_dir=str(pred_dir), reference_dir=str(ref_dir), use_eob=args.eob)
+        results = evaluate_eou_predictions(
+            prediction_dir=str(pred_dir), reference_dir=str(ref_dir), use_eob=args.eob, ignore_eob=args.ignore_eob
+        )
         # Print the results
         print("==========================================")
         print(f"Evaluation Results for: {pred_dir} against {ref_dir}")

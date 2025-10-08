@@ -15,13 +15,22 @@
 """
 Example usage:
 
-0. Prepare dataset based on  <NeMo Root>/nemo/collections/asr/data/audio_to_eou_label_lhotse.py
+1. Prepare dataset based on <NeMo Root>/nemo/collections/asr/data/audio_to_eou_label_lhotse.py
+  Specifically, each sample in the jsonl manifest should have the following fields:
+  {
+    "audio_filepath": "/path/to/audio.wav",
+    "text": "The text of the audio."
+    "offset": 0.0,  # offset of the audio, in seconds
+    "duration": 3.0,  # duration of the audio, in seconds
+    "sou_time": 0.2,  # start of utterance time, in seconds
+    "eou_time": 1.5,  # end of utterance time, in seconds
+  }
 
-1. Add special tokens <EOU> and <EOB> to the tokenizer of pretrained model, by refering to the script
-    <NeMo Root>/scripts/asr_end_of_utterance/tokenizers/add_special_tokens_to_sentencepiece.py
-
-2. If pretrained model is HybridRNNTCTCBPEModel, convert it to RNNT using the script
-   <NeMo Root>/examples/asr/asr_hybrid_transducer_ctc/helpers/convert_nemo_asr_hybrid_to_ctc.py
+2. If using a normal ASR model as initialization:
+    -  Add special tokens <EOU> and <EOB> to the tokenizer of pretrained model, by refering to the script
+        <NeMo Root>/scripts/asr_eou/tokenizers/add_special_tokens_to_sentencepiece.py
+    - If pretrained model is HybridRNNTCTCBPEModel, convert it to RNNT using the script
+        <NeMo Root>/examples/asr/asr_hybrid_transducer_ctc/helpers/convert_nemo_asr_hybrid_to_ctc.py
 
 3. Run the following command to train the ASR-EOU model:
 ```bash
@@ -179,12 +188,19 @@ def get_pretrained_model_name(cfg: DictConfig) -> Optional[str]:
 
 def init_from_pretrained_nemo(model: EncDecRNNTBPEEOUModel, pretrained_model_path: str, cfg: DictConfig):
     """
-    load the pretrained model from a .nemo file, taking into account the joint network
+    Load the pretrained model from a .nemo file or remote checkpoint. If the pretrained model has exactly
+    the same vocabulary size as the current model, the whole model will be loaded directly. Otherwise,
+    the encoder and decoder weights will be loaded separately and the EOU/EOB classes will be handled separately.
     """
     if pretrained_model_path.endswith('.nemo'):
         pretrained_model = ASRModel.restore_from(restore_path=pretrained_model_path)  # type: EncDecRNNTBPEModel
     else:
         pretrained_model = ASRModel.from_pretrained(pretrained_model_path)  # type: EncDecRNNTBPEModel
+
+    if not isinstance(pretrained_model, (EncDecRNNTBPEModel, EncDecHybridRNNTCTCBPEModel)):
+        raise TypeError(
+            f"Pretrained model {pretrained_model.__class__} is not EncDecRNNTBPEModel or EncDecHybridRNNTCTCBPEModel."
+        )
 
     try:
         model.load_state_dict(pretrained_model.state_dict(), strict=True)
@@ -192,14 +208,9 @@ def init_from_pretrained_nemo(model: EncDecRNNTBPEEOUModel, pretrained_model_pat
             f"Pretrained model from {pretrained_model_path} has exactly the same model structure, skip further loading."
         )
         return
-    except Exception as e:
+    except Exception:
         logging.warning(
             f"Pretrained model {pretrained_model_path} has different model structure, try loading weights separately and add EOU/EOB classes."
-        )
-
-    if not isinstance(pretrained_model, (EncDecRNNTBPEModel, EncDecHybridRNNTCTCBPEModel)):
-        raise TypeError(
-            f"Pretrained model {pretrained_model.__class__} is not EncDecRNNTBPEModel or EncDecHybridRNNTCTCBPEModel."
         )
 
     # Load encoder state dict into the model

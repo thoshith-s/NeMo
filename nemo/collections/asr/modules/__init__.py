@@ -20,7 +20,11 @@ from nemo.collections.asr.modules.audio_preprocessing import (
     SpectrogramAugmentation,
 )
 from nemo.collections.asr.modules.beam_search_decoder import BeamSearchDecoderWithLM
-from nemo.collections.asr.modules.conformer_encoder import ConformerEncoder, ConformerEncoderAdapter
+from nemo.collections.asr.modules.conformer_encoder import (
+    ConformerEncoder,
+    ConformerEncoderAdapter,
+    ConformerMultiLayerFeatureExtractor,
+)
 from nemo.collections.asr.modules.conv_asr import (
     ConvASRDecoder,
     ConvASRDecoderClassification,
@@ -45,7 +49,6 @@ from nemo.collections.asr.modules.rnnt import (
 )
 from nemo.collections.asr.modules.squeezeformer_encoder import SqueezeformerEncoder, SqueezeformerEncoderAdapter
 from nemo.collections.asr.modules.ssl_modules import (
-    ConformerMultiLayerFeatureExtractor,
     ConformerMultiLayerFeaturePreprocessor,
     ConvFeatureMaksingWrapper,
     MultiSoftmaxDecoder,

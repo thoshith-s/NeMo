@@ -16,7 +16,7 @@ import math
 import random
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import List, Optional, Set, Tuple
+from typing import Callable, List, Optional, Set, Tuple
 
 import torch
 import torch.distributed
@@ -56,7 +56,7 @@ from nemo.core.neural_types import (
 )
 from nemo.utils import logging
 
-__all__ = ['ConformerEncoder']
+__all__ = ['ConformerEncoder', 'ConformerMultiLayerFeatureExtractor']
 
 
 class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
@@ -1289,3 +1289,90 @@ class ConformerChangeConfig:
     # corresponding to left and right context, or -1 for full context.
     # If None is provided, the attention context size isn't changed.
     att_context_size: Optional[List[int]] = None
+
+
+class ConformerMultiLayerFeatureExtractor(NeuralModule, Exportable, AccessMixin):
+    def __init__(
+        self,
+        encoder: ConformerEncoder,
+        aggregator: Optional[Callable] = None,
+        layer_idx_list: Optional[List[int]] = None,
+    ):
+        """
+        This class is used to extract features from different layers of the ConformerEncoder.
+        Args:
+            encoder: ConformerEncoder instance.
+            aggregator: Aggregator instance. If None, the features are returned as a list.
+            layer_idx_list: List of layer indices to extract features from. If None, all layers are extracted.
+        """
+        super().__init__()
+        self.encoder = encoder
+        self.aggregator = aggregator
+        self.num_layers = len(encoder.layers)
+        self.layer_idx_list = []
+        if not layer_idx_list:
+            layer_idx_list = list(range(self.num_layers))
+        for lid in layer_idx_list:
+            if lid < -self.num_layers or lid >= self.num_layers:
+                raise ValueError(f"Invalid layer index {lid} for ConformerEncoder with {self.num_layers} layers.")
+            if lid < 0:
+                lid = self.num_layers + lid
+            self.layer_idx_list.append(lid)
+        self.layer_idx_list.sort()
+        logging.info(f"Extracting features from layers: {self.layer_idx_list}")
+        self.access_cfg = {
+            "interctc": {
+                "capture_layers": self.layer_idx_list,
+            },
+            "detach": False,
+            "convert_to_cpu": False,
+        }
+        self._is_access_enabled = False
+
+    def forward(
+        self, audio_signal, length, cache_last_channel=None, cache_last_time=None, cache_last_channel_len=None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Args:
+            same interface as ConformerEncoder.forward()
+        Returns:
+            tuple of aggregated features of shape [B, D, T] and lengths of shape [B]
+        """
+        self.encoder.update_access_cfg(self.access_cfg, guid=getattr(self, "model_guid", None))
+        self.encoder.set_access_enabled(access_enabled=True, guid=getattr(self, "model_guid", None))
+
+        _ = self.encoder(
+            audio_signal=audio_signal,
+            length=length,
+            cache_last_channel=cache_last_channel,
+            cache_last_time=cache_last_time,
+            cache_last_channel_len=cache_last_channel_len,
+        )
+
+        total_registry = {}
+        for module_registry in self.encoder.get_module_registry(self.encoder).values():
+            for key in module_registry:
+                if key.startswith("interctc/") and key in total_registry:
+                    raise RuntimeError(f"layer {key} has been logged multiple times!")
+            total_registry.update(module_registry)
+
+        encoded_list = []
+        encoded_len_list = []
+        for layer_idx in self.layer_idx_list:
+            try:
+                layer_outputs = total_registry[f"interctc/layer_output_{layer_idx}"]
+                layer_lengths = total_registry[f"interctc/layer_length_{layer_idx}"]
+            except KeyError:
+                raise RuntimeError(
+                    f"Intermediate layer {layer_idx} was not captured! Check the layer index and the number of "
+                    "ConformerEncoder layers."
+                )
+            if len(layer_outputs) > 1 or len(layer_lengths) > 1:
+                raise RuntimeError("Make sure encoder.forward is called exactly one time")
+            encoded_list.append(layer_outputs[0])  # [B, D, T]
+            encoded_len_list.append(layer_lengths[0])  # [B]
+
+        self.encoder.reset_registry()
+        if self.aggregator is None:
+            return encoded_list, encoded_len_list
+        return self.aggregator(encoded_list, encoded_len_list)

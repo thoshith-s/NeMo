@@ -1,11 +1,11 @@
-# It contains the default values for training a cache-aware streaming FastConformer-Transducer ASR model, large size (~115M) with sub-word encoding.
+# It contains the default values for training a cache-aware streaming FastConformer-Transducer ASR+EOU model, large size (~115M) with sub-word encoding.
 
 # You may find more detail:
 # FastConformer here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/models.html#fast-conformer
 # Cache-aware Conformer here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/models.html#cache-aware-streaming-conformer
 # FastConformer-Transducer's architecture config, along with the optimal batch size and precision: NeMo/examples/asr/conf/fastconformer/fast-conformer_transducer_bpe.yaml
 
-name: "FastConformer-Transducer-BPE-Streaming-EOU"
+name: "FastConformer-Transducer-BPE-Streaming-EOU-adapter"
 
 model:
   token_init_method: "constant"  # choices=['min', 'max', 'mean', 'constant']

@@ -54,7 +54,7 @@ def first_supervised_cut(maybe_mixed_cut):
         return [
             t.cut
             for t in maybe_mixed_cut.tracks
-            if len(t.cut.supervisions) > 0 and not t.cut.custom.get("is_mixed_noise")
+            if len(t.cut.supervisions) > 0 and not t.cut.custom.get("is_mixed_noise", False)
         ][0]
     return maybe_mixed_cut
 

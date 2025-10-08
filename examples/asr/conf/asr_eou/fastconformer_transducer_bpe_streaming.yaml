@@ -1,4 +1,4 @@
-# It contains the default values for training a cache-aware streaming FastConformer-Transducer ASR model, large size (~115M) with sub-word encoding.
+# It contains the default values for training a cache-aware streaming FastConformer-Transducer ASR+EOU model, large size (~115M) with sub-word encoding.
 
 # You may find more detail:
 # FastConformer here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/models.html#fast-conformer

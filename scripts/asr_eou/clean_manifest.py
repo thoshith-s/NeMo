@@ -24,7 +24,6 @@ python clean_manifest.py \
 """
 
 import argparse
-import datetime
 import re
 import unicodedata
 from pathlib import Path
@@ -374,7 +373,7 @@ def replace_numbers_with_words(text):
             if is_dollar:
                 words += ' dollars'
             return words + " "
-        except:
+        except Exception:
             return original  # Return original if conversion fails
 
     # Pattern matches: $3,000 or 3,000.45 or 1234
@@ -462,7 +461,7 @@ def clean_label(_str: str) -> str:
     text = text.replace("\r", " ")
     text = text.replace("\t", " ")
 
-    ret = " ".join(_str.split())
+    ret = " ".join(text.split())
     return ret
 
 

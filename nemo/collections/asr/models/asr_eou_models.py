@@ -57,6 +57,25 @@ class EOUPrediction:
 
 
 class ASREOUModelMixin:
+    def __init__(self):
+        if not hasattr(self, 'tokenizer'):
+            self.tokenizer = None
+        if not hasattr(self, 'eou_token'):
+            self.eou_token = None
+        if not hasattr(self, 'eob_token'):
+            self.eob_token = None
+        if not hasattr(self, 'frame_len_in_secs'):
+            self.frame_len_in_secs = None
+
+    def setup_eou_mixin(self, eou_token: int, eob_token: int, frame_len_in_secs: float, tokenizer):
+        if getattr(self, 'eou_token', None) is None:
+            self.eou_token = eou_token
+        if getattr(self, 'eob_token', None) is None:
+            self.eob_token = eob_token
+        if getattr(self, 'frame_len_in_secs', None) is None:
+            self.frame_len_in_secs = frame_len_in_secs
+        if getattr(self, 'tokenizer', None) is None:
+            self.tokenizer = tokenizer
 
     def _patch_decoding_cfg(self, cfg: DictConfig):
         """
@@ -356,6 +375,8 @@ class EncDecRNNTBPEEOUModel(EncDecRNNTBPEModel, ASREOUModelMixin):
         self.eou_token = self.tokenizer.token_to_id(EOU_STRING)
         self.eob_token = self.tokenizer.token_to_id(EOB_STRING)
         self.frame_len_in_secs = self.cfg.preprocessor.window_stride * self.cfg.encoder.subsampling_factor
+
+        self.setup_eou_mixin(self.eou_token, self.eob_token, self.frame_len_in_secs, self.tokenizer)
 
         self.wer = WER(
             decoding=self.decoding,
@@ -684,6 +705,7 @@ class EncDecHybridRNNTCTCBPEEOUModel(EncDecHybridRNNTCTCBPEModel, ASREOUModelMix
         self.eou_token = self.tokenizer.token_to_id(EOU_STRING)
         self.eob_token = self.tokenizer.token_to_id(EOB_STRING)
         self.frame_len_in_secs = self.cfg.preprocessor.window_stride * self.cfg.encoder.subsampling_factor
+        self.setup_eou_mixin(self.eou_token, self.eob_token, self.frame_len_in_secs, self.tokenizer)
 
         self.wer = WER(
             decoding=self.decoding,
