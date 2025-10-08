@@ -142,6 +142,7 @@ class FLOPsMeasurementCallback(Callback):
             "gpt3": flops_formulas.gpt3,
             "llama2": flops_formulas.llama2,
             "llama3": flops_formulas.llama3,
+            "llama4": flops_formulas.llama4,
             "nemotron": flops_formulas.nemotron,
             "mixtral": flops_formulas.mixtral,
             "bert": flops_formulas.bert,
