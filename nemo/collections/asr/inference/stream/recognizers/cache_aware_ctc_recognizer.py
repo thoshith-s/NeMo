@@ -111,9 +111,12 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
 
         # Context Manager
         self.batch_size = self.streaming_cfg.batch_size
-
+        if self.streaming_cfg.num_slots < self.batch_size:
+            raise ValueError(
+                f"Number of slots in the context manager must be >= batch_size: {self.streaming_cfg.num_slots} < {self.batch_size}"
+            )
         self.context_manager = CacheAwareContextManager(
-            cache_aware_model=self.asr_model, num_slots=self.batch_size, use_cache=self.use_cache
+            cache_aware_model=self.asr_model, num_slots=self.streaming_cfg.num_slots, use_cache=self.use_cache
         )
 
         # Feature Bufferer
