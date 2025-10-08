@@ -31,7 +31,7 @@ _model_flops_map = {
     "gpt3": flops_formulas.gpt3,
     "llama2": flops_formulas.llama2,
     "llama3": flops_formulas.llama3,
-    "llama4": flops_formulas.llama3,  # TODO: add llama4 flops formulas
+    "llama4": flops_formulas.llama4,
     "nemotron3": flops_formulas.nemotron,
     "nemotron4": flops_formulas.nemotron,
     "mixtral": flops_formulas.mixtral,
