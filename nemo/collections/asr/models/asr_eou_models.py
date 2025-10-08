@@ -184,7 +184,7 @@ class ASREOUModelMixin:
 
     def _calculate_eou_metrics(
         self, eou_predictions: List[EOUPrediction], batch: AudioToTextEOUBatch
-    ) -> Tuple[List, List]:
+    ) -> Tuple[List[EOUResult], List[EOUResult]]:
         """
         Calculate EOU metrics.
         Args:
