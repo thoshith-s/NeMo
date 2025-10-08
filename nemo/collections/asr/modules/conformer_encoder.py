@@ -1265,32 +1265,6 @@ class ConformerEncoderAdapter(ConformerEncoder, adapter_mixins.AdapterModuleMixi
         return types
 
 
-# Register any additional information
-if adapter_mixins.get_registered_adapter(ConformerEncoder) is None:
-    adapter_mixins.register_adapter(base_class=ConformerEncoder, adapter_class=ConformerEncoderAdapter)
-
-
-@dataclass
-class ConformerChangeConfig:
-    """
-    Change self_attention_model for Conformer.
-
-    Options:
-     'rel_pos': relative positional embedding and Transformer-XL
-     'rel_pos_local_attn': relative positional embedding and Transformer-XL with local attention using
-      overlapping chunks. Attention context is determined by att_context_size parameter.
-     'abs_pos': absolute positional embedding and Transformer
-    """
-
-    # If None is provided, self_attention_model is not changed.
-    self_attention_model: Optional[str] = None
-
-    # Change the attention context size by providing 2 integers,
-    # corresponding to left and right context, or -1 for full context.
-    # If None is provided, the attention context size isn't changed.
-    att_context_size: Optional[List[int]] = None
-
-
 class ConformerMultiLayerFeatureExtractor(NeuralModule, Exportable, AccessMixin):
     def __init__(
         self,
@@ -1376,3 +1350,29 @@ class ConformerMultiLayerFeatureExtractor(NeuralModule, Exportable, AccessMixin)
         if self.aggregator is None:
             return encoded_list, encoded_len_list
         return self.aggregator(encoded_list, encoded_len_list)
+
+
+# Register any additional information
+if adapter_mixins.get_registered_adapter(ConformerEncoder) is None:
+    adapter_mixins.register_adapter(base_class=ConformerEncoder, adapter_class=ConformerEncoderAdapter)
+
+
+@dataclass
+class ConformerChangeConfig:
+    """
+    Change self_attention_model for Conformer.
+
+    Options:
+     'rel_pos': relative positional embedding and Transformer-XL
+     'rel_pos_local_attn': relative positional embedding and Transformer-XL with local attention using
+      overlapping chunks. Attention context is determined by att_context_size parameter.
+     'abs_pos': absolute positional embedding and Transformer
+    """
+
+    # If None is provided, self_attention_model is not changed.
+    self_attention_model: Optional[str] = None
+
+    # Change the attention context size by providing 2 integers,
+    # corresponding to left and right context, or -1 for full context.
+    # If None is provided, the attention context size isn't changed.
+    att_context_size: Optional[List[int]] = None
