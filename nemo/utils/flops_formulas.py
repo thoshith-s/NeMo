@@ -119,11 +119,11 @@ def llama3(config: FLOPSConfig):
 
 def llama4(config: FLOPSConfig):
     """Model FLOPs for Llama4 family (MoE architecture)
-    
+
     Llama4 models:
     - Scout (16E): All 48 layers use MoE
     - Maverick (128E): Alternating dense/MoE pattern via moe_layer_freq
-    
+
     The formula accounts for:
     1. Attention computation (GQA) - same across all layers
     2. Mixed FFN layers - dense and MoE based on moe_layer_freq pattern
@@ -134,7 +134,7 @@ def llama4(config: FLOPSConfig):
     causal_self_attn = True
     seq_len = config.enc_seq_len
     hidden_size = config.hs
-    
+
     # Attention FLOPs (same for all layers, using GQA like Llama 3)
     # QKV projections + attention computation + output projection
     attention_flops = (
@@ -149,7 +149,7 @@ def llama4(config: FLOPSConfig):
             + (12 * seq_len / hidden_size) * (0.5 if causal_self_attn else 1)  # Attention computation
         )
     )
-    
+
     # FFN FLOPs - need to account for both dense and MoE layers
     # Create moe_layer_pattern: 0=dense, 1=MoE
     if config.moe_layer_freq is None:
@@ -161,17 +161,15 @@ def llama4(config: FLOPSConfig):
     else:
         # If list, use it directly (e.g., [0,1]*24 for 128E model)
         moe_layer_pattern = config.moe_layer_freq
-    
+
     # Calculate FLOPs for each layer type
     num_dense_layers = sum(1 for x in moe_layer_pattern if x == 0)
     num_moe_layers = sum(1 for x in moe_layer_pattern if x == 1)
-    
+
     # Dense layer FFN FLOPs (standard gated FFN)
     # Factor of 18 = 6 (fwd+bwd) * 3 (up+gate+down projections)
-    dense_ffn_flops = (
-        6 * config.gbs * seq_len * num_dense_layers * hidden_size * config.ffn_hs * 3
-    )
-    
+    dense_ffn_flops = 6 * config.gbs * seq_len * num_dense_layers * hidden_size * config.ffn_hs * 3
+
     # MoE layer FFN FLOPs
     # Shared experts (always active) + routed experts (top-k)
     # Each expert has gated FFN: up_proj, gate_proj, down_proj
@@ -179,21 +177,26 @@ def llama4(config: FLOPSConfig):
     if num_moe_layers > 0:
         # Shared expert FLOPs (always computed)
         shared_expert_flops = (
-            6 * config.gbs * seq_len * num_moe_layers * hidden_size 
-            * config.moe_shared_expert_intermediate_size * 3
+            6 * config.gbs * seq_len * num_moe_layers * hidden_size * config.moe_shared_expert_intermediate_size * 3
         )
-        
+
         # Routed expert FLOPs (only top-k experts per token)
         routed_expert_flops = (
-            6 * config.gbs * seq_len * num_moe_layers * hidden_size 
-            * config.moe_ffn_hidden_size * config.moe_router_topk * 3
+            6
+            * config.gbs
+            * seq_len
+            * num_moe_layers
+            * hidden_size
+            * config.moe_ffn_hidden_size
+            * config.moe_router_topk
+            * 3
         )
-        
+
         moe_ffn_flops = shared_expert_flops + routed_expert_flops
-    
+
     # Vocabulary/Embedding FLOPs
     vocab_flops = 6 * config.gbs * seq_len * hidden_size * vocab_size
-    
+
     return attention_flops + dense_ffn_flops + moe_ffn_flops + vocab_flops
 
 
