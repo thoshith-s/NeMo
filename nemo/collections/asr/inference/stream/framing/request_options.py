@@ -18,7 +18,7 @@ from typing import TypeAlias
 from nemo.collections.asr.inference.utils.enums import ASROutputGranularity
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class ASRRequestOptions:
     """
     Immutable dataclass representing options for a request
