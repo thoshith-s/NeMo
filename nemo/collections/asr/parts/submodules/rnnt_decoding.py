@@ -818,9 +818,9 @@ class AbstractRNNTDecoding(ConfidenceMixin):
             )
             for hyp in hypotheses_list:
                 frame_confidence = []
-                for x in hyp.frame_confidence:
-                    for y in x:
-                        frame_confidence.append(maybe_pre_aggregate(y))
+                for frame_confs in hyp.frame_confidence:
+                    for frame_conf in frame_confs:
+                        frame_confidence.append(maybe_pre_aggregate(frame_conf))
                     
                 assert(len(frame_confidence) == len(hyp.alignment_labels))
                 

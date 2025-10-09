@@ -627,9 +627,9 @@ class BatchedAlignments:
         """
         self.timestamps = torch.cat((self.timestamps, torch.zeros_like(self.timestamps)), dim=-1)
         if self.with_alignments or self.with_frame_confidence:
-            self.logits = torch.cat((self.logits, torch.zeros_like(self.logits)), dim=1)
-        if self.with_alignments:
             self.labels = torch.cat((self.labels, torch.zeros_like(self.labels)), dim=-1)
+        if self.with_alignments:
+            self.logits = torch.cat((self.logits, torch.zeros_like(self.logits)), dim=1)
         if self.with_frame_confidence:
             self.frame_confidence = torch.cat((self.frame_confidence, torch.zeros_like(self.frame_confidence)), dim=1)
         self._max_length *= 2
