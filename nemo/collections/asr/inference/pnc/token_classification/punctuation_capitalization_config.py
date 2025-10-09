@@ -207,14 +207,14 @@ class PunctuationCapitalizationModelConfig:
     This config is a part of :class:`~PunctuationCapitalizationConfig`.
     """
 
-    class_labels: ClassLabelsConfig = field(default_factory=lambda: ClassLabelsConfig())
+    class_labels: ClassLabelsConfig = field(default_factory=ClassLabelsConfig)
     """A mandatory parameter containing a dictionary with names of label id files used in .nemo checkpoints.
     These file names can also be used for passing label vocabularies to the model. If you wish to use ``class_labels``
     for passing vocabularies, please provide path to vocabulary files in
     ``model.common_dataset_parameters.label_vocab_dir`` parameter."""
 
     common_dataset_parameters: Optional[CommonDatasetParametersConfig] = field(
-        default_factory=lambda: CommonDatasetParametersConfig()
+        default_factory=CommonDatasetParametersConfig
     )
     """Label ids and loss mask information information."""
 
@@ -227,16 +227,16 @@ class PunctuationCapitalizationModelConfig:
     test_ds: Optional[Any] = None
     """A configuration for creating test datasets and data loaders."""
 
-    punct_head: HeadConfig = field(default_factory=lambda: HeadConfig())
+    punct_head: HeadConfig = field(default_factory=HeadConfig)
     """A configuration for creating punctuation MLP head that is applied to a language model outputs."""
 
-    capit_head: HeadConfig = field(default_factory=lambda: HeadConfig())
+    capit_head: HeadConfig = field(default_factory=HeadConfig)
     """A configuration for creating capitalization MLP head that is applied to a language model outputs."""
 
-    tokenizer: Any = field(default_factory=lambda: TokenizerConfig())
+    tokenizer: Any = field(default_factory=TokenizerConfig)
     """A configuration for source text tokenizer."""
 
-    language_model: LanguageModelConfig = field(default_factory=lambda: LanguageModelConfig())
+    language_model: LanguageModelConfig = field(default_factory=LanguageModelConfig)
     """A configuration of a BERT-like language model which serves as a model body."""
 
     optim: Optional[Any] = None
@@ -271,7 +271,7 @@ class PunctuationCapitalizationConfig(NemoConfig):
     do_testing: bool = False
     """Whether ot perform testing of the model."""
 
-    model: PunctuationCapitalizationModelConfig = field(default_factory=lambda: PunctuationCapitalizationModelConfig())
+    model: PunctuationCapitalizationModelConfig = field(default_factory=PunctuationCapitalizationModelConfig)
     """A configuration for the
     :class:`~nemo.collections.nlp.models.token_classification.punctuation_capitalization_model.PunctuationCapitalizationModel`
     model."""
