@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import List, Optional, Tuple
-
 import torch
 from nemo.collections.asr.inference.stream.decoders.greedy.greedy_ctc_decoder import CTCGreedyDecoder
 from nemo.collections.asr.inference.stream.endpointing.greedy.greedy_endpointing import GreedyEndpointing
@@ -24,7 +22,7 @@ class CTCGreedyEndpointing(GreedyEndpointing):
 
     def __init__(
         self,
-        vocabulary: List[str],
+        vocabulary: list[str],
         ms_per_timestep: int,
         effective_buffer_size_in_secs: float = None,
         stop_history_eou: int = -1,
@@ -33,7 +31,7 @@ class CTCGreedyEndpointing(GreedyEndpointing):
         """
         Initialize the CTCGreedyEndpointing class
         Args:
-            vocabulary: (List[str]) List of vocabulary
+            vocabulary: (list[str]) List of vocabulary
             ms_per_timestep: (int) Number of milliseconds per timestep
             effective_buffer_size_in_secs: (float, optional) Effective buffer size for VAD-based EOU detection. Not used for CTC.
             stop_history_eou: (int) Number of silent tokens to trigger a EOU, if -1 then it is disabled
@@ -49,8 +47,8 @@ class CTCGreedyEndpointing(GreedyEndpointing):
         probs_seq: torch.Tensor,
         pivot_point: int,
         search_start_point: int = 0,
-        stop_history_eou: Optional[int] = None,
-    ) -> Tuple[bool, int]:
+        stop_history_eou: int | None = None,
+    ) -> tuple[bool, int]:
         """
         Detect end of utterance (EOU) given the probabilities sequence and pivot point
         Args:

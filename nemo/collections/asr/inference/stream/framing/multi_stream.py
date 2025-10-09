@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Callable, Iterator, List
+from typing import Callable, Iterator
 
 import torch
 
@@ -59,11 +59,11 @@ class MultiStream:
         """Returns the iterator object"""
         return self
 
-    def __next__(self) -> List[Frame]:
+    def __next__(self) -> list[Frame]:
         """
         Get the next batch of frames
         Returns:
-            List[Frame]: The next batch of frames
+            list[Frame]: The next batch of frames
         """
         frame_batch = []
         ids_to_remove = []
@@ -121,12 +121,12 @@ class ContinuousBatchedFrameStreamer:
         self._progress_bar = None
         self.processed_streams = set()
 
-    def set_audio_filepaths(self, audio_filepaths: List[str], options: List[RequestOptions]) -> None:
+    def set_audio_filepaths(self, audio_filepaths: list[str], options: list[RequestOptions]) -> None:
         """
         Set the audio filepaths
         Args:
-            audio_filepaths (List[str]): The list of audio filepaths
-            options (List[RequestOptions]): The list of options
+            audio_filepaths (list[str]): The list of audio filepaths
+            options (list[RequestOptions]): The list of options
         """
         if len(audio_filepaths) != len(options):
             raise ValueError("audio_filepaths and options must have the same length")
@@ -187,11 +187,11 @@ class ContinuousBatchedFrameStreamer:
         # Update the progress bar
         self.update_progress_bar()
 
-    def __next__(self) -> List[Frame]:
+    def __next__(self) -> list[Frame]:
         """
         Get the next batch of frames, continuously adding streams
         Returns:
-            List[Frame]: The next batch of frames
+            list[Frame]: The next batch of frames
         """
         # If there are fewer streams than batch size, add more streams
         while len(self.multi_streamer) < self.batch_size and self.stream_id < self.n_audio_files:
@@ -278,12 +278,12 @@ class ContinuousBatchedRequestStreamer:
             self.right_pad_features = right_pad_features
             self.tail_padding_in_samples = tail_padding_in_samples
 
-    def set_audio_filepaths(self, audio_filepaths: List[str], options: List[RequestOptions]) -> None:
+    def set_audio_filepaths(self, audio_filepaths: list[str], options: list[RequestOptions]) -> None:
         """
         Set the audio filepaths
         Args:
-            audio_filepaths (List[str]): The list of audio filepaths
-            options (List[RequestOptions]): The list of options
+            audio_filepaths (list[str]): The list of audio filepaths
+            options (list[RequestOptions]): The list of options
         """
         self.multi_streamer.set_audio_filepaths(audio_filepaths, options)
 
@@ -305,13 +305,13 @@ class ContinuousBatchedRequestStreamer:
         """
         return self.multi_streamer.sid2filepath[stream_id]
 
-    def to_feature_buffers(self, frames: List[Frame]) -> List[FeatureBuffer]:
+    def to_feature_buffers(self, frames: list[Frame]) -> list[FeatureBuffer]:
         """
         Convert frames to feature buffers
         Args:
-            frames (List[Frame]): The list of frames
+            frames (list[Frame]): The list of frames
         Returns:
-            List[FeatureBuffer]: The list of feature buffers
+            list[FeatureBuffer]: The list of feature buffers
         """
 
         # Buffer input frames
@@ -375,10 +375,10 @@ class ContinuousBatchedRequestStreamer:
         """Returns the iterator object"""
         return self
 
-    def __next__(self) -> List[Request]:
+    def __next__(self) -> list[Request]:
         """Get the next batch of requests.
         Returns:
-            List of frames or feature buffers.
+            list of frames or feature buffers.
         """
         if self.request_type is RequestType.FRAME:
             return next(self.multi_streamer)

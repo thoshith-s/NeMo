@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING
 
 import torch
 from omegaconf import DictConfig
@@ -57,8 +57,8 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         self,
         cfg: DictConfig,
         asr_model: RNNTInference,
-        pnc_model: Optional[PunctuationCapitalizer] = None,
-        itn_model: Optional[AlignmentPreservingInverseNormalizer] = None,
+        pnc_model: PunctuationCapitalizer | None = None,
+        itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):
 
         # ASR Related fields
@@ -243,7 +243,9 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         """Return the separator for the text postprocessor."""
         return self.sep
 
-    def preprocess(self, buffers: Tensor, buffer_lens: Tensor, expected_feature_buffer_len: int) -> Tuple:
+    def preprocess(
+        self, buffers: Tensor, buffer_lens: Tensor, expected_feature_buffer_len: int
+    ) -> tuple[Tensor, Tensor]:
         """Preprocess the buffered frames and extract features."""
         feature_buffers, feature_buffer_lens = self.preprocessor(input_signal=buffers, length=buffer_lens)
         feature_buffers = drop_trailing_features(feature_buffers, expected_feature_buffer_len)
@@ -251,15 +253,15 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         feature_buffer_lens = feature_buffer_lens.clamp(max=feature_buffers.shape[2])
         return feature_buffers, feature_buffer_lens
 
-    def get_cut_off_range(self, T: int, is_last: bool) -> Tuple[int, int]:
+    def get_cut_off_range(self, T: int, is_last: bool) -> tuple[int, int]:
         """Compute the start and end indices to clip the log probs."""
         start = max(T - 1 - self.mid_delay, 0)
         end = T if is_last else min(start + self.tokens_per_frame, T)
         return start, end
 
     def encode_raw_signals(
-        self, frames: List[Frame], raw_signals: List[Tensor], left_paddings: List[int]
-    ) -> Tuple[Tensor, Tensor]:
+        self, frames: list[Frame], raw_signals: list[Tensor], left_paddings: list[int]
+    ) -> tuple[Tensor, Tensor]:
         """Run Encoder part on the raw buffered frames."""
 
         if self.right_padding:
@@ -314,8 +316,8 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         return encoded, encoded_len
 
     def encode_processed_signals(
-        self, fbuffers: List[FeatureBuffer], processed_signals: List[Tensor]
-    ) -> Tuple[Tensor, Tensor]:
+        self, fbuffers: list[FeatureBuffer], processed_signals: list[Tensor]
+    ) -> tuple[Tensor, Tensor]:
         """Run Encoder part on the processed buffered frames."""
 
         processed_signals = torch.cat([sig.unsqueeze_(0) for sig in processed_signals]).to(self.device)
@@ -339,7 +341,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
                     encoded_len[i] = encoded_len[i] + lpad
         return encoded, encoded_len
 
-    def encode_frames(self, frames: List[Frame]) -> Tuple[Tensor, Tensor]:
+    def encode_frames(self, frames: list[Frame]) -> tuple[Tensor, Tensor]:
         """Encode the frames using the Encoder part of the ASR model."""
         raw_signals, left_paddings = self.bufferer.update(frames)
         encs, enc_lens = None, None
@@ -347,7 +349,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
             encs, enc_lens = self.encode_raw_signals(frames, raw_signals, left_paddings)
         return encs, enc_lens
 
-    def encode_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> Tuple[Tensor, Tensor]:
+    def encode_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> tuple[Tensor, Tensor]:
         """Encode the feature buffers using the Encoder part of the ASR model."""
         processed_signals = self.bufferer.update(fbuffers)
         encs, enc_lens = None, None
@@ -397,7 +399,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         return eou_detected
 
     def stateless_transcribe_step(
-        self, requests: List[Request], encs: Tensor, enc_lens: Tensor, ready_state_ids: Set
+        self, requests: list[Request], encs: Tensor, enc_lens: Tensor, ready_state_ids: set
     ) -> None:
         """
         Transcribe the frames in a stateless manner.
@@ -410,7 +412,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         ready_state_ids.update(ready_states)
 
     def stateful_transcribe_step(
-        self, requests: List[Request], encs: Tensor, enc_lens_chunk: Tensor, enc_lens: Tensor, ready_state_ids: Set
+        self, requests: list[Request], encs: Tensor, enc_lens_chunk: Tensor, enc_lens: Tensor, ready_state_ids: set
     ) -> None:
         """
         Transcribe the frames in a stateful manner.
@@ -453,7 +455,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
             curr_state.timestamp_offset += self.tokens_per_frame_float
         ready_state_ids.update(ready_states)
 
-    def decode_step(self, best_hyp: List, requests: List[Request], states: List[RNNTStreamingState]) -> Set:
+    def decode_step(self, best_hyp: list, requests: list[Request], states: list[RNNTStreamingState]) -> set:
         """
         Perform greedy RNNT decoding to get the best hypothesis and update the state.
         If EOU is detected, push the words to the state and cleanup the state.
@@ -506,7 +508,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
                 ready_state_ids.add(request.stream_id)
         return ready_state_ids
 
-    def shared_transcribe_step_stateful(self, requests: List[Request], encs: Tensor, enc_lens: Tensor) -> None:
+    def shared_transcribe_step_stateful(self, requests: list[Request], encs: Tensor, enc_lens: Tensor) -> None:
         """
         Transcribe a step for frames in a stateful manner.
         """
@@ -548,7 +550,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
 
         self.update_partial_transcript(requests, self.asr_model.tokenizer, self.leading_regex_pattern)
 
-    def shared_transcribe_step(self, requests: List[Request], encs: Tensor, enc_lens: Tensor) -> None:
+    def shared_transcribe_step(self, requests: list[Request], encs: Tensor, enc_lens: Tensor) -> None:
         """
         Transcribes the frames in a streaming manner.
         After detecting EOU, it updates the state and run text postprocessor.
@@ -588,7 +590,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
 
         self.update_partial_transcript(requests, self.asr_model.tokenizer, self.leading_regex_pattern)
 
-    def transcribe_step_for_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> None:
+    def transcribe_step_for_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> None:
         """
         Transcribe a step for feature buffers.
         Args:
@@ -601,7 +603,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
             else:
                 self.shared_transcribe_step(requests=fbuffers, encs=encs, enc_lens=enc_lens)
 
-    def transcribe_step_for_frames(self, frames: List[Frame]) -> None:
+    def transcribe_step_for_frames(self, frames: list[Frame]) -> None:
         """
         Transcribe a step for frames.
         Args:

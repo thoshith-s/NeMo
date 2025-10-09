@@ -15,7 +15,7 @@
 
 import re
 from functools import partial, wraps
-from typing import Iterable, List, Set, Tuple, Union
+from typing import Iterable
 
 import torch
 from omegaconf import DictConfig, open_dict
@@ -133,7 +133,7 @@ def make_preprocessor_deterministic(asr_model_cfg: DictConfig, disable_normaliza
     return asr_model_cfg
 
 
-def get_confidence_utils(confidence_cfg: DictConfig) -> Tuple:
+def get_confidence_utils(confidence_cfg: DictConfig) -> tuple:
     """Get the confidence function and the confidence aggregator"""
     if confidence_cfg.method_cfg.name == "max_prob":
         conf_type = "max_prob"
@@ -148,11 +148,11 @@ def get_confidence_utils(confidence_cfg: DictConfig) -> Tuple:
     return conf_func, confidence_aggregator
 
 
-def get_leading_punctuation_regex_pattern(puncts: Set[str]) -> str:
+def get_leading_punctuation_regex_pattern(puncts: set[str]) -> str:
     """
     Get the regex pattern for the punctuation marks.
     Args:
-        puncts (Set[str]): Set of punctuation marks.
+        puncts (set[str]): Set of punctuation marks.
     Returns:
         (str) Regex pattern for the punctuation marks.
     """
@@ -162,11 +162,11 @@ def get_leading_punctuation_regex_pattern(puncts: Set[str]) -> str:
     return r'\s+(' + escaped_puncts + ')'
 
 
-def get_repeated_punctuation_regex_pattern(puncts: Set[str]) -> str:
+def get_repeated_punctuation_regex_pattern(puncts: set[str]) -> str:
     """
     Get the regex pattern for the repeated punctuation marks.
     Args:
-        puncts (Set[str]): Set of punctuation marks.
+        puncts (set[str]): Set of punctuation marks.
     Returns:
         (str) Regex pattern for the repeated punctuation marks.
     """
@@ -177,7 +177,7 @@ def get_repeated_punctuation_regex_pattern(puncts: Set[str]) -> str:
 
 
 def update_punctuation_and_language_tokens_timestamps(
-    tokens: Tensor, timestamp: Tensor, tokens_to_move: Set[int], underscore_id: int
+    tokens: Tensor, timestamp: Tensor, tokens_to_move: set[int], underscore_id: int
 ) -> Tensor:
     """
     RNNT models predict punctuations and language tokens at the end of the sequence.
@@ -255,16 +255,14 @@ def adjust_vad_segments(vad_segments: torch.Tensor, left_padding_size: float) ->
     return adjusted_segments
 
 
-def seconds_to_frames(
-    seconds: Union[float, int, Iterable[float | int]], model_stride_in_secs: float
-) -> Union[int, List[int]]:
+def seconds_to_frames(seconds: float | int | Iterable[float | int], model_stride_in_secs: float) -> int | list[int]:
     """
     Convert seconds to frames.
     Args:
         seconds: (float | int | Iterable[float | int]) Time in seconds
         model_stride_in_secs: (float) Stride of the model in seconds
     Returns:
-        (int | List[int]) Number of frames
+        (int | list[int]) Number of frames
     """
     if isinstance(seconds, (float, int)):
         return int(seconds / model_stride_in_secs)

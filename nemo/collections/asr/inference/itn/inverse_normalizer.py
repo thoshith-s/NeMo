@@ -16,7 +16,6 @@
 import os
 import re
 from multiprocessing import Manager
-from typing import Dict, List, Tuple
 
 from nemo.collections.asr.inference.utils.itn_utils import (
     DEFAULT_SEMIOTIC_CLASS,
@@ -89,13 +88,13 @@ class AlignmentPreservingInverseNormalizer:
             self.DISK_VERB_CACHE = None
             self.caching_from_disk_enabled = False
 
-    def inverse_normalize_list(self, texts: List[str], params: Dict) -> List[str]:
+    def inverse_normalize_list(self, texts: list[str], params: dict) -> list[str]:
         """
         Args:
-            texts: (List[str]) list of input strings.
-            params: (Dict) dictionary of runtime parameters.
+            texts: (list[str]) list of input strings.
+            params: (dict) dictionary of runtime parameters.
         Returns:
-            (List[str]) Returns converted list of input strings.
+            (list[str]) Returns converted list of input strings.
         """
         normalized_texts = self.itn_model.normalize_list(
             texts,
@@ -107,11 +106,11 @@ class AlignmentPreservingInverseNormalizer:
         )
         return normalized_texts
 
-    def verbalize(self, tokens: List, sep: str) -> str | None:
+    def verbalize(self, tokens: list, sep: str) -> str | None:
         """
         Verbalizes tagged text.
         Args:
-            tokens: (List) list of tokens
+            tokens: (list) list of tokens
             sep: (str) word separator
         Returns:
             (str | None) Returns verbalized text. If verbalization fails, returns None.
@@ -173,7 +172,7 @@ class AlignmentPreservingInverseNormalizer:
             self.DISK_TAG_CACHE[text] = tagged_text
         return tagged_text
 
-    def parse_and_verbalize(self, tagged_text: str, sep: str) -> Tuple[str, str]:
+    def parse_and_verbalize(self, tagged_text: str, sep: str) -> tuple[str, str]:
         """
         Tags and verbalizes the input text.
         Args:
@@ -204,17 +203,17 @@ class AlignmentPreservingInverseNormalizer:
         return span_text, semiotic_class
 
     def find_token_words(
-        self, token: str, start_idx: int, input_words: List[str], sep: str
-    ) -> Tuple[List[int], bool, int]:
+        self, token: str, start_idx: int, input_words: list[str], sep: str
+    ) -> tuple[list[int], bool, int]:
         """
         Finds the words that make up the token.
         Args:
             token: (str) token
             start_idx: (int) start index
-            input_words: (List[str]) list of input words
+            input_words: (list[str]) list of input words
             sep: (str) word separator
         Returns:
-            (Tuple) Returns a tuple of indices, success, and the new start index
+            (tuple) Returns a tuple of indices, success, and the new start index
         """
         indices, tmp_text, success = [], "", False
         length = len(input_words)
@@ -241,22 +240,22 @@ class AlignmentPreservingInverseNormalizer:
 
     def find_alignment(
         self,
-        tokens: List[str],
-        input_words: List[str],
+        tokens: list[str],
+        input_words: list[str],
         sep: str,
-        iwords: List[str],
-        owords: List[str],
-        word_alignment: List[Tuple],
+        iwords: list[str],
+        owords: list[str],
+        word_alignment: list[tuple],
     ) -> bool:
         """
         Finds the word alignment for the input text.
         Args:
-            tokens: (List[str]) list of tokens
-            input_words: (List[str]) list of input words
+            tokens: (list[str]) list of tokens
+            input_words: (list[str]) list of input words
             sep: (str) word separator
-            iwords: (List[str]) list of input words to be updated
-            owords: (List[str]) list of output words to be updated
-            word_alignment: (List[Tuple]) list of word alignments to be updated
+            iwords: (list[str]) list of input words to be updated
+            owords: (list[str]) list of output words to be updated
+            word_alignment: (list[tuple]) list of word alignments to be updated
         Returns:
             (bool) True if the word alignment is found, False otherwise
         """
@@ -302,14 +301,14 @@ class AlignmentPreservingInverseNormalizer:
 
         return success
 
-    def get_word_alignment(self, input: str | List[str], sep: str) -> Tuple[List[str], List[str], List[Tuple]]:
+    def get_word_alignment(self, input: str | list[str], sep: str) -> tuple[list[str], list[str], list[tuple]]:
         """
         Returns a word alignment for the input text.
         Args:
-            input: (str | List[str]) input text or list of input words
+            input: (str | list[str]) input text or list of input words
             sep: (str) word separator
         Returns:
-            (Tuple) Returns a tuple of input words, output words, and a word alignment between input and output words
+            (tuple) Returns a tuple of input words, output words, and a word alignment between input and output words
         """
 
         if isinstance(input, str):

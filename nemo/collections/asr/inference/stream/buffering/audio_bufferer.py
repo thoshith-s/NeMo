@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import List, Tuple
-
 import torch
 from torch import Tensor
 from nemo.collections.asr.inference.stream.framing.request import Frame
@@ -96,15 +94,15 @@ class BatchedAudioBufferer:
         """
         self.bufferers.pop(stream_id, None)
 
-    def update(self, frames: List[Frame]) -> Tuple[List[Tensor], List[int]]:
+    def update(self, frames: list[Frame]) -> tuple[list[Tensor], list[int]]:
         """
         Update the bufferers with the new frames.
         Frames can come from different streams (audios), so we need to maintain a bufferer for each stream
         Args:
-            frames (List[Frame]): list of frames
+            frames (list[Frame]): list of frames
         Returns:
-            audio_buffers (List[Tensor]): List of buffered audio tensors, one per input frame
-            left_paddings (List[int]): List of left paddings, one per input frame
+            audio_buffers (list[Tensor]): List of buffered audio tensors, one per input frame
+            left_paddings (list[int]): List of left paddings, one per input frame
         """
         buffers, left_paddings = [], []
         for frame in frames:

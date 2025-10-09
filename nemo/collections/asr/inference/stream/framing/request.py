@@ -14,7 +14,7 @@
 
 
 from dataclasses import dataclass
-from typing import Optional, TypeAlias
+from typing import TypeAlias
 
 import torch
 
@@ -33,10 +33,10 @@ class Frame:
         is_last (bool): Flag indicating if this is the last frame in the stream
         length (int): Length of the frame without padding.
                       If -1, returns the size of the frame including padding.
-        vad_segments (torch.Tensor): Optional VAD segments to use for end-of-utterance detection.
+        vad_segments (torch.Tensor | None): Optional VAD segments to use for end-of-utterance detection.
                                      Shape is [num_vad_segments, 2] where each segment contains
                                      [start_time, end_time]. Variable for each stream.
-        options (RequestOptions): Optional options for the request
+        options (RequestOptions | None): Optional options for the request
     """
 
     samples: torch.Tensor
@@ -44,8 +44,8 @@ class Frame:
     is_first: bool = False
     is_last: bool = False
     length: int = -1
-    vad_segments: Optional[torch.Tensor] = None
-    options: Optional[RequestOptions] = None
+    vad_segments: torch.Tensor | None = None
+    options: RequestOptions | None = None
 
     @property
     def size(self) -> int:
@@ -72,10 +72,10 @@ class FeatureBuffer:
                       If -1, returns the size of the buffer including padding
         left_padding_length (int): Length of the left padding in the buffer
                                    It is used to roll features to the right
-        vad_segments (torch.Tensor): Optional VAD segments to use for end-of-utterance detection.
+        vad_segments (torch.Tensor | None): Optional VAD segments to use for end-of-utterance detection.
                                      Shape is [num_vad_segments, 2] where each segment contains
                                      [start_time, end_time]. Variable for each stream.
-        options (RequestOptions): Optional options for the request
+        options (RequestOptions | None): Optional options for the request
     """
 
     features: torch.Tensor
@@ -85,8 +85,8 @@ class FeatureBuffer:
     right_pad_features: bool = False
     length: int = -1
     left_padding_length: int = 0
-    vad_segments: Optional[torch.Tensor] = None
-    options: Optional[RequestOptions] = None
+    vad_segments: torch.Tensor | None = None
+    options: RequestOptions | None = None
 
     @property
     def size(self) -> int:

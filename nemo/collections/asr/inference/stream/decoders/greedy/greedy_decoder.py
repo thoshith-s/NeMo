@@ -13,18 +13,18 @@
 # limitations under the License.
 
 
-from typing import Callable, List
+from typing import Callable
 
 from nemo.collections.asr.inference.utils.constants import SENTENCEPIECE_UNDERSCORE
 
 
 class GreedyDecoder:
 
-    def __init__(self, vocabulary: List[str], conf_func: Callable = None):
+    def __init__(self, vocabulary: list[str], conf_func: Callable = None):
         """
         Initialize the GreedyDecoder
         Args:
-            vocabulary (List[str]): list of vocabulary tokens
+            vocabulary (list[str]): list of vocabulary tokens
             conf_func (Callable): function to compute confidence
         """
 
@@ -33,11 +33,11 @@ class GreedyDecoder:
         self.conf_func = conf_func
         self.is_start_tokens = [token.startswith(SENTENCEPIECE_UNDERSCORE) for token in vocabulary]
 
-    def count_silent_tokens(self, tokens: List[int], start: int, end: int) -> int:
+    def count_silent_tokens(self, tokens: list[int], start: int, end: int) -> int:
         """
         Count how many silent tokens appear in [start, end).
         Args:
-            tokens (List[int]): list of tokens
+            tokens (list[int]): list of tokens
             start (int): start index
             end (int): end index
         Returns:
@@ -67,12 +67,12 @@ class GreedyDecoder:
         """
         return token_id == self.blank_id
 
-    def first_non_silent_token(self, tokens: List[int], start: int, end: int) -> int:
+    def first_non_silent_token(self, tokens: list[int], start: int, end: int) -> int:
         """
         Return the index of the first non-silent token in [start, end).
         If none found, return -1.
         Args:
-            tokens (List[int]): list of tokens
+            tokens (list[int]): list of tokens
             start (int): start index
             end (int): end index
         Returns:
@@ -83,11 +83,11 @@ class GreedyDecoder:
                 return i
         return -1
 
-    def count_non_silent_tokens(self, tokens: List[int], start: int, end: int) -> int:
+    def count_non_silent_tokens(self, tokens: list[int], start: int, end: int) -> int:
         """
         Count how many non-silent tokens appear in [start, end).
         Args:
-            tokens (List[int]): list of tokens
+            tokens (list[int]): list of tokens
             start (int): start index
             end (int): end index
         Returns:

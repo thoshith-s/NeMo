@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import List
-
 import torch
 from nemo.collections.asr.inference.stream.framing.request import Frame, RequestOptions
 from nemo.collections.asr.inference.stream.framing.stream import Stream
@@ -64,11 +62,11 @@ class MonoStream(Stream):
         self.frame_count = 0
         return self
 
-    def __next__(self) -> List[Frame]:
+    def __next__(self) -> list[Frame]:
         """
         Get the next frame in the stream
         Returns:
-            List[Frame]: The next frame in the stream
+            list[Frame]: The next frame in the stream
         """
         if self.samples is None:
             raise RuntimeError("No audio samples loaded. Please call load_audio() first.")

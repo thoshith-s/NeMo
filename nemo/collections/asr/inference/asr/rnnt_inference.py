@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import List, Tuple
-
 import torch
 from torch import Tensor
 
@@ -50,10 +48,10 @@ class RNNTInference(ASRInference):
         blank_id = len(self.asr_model.joint.vocabulary)
         return blank_id
 
-    def get_vocabulary(self) -> List[str]:
+    def get_vocabulary(self) -> list[str]:
         """
         Returns:
-            (List[str]) list of vocabulary tokens.
+            (list[str]) list of vocabulary tokens.
         """
         return self.asr_model.joint.vocabulary
 
@@ -64,7 +62,7 @@ class RNNTInference(ASRInference):
         """
         return self.asr_model.encoder.subsampling_factor
 
-    def encode(self, processed_signal: Tensor, processed_signal_length: Tensor) -> Tuple[Tensor, Tensor]:
+    def encode(self, processed_signal: Tensor, processed_signal_length: Tensor) -> tuple[Tensor, Tensor]:
         """
         Get encoder output from the model. It is used for streaming inference.
         Args:
@@ -92,15 +90,15 @@ class RNNTInference(ASRInference):
         encoded, encoded_len = forward_outs
         return encoded, encoded_len
 
-    def decode(self, encoded: Tensor, encoded_len: Tensor, partial_hypotheses: List) -> List:
+    def decode(self, encoded: Tensor, encoded_len: Tensor, partial_hypotheses: list) -> list:
         """
         RNNT decoding function
         Args:
             encoded: (Tensor) encoder output.
             encoded_len: (Tensor) encoder output length.
-            partial_hypotheses: (List) list of partial hypotheses for stateful decoding.
+            partial_hypotheses: (list) list of partial hypotheses for stateful decoding.
         Returns:
-            (List) list of best hypotheses.
+            (list) list of best hypotheses.
         """
         best_hyp = self.asr_model.decoding.rnnt_decoder_predictions_tensor(
             encoded, encoded_len, return_hypotheses=True, partial_hypotheses=partial_hypotheses

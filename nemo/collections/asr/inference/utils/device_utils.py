@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
 import torch
 from nemo.utils import logging
 
@@ -25,17 +24,17 @@ COMPUTE_DTYPE_MAP = {
 DEVICE_TYPES = ["cuda", "mps", "cpu"]
 
 
-def setup_device(device: str, device_id: Optional[int], compute_dtype: str) -> tuple[str, int, torch.dtype]:
+def setup_device(device: str, device_id: int | None, compute_dtype: str) -> tuple[str, int, torch.dtype]:
     """
     Set up the compute device for the model.
 
     Args:
-        device: Requested device type ('cuda', 'mps' or 'cpu').
-        device_id: Requested CUDA device ID (None for CPU or MPS).
-        compute_dtype: Requested compute dtype.
+        device (str): Requested device type ('cuda', 'mps' or 'cpu').
+        device_id (int | None): Requested CUDA device ID (None for CPU or MPS).
+        compute_dtype (str): Requested compute dtype.
 
     Returns:
-        Tuple of (device_string, device_id, compute_dtype) for model initialization.
+        tuple(str, int, torch.dtype): Tuple of (device_string, device_id, compute_dtype) for model initialization.
     """
     device = device.strip()
     if device not in DEVICE_TYPES:

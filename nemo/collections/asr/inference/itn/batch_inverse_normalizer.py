@@ -14,7 +14,7 @@
 
 
 import itertools
-from typing import Callable, Dict, List, Set, Tuple
+from typing import Callable
 
 from joblib import Parallel, delayed
 
@@ -23,27 +23,27 @@ from nemo.collections.asr.inference.utils.text_segment import Word
 
 
 def merge_punctuation_and_itn_tags(
-    input_words: List[str],
-    output_words: List[str],
-    word_alignment: List[Tuple],
-    pnc_words: List[Word],
-    punct_marks: Set,
+    input_words: list[str],
+    output_words: list[str],
+    word_alignment: list[tuple],
+    pnc_words: list[Word],
+    punct_marks: set,
     sep: str,
     conf_aggregate_fn: Callable,
-) -> List[Word]:
+) -> list[Word]:
     """
     Merge the punctuation marks and ITN tags to the final text.
     It will also preserve first letter capitalization, start and end time of the span.
     Args:
-        input_words: (List[str]) List of input words
-        output_words: (List[str]) List of output words
-        word_alignment: (List[Tuple[List[int], List[int]]]) Word alignment between the input and output words
-        pnc_words: (List[Word]) List of words with punctuation marks
-        punct_marks: (Set) Punctuation marks
+        input_words: (list[str]) List of input words
+        output_words: (list[str]) List of output words
+        word_alignment: (list[tuple[list[int], list[int]]]) Word alignment between the input and output words
+        pnc_words: (list[Word]) List of words with punctuation marks
+        punct_marks: (set) Punctuation marks
         sep: (str) Separator
         conf_aggregate_fn: (Callable) Confidence aggregation function
     Returns:
-        (List[Word]) Final words after merging the punctuation marks and ITN tags
+        (list[Word]) Final words after merging the punctuation marks and ITN tags
     """
     assert len(input_words) == len(pnc_words)
     spans = []
@@ -90,8 +90,8 @@ class BatchAlignmentPreservingInverseNormalizer:
         self,
         itn_model: AlignmentPreservingInverseNormalizer,
         sep: str,
-        asr_supported_puncts: Set[str],
-        post_word_punctuation: Set[str],
+        asr_supported_puncts: set[str],
+        post_word_punctuation: set[str],
         conf_aggregate_fn: Callable,
     ):
         """
@@ -109,16 +109,16 @@ class BatchAlignmentPreservingInverseNormalizer:
         self.punct_marks = self.asr_supported_puncts | post_word_punctuation
 
     def apply_itn(
-        self, asr_words: List[Word], pnc_words: List[Word], return_alignment: bool = False
-    ) -> List[Word] | Tuple[List[Word], List]:
+        self, asr_words: list[Word], pnc_words: list[Word], return_alignment: bool = False
+    ) -> list[Word] | tuple[list[Word], list]:
         """
         Apply Alignment Preserving Inverse Text Normalization
         Args:
-            asr_words: (List[Word]) List of ASR words
-            pnc_words: (List[Word]) List of words with punctuation/capitalization
+            asr_words: (list[Word]) List of ASR words
+            pnc_words: (list[Word]) List of words with punctuation/capitalization
             return_alignment: (bool) Flag to return the word alignment
         Returns:
-            (List[Word]) List of words after applying ITN
+            (list[Word]) List of words after applying ITN
         """
         input_words = []
         for word in asr_words:
@@ -137,20 +137,20 @@ class BatchAlignmentPreservingInverseNormalizer:
 
     def __call__(
         self,
-        asr_words_list: List[List[Word]],
-        pnc_words_list: List[List[Word]],
-        itn_params: Dict,
+        asr_words_list: list[list[Word]],
+        pnc_words_list: list[list[Word]],
+        itn_params: dict,
         return_alignment: bool = False,
-    ) -> List[List[Word]] | List[Tuple]:
+    ) -> list[list[Word]] | list[tuple]:
         """
         Alignment Preserving Inverse Text Normalization
         Args:
-            asr_words_list: (List[List[Word]]) List of ASR words
-            pnc_words_list: (List[List[Word]]) List of words with punctuation/capitalization
-            itn_params: (Dict) Parameters for the ITN model
+            asr_words_list: (list[list[Word]]) List of ASR words
+            pnc_words_list: (list[list[Word]]) List of words with punctuation/capitalization
+            itn_params: (dict) Parameters for the ITN model
             return_alignment: (bool) Flag to return the word alignment
         Returns:
-            (List[List[Word]]) List of words after applying ITN
+            (list[list[Word]]) List of words after applying ITN
         """
         if len(asr_words_list) == 0:
             return []

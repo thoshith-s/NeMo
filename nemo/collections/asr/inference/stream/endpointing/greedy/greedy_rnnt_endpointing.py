@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import List, Optional, Tuple
-
 import torch
 from nemo.collections.asr.inference.stream.decoders.greedy.greedy_rnnt_decoder import RNNTGreedyDecoder
 from nemo.collections.asr.inference.stream.endpointing.greedy.greedy_endpointing import GreedyEndpointing
@@ -24,7 +22,7 @@ class RNNTGreedyEndpointing(GreedyEndpointing):
 
     def __init__(
         self,
-        vocabulary: List[str],
+        vocabulary: list[str],
         ms_per_timestep: int,
         effective_buffer_size_in_secs: float = None,
         stop_history_eou: int = -1,
@@ -33,7 +31,7 @@ class RNNTGreedyEndpointing(GreedyEndpointing):
         """
         Initialize the RNNTGreedyEndpointing class
         Args:
-            vocabulary: (List[str]) List of vocabulary
+            vocabulary: (list[str]) List of vocabulary
             ms_per_timestep: (int) Number of milliseconds per timestep
             effective_buffer_size_in_secs: (float, optional) Effective buffer size for VAD-based EOU detection for stateless and stateful RNNT. If None, VAD functionality is disabled.
             stop_history_eou: (int) Number of silent tokens to trigger a EOU, if -1 then it is disabled
@@ -46,21 +44,21 @@ class RNNTGreedyEndpointing(GreedyEndpointing):
 
     def detect_eou(
         self,
-        alignment: List[List[Tuple[torch.Tensor, torch.Tensor]]],
+        alignment: list[list[tuple[torch.Tensor, torch.Tensor]]],
         pivot_point: int,
         search_start_point: int = 0,
-        stop_history_eou: Optional[int] = None,
-    ) -> Tuple[bool, int]:
+        stop_history_eou: int | None = None,
+    ) -> tuple[bool, int]:
         """
         Detect end of utterance (EOU) given the RNNT alignment and pivot point
         Args:
-            alignment (List[List[Tuple[torch.Tensor, torch.Tensor]]]):
+            alignment (list[list[tuple[torch.Tensor, torch.Tensor]]]):
                        alignment[t][u] is a tuple of tensors indicating log_probs and token_id
             pivot_point (int): pivot point
             search_start_point (int): start point for searching EOU
             stop_history_eou (int | None): stop history of EOU, if None then use the stop history of EOU from the class
         Returns:
-            Tuple[bool, int]: (EOU detected flag, position where EOU was detected)
+            tuple[bool, int]: (EOU detected flag, position where EOU was detected)
         """
         emissions = self.greedy_rnnt_decoder.get_labels(alignment)
         return self.detect_eou_given_emissions(emissions, pivot_point, search_start_point, stop_history_eou)

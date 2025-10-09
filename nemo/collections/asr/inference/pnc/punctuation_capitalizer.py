@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import Dict, List
-
 import torch
 
 from nemo.collections.asr.inference.pnc.token_classification.punctuation_capitalization_model import (
@@ -75,13 +73,13 @@ class PunctuationCapitalizer:
         except Exception as e:
             raise RuntimeError(f"Model loading failed: {str(e)}")
 
-    def add_punctuation_capitalization_list(self, transcriptions: List[str], params: Dict) -> List[str]:
+    def add_punctuation_capitalization_list(self, transcriptions: list[str], params: dict) -> list[str]:
         """
         Args:
-            transcriptions: (List[str]) list of input strings.
-            params: (Dict) dictionary of runtime parameters.
+            transcriptions: (list[str]) list of input strings.
+            params: (dict) dictionary of runtime parameters.
         Returns:
-            (List[str]) list of punctuated and capitalized transcriptions.
+            (list[str]) list of punctuated and capitalized transcriptions.
         """
         with (
             torch.amp.autocast(device_type=self.device_str, dtype=self.compute_dtype, enabled=self.use_amp),
@@ -100,15 +98,15 @@ class PunctuationCapitalizer:
             return transcriptions
 
     def add_punctuation_capitalization_to_words(
-        self, words: List[List[Word]], params: Dict, sep: str = ' '
-    ) -> List[List[Word]]:
+        self, words: list[list[Word]], params: dict, sep: str = ' '
+    ) -> list[list[Word]]:
         """
         Args:
-            words: (List[List[Word]]) list of input words.
-            params: (Dict) dictionary of runtime parameters.
+            words: (list[list[Word]]) list of input words.
+            params: (dict) dictionary of runtime parameters.
             sep: (str) separator to join the words.
         Returns:
-            (List[List[Word]]) list of punctuated and capitalized words.
+            (list[list[Word]]) list of punctuated and capitalized words.
         """
         if len(words) == 0:
             return words

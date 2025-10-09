@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, List, Optional, Set
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -54,8 +54,8 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         self,
         cfg: DictConfig,
         asr_model: CacheAwareCTCInference,
-        pnc_model: Optional[PunctuationCapitalizer] = None,
-        itn_model: Optional[AlignmentPreservingInverseNormalizer] = None,
+        pnc_model: PunctuationCapitalizer | None = None,
+        itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):
 
         # ASR Related fields
@@ -230,7 +230,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         """Return the separator for the text postprocessor."""
         return self.sep
 
-    def preprocess(self, buffers: List[Tensor], right_paddings: Optional[List[int]] = None):
+    def preprocess(self, buffers: list[Tensor], right_paddings: list[int] | None = None):
         """Preprocess the feature buffers by stacking them and computing the lengths"""
         feature_buffers = [f_buffer.unsqueeze_(0) for f_buffer in buffers]
         feature_buffer_lens = torch.tensor([f_buffer.shape[2] for f_buffer in feature_buffers], device=self.device)
@@ -267,7 +267,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         return eou_detected
 
     def decode_log_probs(
-        self, frames: List[Frame], log_probs: Tensor, tail_log_probs: Tensor | None, ready_state_ids: Set
+        self, frames: list[Frame], log_probs: Tensor, tail_log_probs: Tensor | None, ready_state_ids: set
     ):
 
         for idx, frame in enumerate(frames):
@@ -286,10 +286,10 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
 
     def cache_aware_transcribe_step(
         self,
-        frames: List[Frame],
-        buffered_features: List[Tensor],
-        right_paddings: List[int] | None,
-        ready_state_ids: Set,
+        frames: list[Frame],
+        buffered_features: list[Tensor],
+        right_paddings: list[int] | None,
+        ready_state_ids: set,
         keep_all_outputs: bool = False,
     ) -> None:
         """
@@ -326,7 +326,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         self.context_manager.reset_slots(stream_ids, eos_flags)
         self.decode_log_probs(frames, log_probs, tail_log_probs, ready_state_ids)
 
-    def transcribe_step_for_frames(self, frames: List[Frame]) -> None:
+    def transcribe_step_for_frames(self, frames: list[Frame]) -> None:
         """
         Transcribes the frames in a streaming manner.
         After detecting EOU, it updates the state and run text postprocessor.
@@ -365,7 +365,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
 
         self.update_partial_transcript(frames, self.asr_model.tokenizer, self.leading_regex_pattern)
 
-    def transcribe_step_for_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> None:
+    def transcribe_step_for_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> None:
         """Transcribe a step for feature buffers"""
         raise NotImplementedError("Feature buffer type is not supported for cache aware streaming.")
 

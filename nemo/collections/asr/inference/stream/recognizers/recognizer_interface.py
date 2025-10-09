@@ -14,7 +14,6 @@
 
 
 from abc import ABC, abstractmethod
-from typing import List
 
 from nemo.collections.asr.inference.stream.framing.request import Request
 from nemo.collections.asr.inference.stream.framing.request_options import ASRRequestOptions
@@ -73,7 +72,7 @@ class RecognizerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def transcribe_step(self, requests: List[Request]):
+    def transcribe_step(self, requests: list[Request]):
         """
         Transcribe a step
         """

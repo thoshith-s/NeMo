@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Callable, Dict, List, Tuple
+from typing import Callable
 
 import torch
 
@@ -22,19 +22,19 @@ from nemo.collections.asr.inference.stream.decoders.greedy.greedy_decoder import
 
 class RNNTGreedyDecoder(GreedyDecoder):
 
-    def __init__(self, vocabulary: List[str], conf_func: Callable = None):
+    def __init__(self, vocabulary: list[str], conf_func: Callable = None):
         """
         Initialize the RNNTGreedyDecoder
         Args:
-            vocabulary (List[str]): list of vocabulary tokens
+            vocabulary (list[str]): list of vocabulary tokens
             conf_func (Callable): function to compute confidence
         """
         super().__init__(vocabulary, conf_func)
 
     def __call__(
         self,
-        global_timestamps: torch.Tensor | List[int],
-        tokens: torch.Tensor | List[int],
+        global_timestamps: torch.Tensor | list[int],
+        tokens: torch.Tensor | list[int],
         length: int,
         offset: int = 0,
     ):
@@ -70,11 +70,11 @@ class RNNTGreedyDecoder(GreedyDecoder):
 
 class ClippedRNNTGreedyDecoder:
 
-    def __init__(self, vocabulary: List[str], tokens_per_frame: int, conf_func: Callable = None, endpointer=None):
+    def __init__(self, vocabulary: list[str], tokens_per_frame: int, conf_func: Callable = None, endpointer=None):
         """
         Initialize the ClippedRNNTGreedyDecoder
         Args:
-            vocabulary (List[str]): list of vocabulary tokens
+            vocabulary (list[str]): list of vocabulary tokens
             tokens_per_frame (int): number of tokens per frame
             conf_func (Callable): function to compute confidence
             endpointer (Any): endpointer to detect EOU
@@ -86,7 +86,7 @@ class ClippedRNNTGreedyDecoder:
     @staticmethod
     def extract_clipped_and_tail_single_pass(
         timesteps: torch.Tensor, tokens: torch.Tensor, start_idx: int, end_idx: int, return_tail_result: bool
-    ) -> Tuple[List[int], List[int], List[int]]:
+    ) -> tuple[list[int], list[int], list[int]]:
         """
         Extract clipped and tail data using tensor operations - no conversion overhead
         """
@@ -118,7 +118,7 @@ class ClippedRNNTGreedyDecoder:
         timestamp_offset: int = 0,
         vad_segments: torch.Tensor = None,
         stop_history_eou: int = None,
-    ) -> Tuple[Dict, Dict, bool, int, int]:
+    ) -> tuple[dict, dict, bool, int, int]:
         """
         Decode using timestamps instead of dense alignment
         Optimized version with vectorized operations and single-pass processing
@@ -137,7 +137,7 @@ class ClippedRNNTGreedyDecoder:
             vad_segments (torch.Tensor): Optional VAD segments to use for end-of-utterance detection
             stop_history_eou (int): stop history of EOU, if None then use the default stop history
         Returns:
-            Tuple[Dict, Dict, bool, int, int]:
+            tuple[dict, dict, bool, int, int]:
                 clipped output, tail output, is_eou, updated start_idx, updated end_idx
         """
         # Initialize end-of-utterance state based on input parameters

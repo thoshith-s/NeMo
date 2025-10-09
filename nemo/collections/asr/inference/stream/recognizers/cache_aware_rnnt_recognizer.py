@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -54,8 +54,8 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         self,
         cfg: DictConfig,
         asr_model: CacheAwareRNNTInference,
-        pnc_model: Optional[PunctuationCapitalizer] = None,
-        itn_model: Optional[AlignmentPreservingInverseNormalizer] = None,
+        pnc_model: PunctuationCapitalizer | None = None,
+        itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):
 
         # ASR Related fields
@@ -231,7 +231,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         """Return the separator for the text postprocessor."""
         return self.sep
 
-    def preprocess(self, buffers: List[Tensor], right_paddings: Optional[List[int]] = None) -> Tuple[Tensor, Tensor]:
+    def preprocess(self, buffers: list[Tensor], right_paddings: list[int] | None = None) -> tuple[Tensor, Tensor]:
         """Preprocess the feature buffers by stacking them and computing the lengths"""
         feature_buffers = [f_buffer.unsqueeze_(0) for f_buffer in buffers]
         feature_buffer_lens = torch.tensor([f_buffer.shape[2] for f_buffer in feature_buffers], device=self.device)
@@ -275,10 +275,10 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
 
     def cache_aware_transcribe_step(
         self,
-        frames: List[Frame],
-        features: List[Tensor],
-        right_paddings: List[int],
-        ready_state_ids: Set,
+        frames: list[Frame],
+        features: list[Tensor],
+        right_paddings: list[int],
+        ready_state_ids: set,
         keep_all_outputs: bool = False,
     ) -> None:
         """
@@ -336,11 +336,11 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
                 state.cleanup_after_eou()
                 ready_state_ids.add(frame.stream_id)
 
-    def transcribe_step_for_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> None:
+    def transcribe_step_for_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> None:
         """Transcribe a step for feature buffers"""
         raise NotImplementedError("Feature buffer type is not supported for cache aware streaming.")
 
-    def transcribe_step_for_frames(self, frames: List[Frame]) -> None:
+    def transcribe_step_for_frames(self, frames: list[Frame]) -> None:
         """
         Transcribes the frames in a streaming manner.
         After detecting EOU, it updates the state and run text postprocessor.

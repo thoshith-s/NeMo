@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import List
-
 import torch
 from omegaconf import DictConfig
 
@@ -125,14 +122,14 @@ class BatchedFeatureBufferer:
         if stream_id in self.bufferers:
             del self.bufferers[stream_id]
 
-    def update(self, fbuffers: List[FeatureBuffer]) -> List[torch.Tensor]:
+    def update(self, fbuffers: list[FeatureBuffer]) -> list[torch.Tensor]:
         """
         Update the feature bufferers with the new feature buffers.
         Feature buffers can come from different streams (audios), so we need to maintain a bufferer for each stream.
         Args:
-            fbuffers (List[FeatureBuffer]): list of feature buffers
+            fbuffers (list[FeatureBuffer]): list of feature buffers
         Returns:
-            feature_buffers (List[torch.Tensor]): List of feature buffers, one per input frame
+            feature_buffers (list[torch.Tensor]): List of feature buffers, one per input frame
         """
         result_buffers = []
         for fbuffer in fbuffers:

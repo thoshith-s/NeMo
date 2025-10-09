@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Callable, Dict, List, Tuple
+from typing import Callable
 import torch
 
 from nemo.collections.asr.inference.stream.decoders.greedy.greedy_decoder import GreedyDecoder
@@ -21,24 +21,24 @@ from nemo.collections.asr.inference.stream.decoders.greedy.greedy_decoder import
 
 class CTCGreedyDecoder(GreedyDecoder):
 
-    def __init__(self, vocabulary: List[str], conf_func: Callable = None):
+    def __init__(self, vocabulary: list[str], conf_func: Callable = None):
         """
         Initialize the CTCGreedyDecoder
         Args:
-            vocabulary (List[str]): list of vocabulary tokens
+            vocabulary (list[str]): list of vocabulary tokens
             conf_func (Callable): function to compute confidence
         """
 
         super().__init__(vocabulary, conf_func)
 
     @staticmethod
-    def get_labels(log_probs: torch.Tensor) -> List[int]:
+    def get_labels(log_probs: torch.Tensor) -> list[int]:
         """
         Perform greedy decoding on the log probabilities
         Args:
             log_probs (torch.Tensor): log probabilities
         Returns:
-            List[int]: list of tokens
+            list[int]: list of tokens
         """
         if log_probs.dim() != 2:
             raise ValueError("log_probs must be 2D tensor")
@@ -89,11 +89,11 @@ class CTCGreedyDecoder(GreedyDecoder):
 
 class ClippedCTCGreedyDecoder:
 
-    def __init__(self, vocabulary: List[str], tokens_per_frame: int, conf_func: Callable = None, endpointer=None):
+    def __init__(self, vocabulary: list[str], tokens_per_frame: int, conf_func: Callable = None, endpointer=None):
         """
         Initialize the ClippedCTCGreedyDecoder
         Args:
-            vocabulary (List[str]): list of vocabulary tokens
+            vocabulary (list[str]): list of vocabulary tokens
             tokens_per_frame (int): number of tokens per frame
             conf_func (Callable): function to compute confidence
             endpointer (Any): endpointer to detect EOU
@@ -114,7 +114,7 @@ class ClippedCTCGreedyDecoder:
         state_end_idx: int = 0,
         stop_history_eou: int = None,
         compute_confidence: bool = True,
-    ) -> Tuple[Dict, Dict, bool, int, int]:
+    ) -> tuple[dict, dict, bool, int, int]:
         """
         Decode the log probabilities within the clip range (clip_start, clip_end)
         Args:
@@ -129,7 +129,7 @@ class ClippedCTCGreedyDecoder:
             stop_history_eou (int): stop history of EOU, if None then use the default stop history
             compute_confidence (bool): compute confidence or not
         Returns:
-            Tuple[Dict, Dict, bool, int, int]:
+            tuple[dict, dict, bool, int, int]:
                 clipped output, tail output, is_eou, updated start_idx, updated end_idx
         """
 

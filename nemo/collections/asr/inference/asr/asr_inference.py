@@ -15,7 +15,7 @@
 
 import copy
 from functools import cached_property
-from typing import Callable, List, Set, Union
+from typing import Callable
 
 import torch
 from omegaconf import DictConfig, open_dict
@@ -35,7 +35,7 @@ class ASRInference:
     def __init__(
         self,
         model_name: str,
-        decoding_cfg: Union[CTCDecodingConfig, RNNTDecodingConfig],
+        decoding_cfg: CTCDecodingConfig | RNNTDecodingConfig,
         device: str = 'cuda',
         device_id: int = 0,
         compute_dtype: str = 'bfloat16',
@@ -44,7 +44,7 @@ class ASRInference:
         """
         Args:
             model_name: (str) path to the model checkpoint or a model name from the NGC cloud.
-            decoding_cfg: (Union[CTCDecodingConfig, RNNTDecodingConfig]) decoding configuration.
+            decoding_cfg: (CTCDecodingConfig | RNNTDecodingConfig) decoding configuration.
             device: (str) device to run the model on.
             device_id: (int) device ID to run the model on.
             compute_dtype: (str) compute dtype to run the model on.
@@ -84,10 +84,10 @@ class ASRInference:
             raise RuntimeError(f"Failed to load model {model_name}: {str(e)}")
 
     @property
-    def segment_separators(self) -> List[str]:
+    def segment_separators(self) -> list[str]:
         """
         Returns:
-            (List[str]) list of segment separators.
+            (list[str]) list of segment separators.
         """
         return self.decoding_cfg.segment_seperators
 
@@ -132,7 +132,7 @@ class ASRInference:
             raise ValueError("ASR model is not initialized.")
         return self.supported_punctuation() != set()
 
-    def supported_punctuation(self) -> Set:
+    def supported_punctuation(self) -> set:
         """
         Returns:
             (set) Set of supported punctuation symbols.
@@ -142,7 +142,7 @@ class ASRInference:
         return self.tokenizer.supported_punctuation - set("'")
 
     @cached_property
-    def punctuation_ids(self) -> Set:
+    def punctuation_ids(self) -> set:
         """
         Returns:
             (set) Set of punctuation ids.
@@ -165,7 +165,7 @@ class ASRInference:
             return self.asr_model.tokenizer.tokens_to_ids(SENTENCEPIECE_UNDERSCORE)
 
     @cached_property
-    def language_token_ids(self) -> Set:
+    def language_token_ids(self) -> set:
         """
         This property is used for some Riva models that have language tokens included in their vocabulary.
         Returns:
@@ -222,10 +222,10 @@ class ASRInference:
         """
         raise NotImplementedError()
 
-    def get_vocabulary(self) -> List[str]:
+    def get_vocabulary(self) -> list[str]:
         """
         Returns:
-            (List[str]) list of vocabulary tokens.
+            (list[str]) list of vocabulary tokens.
         """
         raise NotImplementedError()
 

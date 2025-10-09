@@ -14,19 +14,18 @@
 
 
 from functools import lru_cache
-from typing import FrozenSet, List, Set, Union
 
 from nemo.collections.asr.inference.utils.constants import DEFAULT_SEMIOTIC_CLASS, SEP_REPLACEABLE_PUNCTUATION
 
 
 @lru_cache(maxsize=5)
-def get_translation_table(punct_marks_frozen: FrozenSet[str], sep: str) -> dict:
+def get_translation_table(punct_marks_frozen: frozenset[str], sep: str) -> dict:
     """
     Create and cache translation table for text normalization.
 
     Args:
-        punct_marks_frozen: Frozen set of punctuation marks to process
-        sep: Separator to replace certain punctuation marks
+        punct_marks_frozen (frozenset[str]): Frozen set of punctuation marks to process
+        sep (str): Separator to replace certain punctuation marks
 
     Returns:
         Translation table for str.translate()
@@ -35,14 +34,14 @@ def get_translation_table(punct_marks_frozen: FrozenSet[str], sep: str) -> dict:
     return str.maketrans(replace_map)
 
 
-def normalize_text(text: str, punct_marks: Set[str], sep: str) -> str:
+def normalize_text(text: str, punct_marks: set[str], sep: str) -> str:
     """
     Helper to normalize text by removing/replacing punctuation and lowercasing.
 
     Args:
-        text: Text to normalize
-        punct_marks: Set of punctuation marks to process
-        sep: Separator to replace certain punctuation marks
+        text (str): Text to normalize
+        punct_marks (set[str]): Set of punctuation marks to process
+        sep (str): Separator to replace certain punctuation marks
 
     Returns:
         Normalized text
@@ -165,12 +164,12 @@ class TextSegment:
         """Capitalize first letter of the text segment."""
         self._text = self._text.capitalize()
 
-    def with_normalized_text(self, punct_marks: Set[str], sep: str = "") -> 'TextSegment':
+    def with_normalized_text(self, punct_marks: set[str], sep: str = "") -> 'TextSegment':
         """
         Create a new TextSegment with normalized text (punctuation removed/replaced and lowercased).
 
         Args:
-            punct_marks: Set of punctuation marks to process
+            punct_marks (set[str]): Set of punctuation marks to process
             sep: Separator to replace certain punctuation marks
 
         Returns:
@@ -181,13 +180,13 @@ class TextSegment:
         obj_copy._text = normalize_text(self._text, punct_marks, sep)  # Direct access
         return obj_copy
 
-    def normalize_text_inplace(self, punct_marks: Set[str], sep: str = "") -> None:
+    def normalize_text_inplace(self, punct_marks: set[str], sep: str = "") -> None:
         """
         Normalize text in place (punctuation removed/replaced and lowercased).
 
         Args:
-            punct_marks: Set of punctuation marks to process
-            sep: Separator to replace certain punctuation marks
+            punct_marks (set[str]): Set of punctuation marks to process
+            sep (str): Separator to replace certain punctuation marks
 
         Note:
             This method modifies the current instance. Consider using
@@ -259,13 +258,13 @@ class Word(TextSegment):
         return super().to_dict() | {"semiotic_class": self.semiotic_class}
 
 
-def join_segments(segments: List[List[TextSegment]], sep: str) -> List[str]:
+def join_segments(segments: list[list[TextSegment]], sep: str) -> list[str]:
     """
     Join the text segments to form transcriptions.
 
     Args:
-        segments: List of text segment sequences to join
-        sep: Separator to use when joining text segments
+        segments (list[list[TextSegment]]): List of text segment sequences to join
+        sep (str): Separator to use when joining text segments
 
     Returns:
         List of transcriptions, one for each text segment sequence
@@ -274,7 +273,7 @@ def join_segments(segments: List[List[TextSegment]], sep: str) -> List[str]:
 
 
 def normalize_segments_inplace(
-    segments: Union[List[TextSegment], List[List[TextSegment]]], punct_marks: Set[str], sep: str = ' '
+    segments: list[TextSegment] | list[list[TextSegment]], punct_marks: set[str], sep: str = ' '
 ) -> None:
     """
     Normalize text in text segments by removing punctuation and converting to lowercase.
@@ -283,9 +282,9 @@ def normalize_segments_inplace(
     on each TextSegment object. It handles both flat lists of text segments and nested lists.
 
     Args:
-        segments: List of TextSegment objects or list of lists of TextSegment objects
-        punct_marks: Set of punctuation marks to be processed
-        sep: Separator to replace certain punctuation marks (default: ' ')
+        segments (list[TextSegment] | list[list[TextSegment]]): List of TextSegment objects or list of lists of TextSegment objects
+        punct_marks (set[str]): Set of punctuation marks to be processed
+        sep (str): Separator to replace certain punctuation marks (default: ' ')
 
     Note:
         This function modifies the input text segments in-place. The original text

@@ -14,7 +14,7 @@
 
 
 from functools import lru_cache
-from typing import Callable, List, Optional, Set, Tuple
+from typing import Callable
 
 import numpy as np
 
@@ -35,10 +35,10 @@ class BPEDecoder:
 
     def __init__(
         self,
-        vocabulary: List[str],
+        vocabulary: list[str],
         tokenizer: TokenizerSpec,
         confidence_aggregator: Callable,
-        asr_supported_puncts: Set,
+        asr_supported_puncts: set,
         word_boundary_tolerance: float,
         token_duration_in_secs: float,
     ):
@@ -59,7 +59,7 @@ class BPEDecoder:
         }
 
     @lru_cache(maxsize=10000)
-    def cached_ids_to_text(self, tokens_slice: Tuple[int]) -> str:
+    def cached_ids_to_text(self, tokens_slice: tuple[int]) -> str:
         """
         Cached tokenizer output to avoid repeated calls to the tokenizer.
         Args:
@@ -90,7 +90,7 @@ class BPEDecoder:
         else:
             raise ValueError(f"Invalid output granularity: {state.options.asr_output_granularity}")
 
-    def group_tokens_into_segment(self, tokens: List, timesteps: List, confidences: List) -> Tuple[TextSegment, bool]:
+    def group_tokens_into_segment(self, tokens: list, timesteps: list, confidences: list) -> tuple[TextSegment, bool]:
         """
         Group tokens into a text segment with timestamps and confidence scores.
         Args:
@@ -127,7 +127,7 @@ class BPEDecoder:
         # Create a text segment
         return TextSegment(text=segment_text, start=start, end=end, conf=conf), need_merge
 
-    def group_tokens_into_words(self, tokens: List, timesteps: List, confidences: List) -> Tuple[List[Word], bool]:
+    def group_tokens_into_words(self, tokens: list, timesteps: list, confidences: list) -> tuple[list[Word], bool]:
         """
         Decodes BPE tokens into words with timestamps and confidence scores.
         Args:
@@ -201,22 +201,22 @@ class BPEDecoder:
 
     def refine_text_segment_timestamp(
         self,
-        current_tokens: List[int],
-        current_timesteps: List[float],
-        next_segment_start_timestep: Optional[float] = None,
-        need_merge_with_next_segment: Optional[bool] = None,
-        prev_segment_end: Optional[float] = None,
-    ) -> Tuple[float, float]:
+        current_tokens: list[int],
+        current_timesteps: list[float],
+        next_segment_start_timestep: float | None = None,
+        need_merge_with_next_segment: bool | None = None,
+        prev_segment_end: float | None = None,
+    ) -> tuple[float, float]:
         """
         Refines the text segment timestamp based on the current tokens, timestamps, and the next segment start timestamp.
         Args:
-            current_tokens (list): List of token indices.
-            current_timesteps (list): List of token timestamps.
-            next_segment_start_timestep (float): The start timestamp of the next segment.
-            need_merge_with_next_segment (bool): True if the current segment should be merged with the next segment.
-            prev_segment_end (float): The end timestamp of the previous segment.
+            current_tokens (list[int]): List of token indices.
+            current_timesteps (list[float]): List of token timestamps.
+            next_segment_start_timestep (float | None): The start timestamp of the next segment.
+            need_merge_with_next_segment (bool | None): True if the current segment should be merged with the next segment.
+            prev_segment_end (float | None): The end timestamp of the previous segment.
         Returns:
-            tuple (float, float): The refined start and end timestamps.
+            tuple(float, float): The refined start and end timestamps.
         """
 
         start, end = current_timesteps[0], current_timesteps[-1]

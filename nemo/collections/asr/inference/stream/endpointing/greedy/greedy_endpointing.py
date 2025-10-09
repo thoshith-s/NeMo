@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import List, Optional, Tuple
-
 import torch
 
 from nemo.collections.asr.inference.utils.endpointing_utils import get_custom_stop_history_eou, millisecond_to_frames
@@ -24,7 +22,7 @@ class GreedyEndpointing:
 
     def __init__(
         self,
-        vocabulary: List[str],
+        vocabulary: list[str],
         ms_per_timestep: int,
         effective_buffer_size_in_secs: float = None,
         stop_history_eou: int = -1,
@@ -33,7 +31,7 @@ class GreedyEndpointing:
         """
         Initialize the GreedyEndpointing class
         Args:
-            vocabulary: (List[str]) List of vocabulary
+            vocabulary: (list[str]) List of vocabulary
             ms_per_timestep: (int) Number of milliseconds per timestep
             effective_buffer_size_in_secs: (float, optional) Effective buffer size for VAD-based EOU detection.
             stop_history_eou: (int) Number of silent tokens to trigger a EOU, if -1 then it is disabled
@@ -52,15 +50,15 @@ class GreedyEndpointing:
 
     def detect_eou_given_emissions(
         self,
-        emissions: List[int],
+        emissions: list[int],
         pivot_point: int,
         search_start_point: int = 0,
-        stop_history_eou: Optional[int] = None,
-    ) -> Tuple[bool, int]:
+        stop_history_eou: int | None = None,
+    ) -> tuple[bool, int]:
         """
         Detect end of utterance (EOU) given the emissions and pivot point
         Args:
-            emissions (List[int]): list of emissions at each timestep
+            emissions (list[int]): list of emissions at each timestep
             pivot_point (int): pivot point around which to detect EOU
             search_start_point (int): start point for searching EOU
             stop_history_eou (int | None): stop history of EOU, if None then use the stop history of EOU from the class
@@ -116,8 +114,8 @@ class GreedyEndpointing:
         timesteps: torch.Tensor,
         tokens: torch.Tensor,
         alignment_length: int,
-        stop_history_eou: Optional[int] = None,
-    ) -> Tuple[bool, int]:
+        stop_history_eou: int | None = None,
+    ) -> tuple[bool, int]:
         """
         Detect end of utterance (EOU) given timestamps and tokens using tensor operations.
         Args:
@@ -126,7 +124,7 @@ class GreedyEndpointing:
             alignment_length (int): length of the alignment
             stop_history_eou (int | None): stop history of EOU, if None then use the stop history of EOU from the class
         Returns:
-            Tuple[bool, int]: True if EOU is detected, False otherwise, and the point at which EOU is detected
+            tuple[bool, int]: True if EOU is detected, False otherwise, and the point at which EOU is detected
         """
         eou_detected, eou_detected_at = False, -1
 
@@ -169,17 +167,17 @@ class GreedyEndpointing:
         return eou_detected, eou_detected_at
 
     def detect_eou_vad(
-        self, vad_segments: torch.Tensor, search_start_point: float = 0, stop_history_eou: Optional[int] = None
-    ) -> Tuple[bool, float]:
+        self, vad_segments: torch.Tensor, search_start_point: float = 0, stop_history_eou: int | None = None
+    ) -> tuple[bool, float]:
         """
         Detect end of utterance (EOU) using VAD segments.
 
         Args:
-            vad_segments: VAD segments in format [N, 2] where each row is [start_time, end_time]
-            search_start_point: Start time for searching EOU in seconds
-            stop_history_eou: Stop history of EOU in milliseconds, if None then use the stop history of EOU from the class
+            vad_segments (torch.Tensor): VAD segments in format [N, 2] where each row is [start_time, end_time]
+            search_start_point (float): Start time for searching EOU in seconds
+            stop_history_eou (int | None): Stop history of EOU in milliseconds, if None then use the stop history of EOU from the class
         Returns:
-            Tuple[bool, float]: (is_eou, eou_detected_at_time)
+            tuple[bool, float]: (is_eou, eou_detected_at_time)
         """
         if self.effective_buffer_size_in_secs is None:
             raise ValueError("Effective buffer size in seconds is required for VAD-based EOU detection")
@@ -244,20 +242,20 @@ class GreedyEndpointing:
 
     def detect_eou_near_pivot(
         self,
-        emissions: List[int],
+        emissions: list[int],
         pivot_point: int,
         search_start_point: int = 0,
-        stop_history_eou: Optional[int] = None,
-    ) -> Tuple[bool, int]:
+        stop_history_eou: int | None = None,
+    ) -> tuple[bool, int]:
         """
         Detect end of utterance (EOU) given the emissions and pivot point
         Args:
-            emissions (List[int]): list of emissions at each timestep
+            emissions (list[int]): list of emissions at each timestep
             pivot_point (int): pivot point around which to detect EOU
             search_start_point (int): start point for searching EOU
             stop_history_eou (int | None): stop history of EOU, if None then use the stop history of EOU from the class
         Returns:
-            Tuple[bool, int]: True if EOU is detected, False otherwise, and the point at which EOU is detected
+            tuple[bool, int]: True if EOU is detected, False otherwise, and the point at which EOU is detected
         """
 
         sequence_length = len(emissions)

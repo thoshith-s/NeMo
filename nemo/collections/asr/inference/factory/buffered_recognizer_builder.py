@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import Union
-
 from omegaconf.dictconfig import DictConfig
 
 from nemo.collections.asr.inference.factory.base_builder import BaseBuilder
@@ -29,7 +26,7 @@ from nemo.utils import logging
 class BufferedSpeechRecognizerBuilder(BaseBuilder):
 
     @classmethod
-    def build(cls, cfg: DictConfig) -> Union[RNNTBufferedSpeechRecognizer, CTCBufferedSpeechRecognizer]:
+    def build(cls, cfg: DictConfig) -> RNNTBufferedSpeechRecognizer | CTCBufferedSpeechRecognizer:
         """
         Build the buffered streaming recognizer based on the config.
         Args:

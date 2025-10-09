@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import List
-
 import torch
 from torch import Tensor
 
@@ -53,10 +50,10 @@ class CTCInference(ASRInference):
             blank_id = len(self.asr_model.ctc_decoder.vocabulary)
         return blank_id
 
-    def get_vocabulary(self) -> List[str]:
+    def get_vocabulary(self) -> list[str]:
         """
         Returns:
-            (List[str]) list of vocabulary tokens.
+            (list[str]) list of vocabulary tokens.
         """
         if isinstance(self.asr_model, EncDecCTCModel):
             return self.asr_model.decoder.vocabulary

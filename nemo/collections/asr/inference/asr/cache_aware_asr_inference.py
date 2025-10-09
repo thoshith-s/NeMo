@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import List, Tuple
-
 from torch import Tensor
 
 from nemo.collections.asr.inference.asr.asr_inference import ASRInference
@@ -29,11 +27,11 @@ class CacheAwareASRInference(ASRInference):
         """
         return self.asr_model.encoder._feat_in
 
-    def get_sampling_frames(self) -> List[int] | int | None:
+    def get_sampling_frames(self) -> list[int] | int | None:
         """
         It is used for checking to make sure the audio chunk has enough frames to produce at least one output after downsampling.
         Returns:
-            (List[int] | int | None) sampling frames for the encoder.
+            (list[int] | int | None) sampling frames for the encoder.
         """
         self.sampling_frames = None
         if hasattr(self.asr_model.encoder, "pre_encode") and hasattr(
@@ -42,10 +40,10 @@ class CacheAwareASRInference(ASRInference):
             self.sampling_frames = self.asr_model.encoder.pre_encode.get_sampling_frames()
         return self.sampling_frames
 
-    def get_initial_cache_state(self, batch_size: int) -> Tuple[Tensor, Tensor, Tensor]:
+    def get_initial_cache_state(self, batch_size: int) -> tuple[Tensor, Tensor, Tensor]:
         """
         Returns:
-            (Tuple[Tensor, Tensor, Tensor]) the initial cache state of the encoder.
+            (tuple[Tensor, Tensor, Tensor]) the initial cache state of the encoder.
         """
         return self.asr_model.encoder.get_initial_cache_state(batch_size=batch_size)
 
@@ -56,24 +54,24 @@ class CacheAwareASRInference(ASRInference):
         """
         return self.asr_model.encoder.streaming_cfg.drop_extra_pre_encoded
 
-    def get_chunk_size(self) -> List[int] | int:
+    def get_chunk_size(self) -> list[int] | int:
         """
         Returns:
-            (List[int] | int) the chunk size.
+            (list[int] | int) the chunk size.
         """
         return self.asr_model.encoder.streaming_cfg.chunk_size
 
-    def get_shift_size(self) -> List[int] | int:
+    def get_shift_size(self) -> list[int] | int:
         """
         Returns:
-            (List[int] | int) the shift size.
+            (list[int] | int) the shift size.
         """
         return self.asr_model.encoder.streaming_cfg.shift_size
 
-    def get_pre_encode_cache_size(self) -> List[int] | int:
+    def get_pre_encode_cache_size(self) -> list[int] | int:
         """
         Returns:
-            (List[int] | int) the pre_encode cache size.
+            (list[int] | int) the pre_encode cache size.
         """
         return self.asr_model.encoder.streaming_cfg.pre_encode_cache_size
 
@@ -84,19 +82,19 @@ class CacheAwareASRInference(ASRInference):
         """
         return self.asr_model.encoder.subsampling_factor
 
-    def get_att_context_size(self) -> List:
+    def get_att_context_size(self) -> list:
         """
         Returns:
-            (List) the attention context size.
+            (list) the attention context size.
         """
         return self.asr_model.encoder.att_context_size.copy()
 
-    def set_default_att_context_size(self, att_context_size: List) -> None:
+    def set_default_att_context_size(self, att_context_size: list) -> None:
         """
         Set the default attention context size for the encoder.
         The list of the supported look-ahead: [[70, 13], [70, 6], [70, 1], [70, 0]]
         Args:
-            att_context_size: (List) the attention context size.
+            att_context_size: (list) the attention context size.
         """
         if hasattr(self.asr_model.encoder, "set_default_att_context_size"):
             self.asr_model.encoder.set_default_att_context_size(att_context_size=att_context_size)

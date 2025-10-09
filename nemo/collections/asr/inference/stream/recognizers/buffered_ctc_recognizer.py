@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 import torch
 from omegaconf import DictConfig
@@ -55,8 +55,8 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         self,
         cfg: DictConfig,
         asr_model: CTCInference,
-        pnc_model: Optional[PunctuationCapitalizer] = None,
-        itn_model: Optional[AlignmentPreservingInverseNormalizer] = None,
+        pnc_model: PunctuationCapitalizer | None = None,
+        itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):
 
         # ASR Related fields
@@ -204,13 +204,15 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         """Return the separator for the text postprocessor."""
         return self.sep
 
-    def get_cut_off_range(self, T: int, is_last: bool) -> Tuple[int, int]:
+    def get_cut_off_range(self, T: int, is_last: bool) -> tuple[int, int]:
         """Compute the start and end indices to clip the log probs."""
         start = max(T - 1 - self.mid_delay, 0)
         end = T if is_last else min(start + self.tokens_per_frame, T)
         return start, end
 
-    def preprocess(self, buffers: Tensor, buffer_lens: Tensor, expected_feature_buffer_len: int) -> Tuple:
+    def preprocess(
+        self, buffers: Tensor, buffer_lens: Tensor, expected_feature_buffer_len: int
+    ) -> tuple[Tensor, Tensor]:
         """Preprocess the buffered frames and extract features."""
         feature_buffers, feature_buffer_lens = self.preprocessor(input_signal=buffers, length=buffer_lens)
         feature_buffers = drop_trailing_features(feature_buffers, expected_feature_buffer_len)
@@ -219,7 +221,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         return feature_buffers, feature_buffer_lens
 
     def get_logprobs_given_raw_signals(
-        self, frames: List[Frame], raw_signals: List[Tensor], left_paddings: List[int]
+        self, frames: list[Frame], raw_signals: list[Tensor], left_paddings: list[int]
     ) -> Tensor:
         """Get log probs from the ASR model."""
 
@@ -273,7 +275,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         return log_probs
 
     def get_logprobs_given_processed_signals(
-        self, fbuffers: List[FeatureBuffer], processed_signals: List[Tensor]
+        self, fbuffers: list[FeatureBuffer], processed_signals: list[Tensor]
     ) -> Tensor:
         """Get log probs from the ASR model."""
         processed_signals = torch.cat([sig.unsqueeze_(0) for sig in processed_signals]).to(self.device)
@@ -294,7 +296,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
                     log_probs[i][:lpad, :] = self.zero_log_probs[:lpad, :]
         return log_probs
 
-    def compute_logprobs_from_frames(self, frames: List[Frame]) -> Tensor:
+    def compute_logprobs_from_frames(self, frames: list[Frame]) -> Tensor:
         """Buffer the frames and get the log probabilities."""
         raw_signals, left_paddings = self.bufferer.update(frames)
         log_probs = None
@@ -302,7 +304,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
             log_probs = self.get_logprobs_given_raw_signals(frames, raw_signals, left_paddings)
         return log_probs
 
-    def compute_logprobs_from_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> Tensor:
+    def compute_logprobs_from_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> Tensor:
         """Buffer the feature buffers and get the log probabilities."""
         processed_signals = self.bufferer.update(fbuffers)
         log_probs = None
@@ -334,7 +336,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         state.set_incomplete_segment_tokens(tail_output["tokens"])
         return eou_detected
 
-    def shared_transcribe_step(self, requests: List[Request], log_probs: Tensor) -> None:
+    def shared_transcribe_step(self, requests: list[Request], log_probs: Tensor) -> None:
         """
         Shared transcribe step for frames and feature buffers.
         Args:
@@ -374,7 +376,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
 
         self.update_partial_transcript(requests, self.asr_model.tokenizer, self.leading_regex_pattern)
 
-    def transcribe_step_for_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> None:
+    def transcribe_step_for_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> None:
         """
         Transcribe a step for feature buffers.
         Args:
@@ -385,7 +387,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
             log_probs = normalize_log_probs(log_probs)
             self.shared_transcribe_step(requests=fbuffers, log_probs=log_probs)
 
-    def transcribe_step_for_frames(self, frames: List[Frame]) -> None:
+    def transcribe_step_for_frames(self, frames: list[Frame]) -> None:
         """
         Transcribe a step for frames.
         Args:

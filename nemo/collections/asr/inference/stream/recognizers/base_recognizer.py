@@ -14,7 +14,7 @@
 
 import re
 from abc import abstractmethod
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable
 
 from nemo.collections.asr.inference.stream.framing.multi_stream import ContinuousBatchedRequestStreamer
 from nemo.collections.asr.inference.stream.framing.request import FeatureBuffer, Frame, Request
@@ -30,7 +30,7 @@ class RecognizerOutput:
     Class to store the output of the recognizer.
     """
 
-    def __init__(self, texts: List[str] = None, segments: List[List[TextSegment]] = None):
+    def __init__(self, texts: list[str] | None = None, segments: list[list[TextSegment]] | None = None):
         if texts is None and segments is None:
             raise ValueError("At least one of the 'texts' or 'segments' should be provided.")
         self.texts = texts
@@ -44,13 +44,13 @@ class BaseRecognizer(RecognizerInterface):
 
     def __init__(self):
         """Initialize state pool to store the state for each stream"""
-        self._state_pool: Dict[int, Any] = {}
+        self._state_pool: dict[int, Any] = {}
 
     def get_state(self, stream_id: int) -> Any:
         """Retrieve state for a given stream ID."""
         return self._state_pool.get(stream_id, None)
 
-    def get_states(self, stream_ids: Iterable[int]) -> List[Any]:
+    def get_states(self, stream_ids: Iterable[int]) -> list[Any]:
         """Retrieve states for a list of stream IDs."""
         return [self.get_state(stream_id) for stream_id in stream_ids]
 
@@ -84,12 +84,12 @@ class BaseRecognizer(RecognizerInterface):
         self.reset_session()
 
     @abstractmethod
-    def transcribe_step_for_frames(self, frames: List[Frame]) -> None:
+    def transcribe_step_for_frames(self, frames: list[Frame]) -> None:
         """Transcribe a step for frames"""
         pass
 
     @abstractmethod
-    def transcribe_step_for_feature_buffers(self, fbuffers: List[FeatureBuffer]) -> None:
+    def transcribe_step_for_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> None:
         """Transcribe a step for feature buffers"""
         pass
 
@@ -103,7 +103,7 @@ class BaseRecognizer(RecognizerInterface):
         """Return the separator for the text postprocessor."""
         pass
 
-    def transcribe_step(self, requests: List[Request]) -> None:
+    def transcribe_step(self, requests: list[Request]) -> None:
         """Transcribe a step"""
         if isinstance(requests[0], Frame):
             self.transcribe_step_for_frames(frames=requests)
@@ -113,12 +113,12 @@ class BaseRecognizer(RecognizerInterface):
             raise ValueError(f"Invalid request type: {type(requests[0])}")
 
     def update_partial_transcript(
-        self, requests: List[Request], tokenizer: TokenizerSpec, leading_regex_pattern: str
+        self, requests: list[Request], tokenizer: TokenizerSpec, leading_regex_pattern: str
     ) -> None:
         """
         Update partial transcript from the state.
         Args:
-            requests (List[Request]): List of Request objects.
+            requests (list[Request]): List of Request objects.
             tokenizer (TokenizerSpec): Used to convert tokens into text
             leading_regex_pattern (str): Regex pattern for the punctuation marks.
         """
@@ -137,17 +137,17 @@ class BaseRecognizer(RecognizerInterface):
 
     def run(
         self,
-        audio_filepaths: List[str],
-        options: List[ASRRequestOptions] = None,
-        progress_bar: Optional[ProgressBar] = None,
+        audio_filepaths: list[str],
+        options: list[ASRRequestOptions] | None = None,
+        progress_bar: ProgressBar | None = None,
     ) -> RecognizerOutput:
         """
         Orchestrates reading from audio_filepaths in a streaming manner,
         transcribes them, and packs the results into a RecognizerOutput.
         Args:
-            audio_filepaths: List of audio filepaths to transcribe.
-            options: List of RequestOptions for each stream.
-            progress_bar: Progress bar to show the progress. Default is None.
+            audio_filepaths (list[str]): List of audio filepaths to transcribe.
+            options (list[ASRRequestOptions] | None): List of RequestOptions for each stream.
+            progress_bar (ProgressBar | None): Progress bar to show the progress. Default is None.
         Returns:
             RecognizerOutput: A dataclass containing transcriptions and segments.
         """

@@ -14,7 +14,7 @@
 
 
 from queue import Queue
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -23,9 +23,9 @@ from torch import Tensor
 class CacheAwareContext:
     def __init__(
         self,
-        cache_last_channel: Optional[Tensor] = None,
-        cache_last_time: Optional[Tensor] = None,
-        cache_last_channel_len: Optional[Tensor] = None,
+        cache_last_channel: Tensor | None = None,
+        cache_last_time: Tensor | None = None,
+        cache_last_channel_len: Tensor | None = None,
     ):
         self.cache_last_channel = cache_last_channel
         self.cache_last_time = cache_last_time
@@ -90,13 +90,13 @@ class CacheAwareContextManager:
         del self.slotidx2streamidx[slot_idx]
         del self.streamidx2slotidx[stream_id]
 
-    def update_cache(self, stream_ids: List[int], new_context: CacheAwareContext, mapping: Dict) -> None:
+    def update_cache(self, stream_ids: list[int], new_context: CacheAwareContext, mapping: dict) -> None:
         """
         Updates the cache for the given stream_ids with the new_context
         Args:
-            stream_ids: list of stream ids
-            new_context: new context to update corresponding to the stream_ids
-            mapping: mapping between the old and new slots
+            stream_ids (list[int]): list of stream ids
+            new_context (CacheAwareContext): new context to update corresponding to the stream_ids
+            mapping (dict): mapping between the old and new slots
         """
         if self.cache_disabled:
             return
@@ -113,12 +113,12 @@ class CacheAwareContextManager:
                 self.cache_last_time[i][slot_idx] = new_context.cache_last_time[i][tgt_slot_idx].clone()
             self.cache_last_channel_len[slot_idx] = new_context.cache_last_channel_len[tgt_slot_idx]
 
-    def reset_slots(self, stream_ids: List[int], eos_flags: List[bool]) -> None:
+    def reset_slots(self, stream_ids: list[int], eos_flags: list[bool]) -> None:
         """
         Resets the slots for the finished streams
         Args:
-            stream_ids: list of stream ids
-            eos_flags: list of eos flags indicating whether the stream has finished
+            stream_ids (list[int]): list of stream ids
+            eos_flags (list[bool]): list of eos flags indicating whether the stream has finished
         """
         if self.cache_disabled:
             return
@@ -135,14 +135,14 @@ class CacheAwareContextManager:
                 slot_idx = self.streamidx2slotidx[stream_id]
                 self.reset_slot(slot_idx)
 
-    def get_context(self, stream_ids: List[int]) -> Tuple[CacheAwareContext, Dict]:
+    def get_context(self, stream_ids: list[int]) -> tuple[CacheAwareContext, dict]:
         """
         Retrieves the context from the cache for the given stream_ids
         Args:
-            stream_ids: list of stream ids
+            stream_ids (list[int]): list of stream ids
         Returns:
-            context: context for the given stream_ids
-            mapping: mapping between the cache and retrieved context
+            context (CacheAwareContext): context for the given stream_ids
+            mapping (dict): mapping between the cache and retrieved context
         """
 
         if len(stream_ids) == 0 or self.cache_disabled:

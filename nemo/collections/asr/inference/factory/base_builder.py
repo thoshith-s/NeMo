@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from omegaconf.dictconfig import DictConfig
 
@@ -36,12 +36,12 @@ if TYPE_CHECKING:
 class BaseBuilder:
 
     @classmethod
-    def _build_asr(cls, cfg: DictConfig, decoding_cfg: Union[CTCDecodingConfig, RNNTDecodingConfig]) -> ASRInference:
+    def _build_asr(cls, cfg: DictConfig, decoding_cfg: CTCDecodingConfig | RNNTDecodingConfig) -> ASRInference:
         """
         Build the ASR model based on the config.
         Args:
             cfg: (DictConfig) Config
-            decoding_cfg: (Union[CTCDecodingConfig, RNNTDecodingConfig]) Decoding config
+            decoding_cfg: (CTCDecodingConfig | RNNTDecodingConfig) Decoding config
         Returns:
             (ASRInference) ASR inference model
         """
@@ -73,7 +73,7 @@ class BaseBuilder:
     @classmethod
     def _build_pnc(
         cls, cfg: DictConfig, asr_supports_pnc: bool, force_to_use_pnc_model: bool
-    ) -> Optional[PunctuationCapitalizer]:
+    ) -> PunctuationCapitalizer | None:
         """
         Build the PNC model based on the config.
         Args:
@@ -81,7 +81,7 @@ class BaseBuilder:
             asr_supports_pnc: (bool) Whether the ASR model supports PNC
             force_to_use_pnc_model: (bool) Whether to force the use of the PNC model
         Returns:
-            (Optional[PunctuationCapitalizer]) PNC model
+            (PunctuationCapitalizer | None) PNC model
         """
 
         pnc_model = None
@@ -113,14 +113,14 @@ class BaseBuilder:
         return pnc_model
 
     @classmethod
-    def _build_itn(cls, cfg: DictConfig, input_is_lower_cased: bool) -> Optional[AlignmentPreservingInverseNormalizer]:
+    def _build_itn(cls, cfg: DictConfig, input_is_lower_cased: bool) -> AlignmentPreservingInverseNormalizer | None:
         """
         Build the ITN model based on the config.
         Args:
             cfg: (DictConfig) Config
             input_is_lower_cased: (bool) Whether the input is lower cased
         Returns:
-            (Optional[AlignmentPreservingInverseNormalizer]) ITN model
+            (AlignmentPreservingInverseNormalizer | None) ITN model
         """
         itn_model = None
         if not cfg.verbatim_transcripts:

@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import List, Optional, Tuple
-
 import torch
 from torch import Tensor
 
@@ -62,10 +59,10 @@ class CacheAwareRNNTInference(CacheAwareASRInference):
         blank_id = len(self.asr_model.joint.vocabulary)
         return blank_id
 
-    def get_vocabulary(self) -> List[str]:
+    def get_vocabulary(self) -> list[str]:
         """
         Returns:
-            (List[str]) list of vocabulary tokens.
+            (list[str]) list of vocabulary tokens.
         """
         return self.asr_model.joint.vocabulary
 
@@ -74,25 +71,25 @@ class CacheAwareRNNTInference(CacheAwareASRInference):
         processed_signal: Tensor,
         processed_signal_length: Tensor,
         context: CacheAwareContext,
-        previous_hypotheses: List[Hypothesis] | None,
-        drop_extra_pre_encoded: Optional[int],
+        previous_hypotheses: list[Hypothesis] | None,
+        drop_extra_pre_encoded: int | None,
         keep_all_outputs: bool,
-        drop_left_context: Optional[int] = None,
-        valid_out_len: Optional[int] = None,
-    ) -> Tuple[List[Hypothesis], CacheAwareContext]:
+        drop_left_context: int | None = None,
+        valid_out_len: int | None = None,
+    ) -> tuple[list[Hypothesis], CacheAwareContext]:
         """
         Executes a single streaming step.
         Args:
             processed_signal: (Tensor) input signal tensor.
             processed_signal_length: (Tensor) input signal length tensor.
             context: (CacheAwareContext) context object.
-            previous_hypotheses: (List[Hypothesis] | None) list of previous hypotheses for RNNT decoding.
-            drop_extra_pre_encoded: (Optional[int]) number of extra pre-encoded frames to drop.
+            previous_hypotheses: (list[Hypothesis] | None) list of previous hypotheses for RNNT decoding.
+            drop_extra_pre_encoded: (int | None) number of extra pre-encoded frames to drop.
             keep_all_outputs: (bool) whether to keep all outputs or not.
-            drop_left_context: (Optional[int]) number of left context frames to drop.
-            valid_out_len: (Optional[int]) number of valid output frames.
+            drop_left_context: (int | None) number of left context frames to drop.
+            valid_out_len: (int | None) number of valid output frames.
         Returns:
-            (Tuple[List[Hypothesis], CacheAwareContext]) best hypothesis and new context.
+            (tuple[list[Hypothesis], CacheAwareContext]) best hypothesis and new context.
         """
         (
             encoded,
@@ -135,25 +132,25 @@ class CacheAwareRNNTInference(CacheAwareASRInference):
         processed_signal: Tensor,
         processed_signal_length: Tensor,
         context: CacheAwareContext = None,
-        previous_hypotheses: List[Hypothesis] | None = None,
-        drop_extra_pre_encoded: Optional[int] = None,
+        previous_hypotheses: list[Hypothesis] | None = None,
+        drop_extra_pre_encoded: int | None = None,
         keep_all_outputs: bool = False,
-        drop_left_context: Optional[int] = None,
-        valid_out_len: Optional[int] = None,
-    ) -> Tuple[List[Hypothesis], CacheAwareContext]:
+        drop_left_context: int | None = None,
+        valid_out_len: int | None = None,
+    ) -> tuple[list[Hypothesis], CacheAwareContext]:
         """
         Executes a single streaming step.
         Args:
             processed_signal: (Tensor) input signal tensor.
             processed_signal_length: (Tensor) input signal length tensor.
             context: (CacheAwareContext) context object.
-            previous_hypotheses: (List[Hypothesis] | None) list of previous hypotheses for RNNT decoding.
-            drop_extra_pre_encoded: (Optional[int]) number of extra pre-encoded frames to drop.
+            previous_hypotheses: (list[Hypothesis] | None) list of previous hypotheses for RNNT decoding.
+            drop_extra_pre_encoded: (int | None) number of extra pre-encoded frames to drop.
             keep_all_outputs: (bool) whether to keep all outputs or not.
-            drop_left_context: (Optional[int]) number of left context frames to drop.
-            valid_out_len: (Optional[int]) number of valid output frames.
+            drop_left_context: (int | None) number of left context frames to drop.
+            valid_out_len: (int | None) number of valid output frames.
         Returns:
-            (Tuple[List[Hypothesis], CacheAwareContext]) best hypothesis and new context.
+            (tuple[list[Hypothesis], CacheAwareContext]) best hypothesis and new context.
         """
 
         if processed_signal.device != self.device:

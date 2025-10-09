@@ -13,20 +13,20 @@
 # limitations under the License.
 
 
-from typing import Callable, List, Tuple
+from typing import Callable
 
 from nemo.collections.asr.inference.utils.constants import POST_WORD_PUNCTUATION, PRE_WORD_PUNCTUATION
 from nemo.collections.asr.inference.utils.text_segment import TextSegment, Word
 
 
-def merge_timesteps(timesteps1: List, timesteps2: List) -> List:
+def merge_timesteps(timesteps1: list, timesteps2: list) -> list:
     """
     Merge two lists of timesteps by preserving the order and ensuring that the timesteps are in increasing order
     Args:
-        timesteps1: (List) The first list of timesteps
-        timesteps2: (List) The second list of timesteps
+        timesteps1: (list) The first list of timesteps
+        timesteps2: (list) The second list of timesteps
     Returns:
-        (List) The merged list of timesteps
+        (list) The merged list of timesteps
     """
     # If both lists are empty, return an empty list
     if not timesteps1 and not timesteps2:
@@ -96,7 +96,7 @@ def merge_segment_tail(
 
 def merge_word_tail(
     word_head: Word, word_tail: Word, pnc_word_head: Word = None, conf_aggregator: Callable = None
-) -> Tuple[Word, Word]:
+) -> tuple[Word, Word]:
     """
     Merge the word_tail into the word_head
     Args:
@@ -105,7 +105,7 @@ def merge_word_tail(
         pnc_word_head: (Word) The head word with punctuation/capitalization
         conf_aggregator: (Callable) The function to aggregate the confidence
     Returns:
-        (Tuple[Word, Word]) The merged word and the head word with punctuation/capitalization
+        (tuple[Word, Word]) The merged word and the head word with punctuation/capitalization
     """
 
     head = word_head.copy()
@@ -147,12 +147,12 @@ def merge_word_tail(
     return head, pnc_head
 
 
-def find_max_overlap(state_tokens: List, new_tokens: List, limit: int) -> int:
+def find_max_overlap(state_tokens: list, new_tokens: list, limit: int) -> int:
     """
     Finds the maximum overlap between the state_tokens suffix and the new_tokens prefix
     Args:
-        state_tokens: (List) The list of state tokens
-        new_tokens: (List) The list of new tokens
+        state_tokens: (list) The list of state tokens
+        new_tokens: (list) The list of new tokens
         limit: (int) The limit on the overlap
     Returns:
         (int) The maximum overlap within the limit
@@ -165,20 +165,20 @@ def find_max_overlap(state_tokens: List, new_tokens: List, limit: int) -> int:
 
 
 def detect_overlap(
-    state_tokens: List[int],
-    state_timesteps: List[float],
-    new_tokens: List[int],
-    new_timesteps: List[float],
+    state_tokens: list[int],
+    state_timesteps: list[float],
+    new_tokens: list[int],
+    new_timesteps: list[float],
     overlap_search_th: int = 3,
     close_in_time_th: float = 2.0,
 ) -> int:
     """
     Detect the overlap between state_tokens and new_tokens
     Args:
-        state_tokens: (List[int]) The list of state tokens
-        state_timesteps: (List[float]) The list of state timesteps
-        new_tokens: (List[int]) The list of new tokens
-        new_timesteps: (List[float]) The list of new timesteps
+        state_tokens: (list[int]) The list of state tokens
+        state_timesteps: (list[float]) The list of state timesteps
+        new_tokens: (list[int]) The list of new tokens
+        new_timesteps: (list[float]) The list of new timesteps
         overlap_search_th: (int) The threshold on the overlap
         close_in_time_th: (float) The threshold on the close in time
     Returns:

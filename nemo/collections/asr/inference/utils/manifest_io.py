@@ -14,7 +14,6 @@
 
 import json
 import os
-from typing import List, Optional
 
 import soundfile as sf
 
@@ -39,13 +38,13 @@ def make_abs_path(path: str) -> str:
     return path
 
 
-def read_manifest(manifest_filepath: str) -> List:
+def read_manifest(manifest_filepath: str) -> list:
     """
     Read manifest data from a file
     Args:
         manifest_filepath: (str) Path to the manifest file
     Returns:
-        (List) List of manifest entries
+        (list) List of manifest entries
     """
     samples = []
     with open(manifest_filepath, 'r') as f:
@@ -56,14 +55,14 @@ def read_manifest(manifest_filepath: str) -> List:
     return samples
 
 
-def get_audio_filepaths(audio_file: str, sort_by_duration: bool = True) -> List[str]:
+def get_audio_filepaths(audio_file: str, sort_by_duration: bool = True) -> list[str]:
     """
     Get audio filepaths from a folder or a single audio file
     Args:
         audio_file: (str) Path to the audio file, folder or manifest file
         sort_by_duration: (bool) If True, sort the audio files by duration from shortest to longest
     Returns:
-        (List[str]) List of audio filepaths
+        (list[str]) List of audio filepaths
     """
     audio_file = audio_file.strip()
     audio_file = make_abs_path(audio_file)
@@ -98,12 +97,12 @@ def get_stem(file_path: str) -> str:
 
 
 def dump_output(
-    audio_filepaths: List[str], output: RecognizerOutput, output_filename: str, output_dir: Optional[str] = None
+    audio_filepaths: list[str], output: RecognizerOutput, output_filename: str, output_dir: str | None = None
 ) -> None:
     """
     Dump the transcriptions to a output file
     Args:
-        audio_filepaths: (List[str]) List of audio file
+        audio_filepaths: (list[str]) List of audio file
         output (RecognizerOutput): Recognizer output
         output_filename: (str) Path to the output file
         output_dir: (str | None) Path to the output directory, if None, will write at the same level as the output file
@@ -132,11 +131,11 @@ def dump_output(
             fout.flush()
 
 
-def calculate_duration(audio_filepaths: List[str]) -> float:
+def calculate_duration(audio_filepaths: list[str]) -> float:
     """
     Calculate the duration of the audio files
     Args:
-        audio_filepaths: (List[str]) List of audio filepaths
+        audio_filepaths: (list[str]) List of audio filepaths
     Returns:
         (float) Total duration of the audio files
     """

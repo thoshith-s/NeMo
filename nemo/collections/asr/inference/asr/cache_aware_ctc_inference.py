@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import List, Optional, Tuple
-
 import torch
 from torch import Tensor
 
@@ -65,10 +63,10 @@ class CacheAwareCTCInference(CacheAwareASRInference):
             blank_id = len(self.asr_model.ctc_decoder.vocabulary)
         return blank_id
 
-    def get_vocabulary(self) -> List[str]:
+    def get_vocabulary(self) -> list[str]:
         """
         Returns:
-            (List[str]) list of vocabulary tokens.
+            (list[str]) list of vocabulary tokens.
         """
         if isinstance(self.asr_model, EncDecCTCModel):
             return self.asr_model.decoder.vocabulary
@@ -80,25 +78,25 @@ class CacheAwareCTCInference(CacheAwareASRInference):
         processed_signal: Tensor,
         processed_signal_length: Tensor,
         context: CacheAwareContext,
-        drop_extra_pre_encoded: Optional[int],
+        drop_extra_pre_encoded: int | None,
         keep_all_outputs: bool,
-        drop_left_context: Optional[int] = None,
-        valid_out_len: Optional[int] = None,
+        drop_left_context: int | None = None,
+        valid_out_len: int | None = None,
         return_tail_result: bool = False,
-    ) -> Tuple[Tensor, Optional[Tensor], CacheAwareContext]:
+    ) -> tuple[Tensor, Tensor | None, CacheAwareContext]:
         """
         Executes a single streaming step.
         Args:
             processed_signal: (Tensor) input signal tensor.
             processed_signal_length: (Tensor) input signal length tensor.
             context: (CacheAwareContext) context object.
-            drop_extra_pre_encoded: (Optional[int]) number of extra pre-encoded frames to drop.
+            drop_extra_pre_encoded: (int | None) number of extra pre-encoded frames to drop.
             keep_all_outputs: (bool) whether to keep all outputs or not.
-            drop_left_context: (Optional[int]) number of left context frames to drop.
-            valid_out_len: (Optional[int]) number of valid output frames.
+            drop_left_context: (int | None) number of left context frames to drop.
+            valid_out_len: (int | None) number of valid output frames.
             return_tail_result: (bool) whether to return tail result or not.
         Returns:
-            (Tuple[Tensor, Optional[Tensor], CacheAwareContext]) log probabilities, tail log probabilities and new context.
+            (tuple[Tensor, Tensor | None, CacheAwareContext]) log probabilities, tail log probabilities and new context.
         """
 
         (
@@ -148,25 +146,25 @@ class CacheAwareCTCInference(CacheAwareASRInference):
         processed_signal: Tensor,
         processed_signal_length: Tensor,
         context: CacheAwareContext = None,
-        drop_extra_pre_encoded: Optional[int] = None,
+        drop_extra_pre_encoded: int | None = None,
         keep_all_outputs: bool = False,
-        drop_left_context: Optional[int] = None,
-        valid_out_len: Optional[int] = None,
+        drop_left_context: int | None = None,
+        valid_out_len: int | None = None,
         return_tail_result: bool = False,
-    ) -> Tuple[Tensor, Optional[Tensor], CacheAwareContext]:
+    ) -> tuple[Tensor, Tensor | None, CacheAwareContext]:
         """
         Executes a single streaming step.
         Args:
             processed_signal: (Tensor) input signal tensor.
             processed_signal_length: (Tensor) input signal length tensor.
             context: (CacheAwareContext) context object.
-            drop_extra_pre_encoded: (Optional[int]) number of extra pre-encoded frames to drop.
+            drop_extra_pre_encoded: (int | None) number of extra pre-encoded frames to drop.
             keep_all_outputs: (bool) whether to keep all outputs or not.
-            drop_left_context: (Optional[int]) number of left context frames to drop.
-            valid_out_len: (Optional[int]) number of valid output frames.
+            drop_left_context: (int | None) number of left context frames to drop.
+            valid_out_len: (int | None) number of valid output frames.
             return_tail_result: (bool) whether to return tail result or not.
         Returns:
-            (Tuple[Tensor, Optional[Tensor], CacheAwareContext]) log probabilities, tail log probabilities and new context.
+            (tuple[Tensor, Tensor | None, CacheAwareContext]) log probabilities, tail log probabilities and new context.
         """
 
         if processed_signal.device != self.device:

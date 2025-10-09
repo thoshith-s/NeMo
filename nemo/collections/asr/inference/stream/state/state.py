@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Callable, Dict, List, Optional
+from typing import Callable
 
 from nemo.collections.asr.inference.stream.framing.request import RequestOptions
 from nemo.collections.asr.inference.utils.constants import POST_WORD_PUNCTUATION
@@ -102,11 +102,11 @@ class StreamingState:
         """
         self.options = options
 
-    def set_incomplete_segment_tokens(self, incomplete_segment_tokens: List) -> None:
+    def set_incomplete_segment_tokens(self, incomplete_segment_tokens: list) -> None:
         """
         Set the partial tokens
         Args:
-            incomplete_segment_tokens: (List) The partial tokens to store in the state
+            incomplete_segment_tokens: (list) The partial tokens to store in the state
         """
         self.incomplete_segment_tokens = incomplete_segment_tokens
 
@@ -118,12 +118,12 @@ class StreamingState:
         """
         self.global_offset = start_offset
 
-    def set_last_token(self, token: Optional[int], idx: Optional[int]) -> None:
+    def set_last_token(self, token: int | None, idx: int | None) -> None:
         """
         Set the last token
         Args:
-            token: (Optional[int]) The last token to store in the state
-            idx: (Optional[int]) The index of the last token to store in the state
+            token: (int | None) The last token to store in the state
+            idx: (int | None) The index of the last token to store in the state
         """
         if None not in [token, idx]:
             self.last_token_idx = idx + self.global_offset
@@ -140,11 +140,11 @@ class StreamingState:
         """
         self.global_offset += shift
 
-    def _update_state(self, output: Dict, skip: int) -> None:
+    def _update_state(self, output: dict, skip: int) -> None:
         """
         Extend the tokens, timesteps and confidences, optionally skipping the first few tokens
         Args:
-            output: (Dict) The output to update the state with
+            output: (dict) The output to update the state with
             skip: (int) The number of tokens to skip
         """
         if skip > 0:
@@ -156,11 +156,11 @@ class StreamingState:
             self.confidences.extend(output["confidences"])
             self.timesteps = merge_timesteps(self.timesteps, output["timesteps"])
 
-    def update_state(self, completed_output: Dict, eou_detected: bool) -> None:
+    def update_state(self, completed_output: dict, eou_detected: bool) -> None:
         """
         Update the state with the completed output
         Args:
-            completed_output: (Dict) The completed output to update the state with
+            completed_output: (dict) The completed output to update the state with
             eou_detected: (bool) Whether EOU was detected
         """
 
@@ -276,7 +276,7 @@ class StreamingState:
 
     def push_back_words(
         self,
-        decoded_words: List[Word],
+        decoded_words: list[Word],
         merge_first_word: bool = False,
         merge_first_word_punctuation: bool = True,
         conf_aggregator: Callable = None,
@@ -284,7 +284,7 @@ class StreamingState:
         """
         Push back the decoded words to the state
         Args:
-            decoded_words: (List[Word]) The decoded words to push back to the state
+            decoded_words: (list[Word]) The decoded words to push back to the state
             merge_first_word: (bool) Whether to merge the first word with the last word in the state
             merge_first_word_punctuation: (bool) Whether to merge the first word punctuation with the last word in the state
             conf_aggregator: (Callable) The function to aggregate the confidence

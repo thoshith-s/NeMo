@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-from typing import Dict, List
-
 from nemo.collections.asr.inference.stream.state.state import StreamingState
 
 
@@ -55,13 +53,13 @@ class CacheAwareStreamingState(StreamingState):
         """
         Update the label buffer
         Args:
-            labels: (List[int]) list of labels
+            labels: (list[int]) list of labels
         """
         shift = len(labels)
         self.label_buffer[:-shift] = self.label_buffer[shift:].copy()
         self.label_buffer[-shift:] = labels.copy()
 
-    def get_label_buffer(self) -> List[int]:
+    def get_label_buffer(self) -> list[int]:
         """
         Get the current label buffer
         Returns:
@@ -69,11 +67,11 @@ class CacheAwareStreamingState(StreamingState):
         """
         return self.label_buffer.copy()
 
-    def update_state(self, completed_output: Dict, eou_detected: bool) -> None:
+    def update_state(self, completed_output: dict, eou_detected: bool) -> None:
         """
         Update the state with the completed output
         Args:
-            completed_output: (Dict) completed output
+            completed_output: (dict) completed output
             eou_detected: (bool) is EoU detected
         """
 
