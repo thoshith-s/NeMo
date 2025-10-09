@@ -34,6 +34,7 @@ from pipecat.services.tts_service import TTSService
 
 from nemo.collections.tts.models import FastPitchModel, HifiGanModel
 
+
 class BaseNemoTTSService(TTSService):
     """Text-to-Speech service using Nemo TTS models.
 
