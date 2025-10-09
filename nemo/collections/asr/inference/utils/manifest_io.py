@@ -19,6 +19,7 @@ import soundfile as sf
 
 from nemo.collections.asr.inference.stream.recognizers.base_recognizer import RecognizerOutput
 from nemo.collections.asr.inference.utils.constants import DEFAULT_OUTPUT_DIR_NAME
+from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
 from nemo.collections.common.parts.preprocessing.manifest import get_full_path
 
 
@@ -36,23 +37,6 @@ def make_abs_path(path: str) -> str:
     if not os.path.isabs(path):
         path = os.path.abspath(path)
     return path
-
-
-def read_manifest(manifest_filepath: str) -> list:
-    """
-    Read manifest data from a file
-    Args:
-        manifest_filepath: (str) Path to the manifest file
-    Returns:
-        (list) List of manifest entries
-    """
-    samples = []
-    with open(manifest_filepath, 'r') as f:
-        for line in f.readlines():
-            if line.strip() == "":
-                continue
-            samples.append(json.loads(line))
-    return samples
 
 
 def get_audio_filepaths(audio_file: str, sort_by_duration: bool = True) -> list[str]:
