@@ -48,17 +48,19 @@ class BaseBuilder:
 
         asr_decoding_type = ASRDecodingType.from_str(cfg.asr_decoding_type)
         recognizer_type = RecognizerType.from_str(cfg.recognizer_type)
-        comb = (asr_decoding_type, recognizer_type)
-        if comb == (ASRDecodingType.CTC, RecognizerType.BUFFERED):
-            asr_class = CTCInference
-        elif comb == (ASRDecodingType.RNNT, RecognizerType.BUFFERED):
-            asr_class = RNNTInference
-        elif comb == (ASRDecodingType.CTC, RecognizerType.CACHE_AWARE):
-            asr_class = CacheAwareCTCInference
-        elif comb == (ASRDecodingType.RNNT, RecognizerType.CACHE_AWARE):
-            asr_class = CacheAwareRNNTInference
-        else:
-            raise ValueError(f"Wrong combination of ASR decoding type and recognizer type: {comb}")
+        match (asr_decoding_type, recognizer_type):
+            case (ASRDecodingType.CTC, RecognizerType.BUFFERED):
+                asr_class = CTCInference
+            case (ASRDecodingType.RNNT, RecognizerType.BUFFERED):
+                asr_class = RNNTInference
+            case (ASRDecodingType.CTC, RecognizerType.CACHE_AWARE):
+                asr_class = CacheAwareCTCInference
+            case (ASRDecodingType.RNNT, RecognizerType.CACHE_AWARE):
+                asr_class = CacheAwareRNNTInference
+            case _:
+                raise ValueError(
+                    f"Wrong combination of ASR decoding type and recognizer type: {asr_decoding_type, recognizer_type}"
+                )
 
         asr_model = asr_class(
             model_name=cfg.asr.model_name,
