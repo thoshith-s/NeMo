@@ -121,14 +121,14 @@ If you want to use a different port for client connection, you can modify `clien
 
 Most LLMs from HuggingFace are supported. A few examples are:
 - [nvidia/NVIDIA-Nemotron-Nano-9B-v2](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2) (default)
-    - Please use `server/server_configs/nemotron-nano-v2.yaml` as the server config.
+    - Please use `server/server_configs/llm_configs/nemotron-nano-v2.yaml` as the server config.
 - [Qwen/Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct)
-    - Please use `server/server_configs/qwen2.5-7B.yaml` as the server config.
+    - Please use `server/server_configs/llm_configs/qwen2.5-7B.yaml` as the server config.
 - [Qwen/Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B)
-    - Please use `server/server_configs/qwen3-8B.yaml` as the server config.
-    - Please use `server/server_configs/qwen3-8B_think.yaml` if you want to enable thinking mode.
+    - Please use `server/server_configs/llm_configs/qwen3-8B.yaml` as the server config.
+    - Please use `server/server_configs/llm_configs/qwen3-8B_think.yaml` if you want to enable thinking mode.
 - [meta-llama/Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
-    - Please use `server/server_configs/llama3.1-8B-instruct.yaml` as the server config.
+    - Please use `server/server_configs/llm_configs/llama3.1-8B-instruct.yaml` as the server config.
     - Note that you need to get access to the model first, and specify `export HF_TOKEN="hf_..."` when launching the server.
 - [nvidia/Llama-3.1-Nemotron-Nano-8B-v1](https://huggingface.co/nvidia/Llama-3.1-Nemotron-Nano-8B-v1) 
 - [nvidia/Nemotron-Mini-4B-Instruct](https://huggingface.co/nvidia/Nemotron-Mini-4B-Instruct)
@@ -171,7 +171,14 @@ Please note that in some circumstances, the diarization model might not work wel
 
 ### 🔉 TTS
 
-We use [FastPitch-HiFiGAN](https://huggingface.co/nvidia/tts_en_fastpitch) to generate the speech for the LLM response, and it only supports English output. More TTS models will be supported in the future.
+Here are the supported TTS models:
+- [FastPitch-HiFiGAN](https://huggingface.co/nvidia/tts_en_fastpitch) is an NVIDIA-NeMo TTS model. It only supports English output. 
+    - Please use `server/server_configs/tts_configs/nemo_fastpitch-hifigan.yaml` as the server config.
+
+- [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) is a lightweight TTS model. This model is the default speech generation backend.
+    - Please use `server/server_configs/tts_configs/kokoro_82M.yaml` as the server config.
+
+We will support more TTS models in the future.
 
 
 ### Turn-taking

@@ -10,7 +10,7 @@ vad:
   type: silero
   confidence: 0.6  # VAD threshold for detecting speech versus non-speech
   start_secs: 0.1  # min amount of speech to trigger UserStartSpeaking
-  stop_secs: 0.8  # min amount of silence to trigger UserStopSpeaking
+  stop_secs: 1.2  # min amount of silence to trigger UserStopSpeaking
   min_volume: 0.4  # Microphone volumn threshold for VAD
 
 stt:
@@ -48,7 +48,7 @@ llm:
   system_prompt: "You are a helpful AI agent named Lisa. Start by greeting the user warmly and introducing yourself within one sentence. Your answer should be concise and to the point. You might also see speaker tags (<speaker_0>, <speaker_1>, etc.) in the user context. You should respond to the user based on the speaker tag and the context of that speaker. Do not include the speaker tags in your response, use them only to identify the speaker."
 
 tts:
-  type: nemo # choices in ['nemo', 'hf']
-  model: fastpitch-hifigan
-  model_config: "./server_configs/tts_configs/nemo_fastpitch-hifigan.yaml"
+  type: kokoro # choices in ['nemo', 'kokoro']
+  model: "hexgrad/Kokoro-82M"
+  model_config: "./server_configs/tts_configs/kokoro_82M.yaml"
   device: "cuda"

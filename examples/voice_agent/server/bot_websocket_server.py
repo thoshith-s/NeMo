@@ -47,7 +47,7 @@ from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from nemo.agents.voice_agent.pipecat.services.nemo.diar import NeMoDiarInputParams, NemoDiarService
 from nemo.agents.voice_agent.pipecat.services.nemo.llm import get_llm_service_from_config
 from nemo.agents.voice_agent.pipecat.services.nemo.stt import NeMoSTTInputParams, NemoSTTService
-from nemo.agents.voice_agent.pipecat.services.nemo.tts import NeMoFastPitchHiFiGANTTSService
+from nemo.agents.voice_agent.pipecat.services.nemo.tts import NeMoFastPitchHiFiGANTTSService, KokoroTTSService
 from nemo.agents.voice_agent.pipecat.services.nemo.turn_taking import NeMoTurnTakingService
 from nemo.agents.voice_agent.pipecat.transports.network.websocket_server import (
     WebsocketServerParams,
@@ -92,6 +92,7 @@ TURN_TAKING_MAX_BUFFER_SIZE = config_manager.TURN_TAKING_MAX_BUFFER_SIZE
 TURN_TAKING_BOT_STOP_DELAY = config_manager.TURN_TAKING_BOT_STOP_DELAY
 
 # TTS configuration
+TTS_TYPE = config_manager.server_config.tts.type
 TTS_MAIN_MODEL_ID = config_manager.TTS_MAIN_MODEL_ID
 TTS_SUB_MODEL_ID = config_manager.TTS_SUB_MODEL_ID
 TTS_DEVICE = config_manager.TTS_DEVICE
@@ -187,13 +188,24 @@ async def run_bot_websocket_server():
 
     text_aggregator = SimpleSegmentedTextAggregator(punctuation_marks=TTS_EXTRA_SEPARATOR)
 
-    tts = NeMoFastPitchHiFiGANTTSService(
-        fastpitch_model=TTS_MAIN_MODEL_ID,
-        hifigan_model=TTS_SUB_MODEL_ID,
-        device=TTS_DEVICE,
-        text_aggregator=text_aggregator,
-        think_tokens=TTS_THINK_TOKENS,
-    )
+    if TTS_TYPE == "nemo":
+        tts = NeMoFastPitchHiFiGANTTSService(
+            fastpitch_model=TTS_MAIN_MODEL_ID,
+            hifigan_model=TTS_SUB_MODEL_ID,
+            device=TTS_DEVICE,
+            text_aggregator=text_aggregator,
+            think_tokens=TTS_THINK_TOKENS,
+        )
+    elif TTS_TYPE == "kokoro":
+        tts = KokoroTTSService(
+            voice=TTS_SUB_MODEL_ID,
+            device=TTS_DEVICE,
+            speed=config_manager.server_config.tts.speed,
+            text_aggregator=text_aggregator,
+            think_tokens=TTS_THINK_TOKENS,
+        )
+    else:
+        raise ValueError(f"Invalid TTS type: {TTS_TYPE}")
 
     logger.info("TTS service initialized")
 
