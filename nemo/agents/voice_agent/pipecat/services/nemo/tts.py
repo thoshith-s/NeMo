@@ -19,7 +19,6 @@ from typing import Iterator, List, Optional
 
 import numpy as np
 import torch
-from kokoro import KPipeline
 from loguru import logger
 from pipecat.frames.frames import (
     CancelFrame,
