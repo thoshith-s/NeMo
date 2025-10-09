@@ -15,7 +15,7 @@
 import json
 import os
 
-import soundfile as sf
+import librosa
 
 from nemo.collections.asr.inference.stream.recognizers.base_recognizer import RecognizerOutput
 from nemo.collections.asr.inference.utils.constants import DEFAULT_OUTPUT_DIR_NAME
@@ -62,7 +62,7 @@ def get_audio_filepaths(audio_file: str, sort_by_duration: bool = True) -> list[
         raise ValueError(f"audio_file `{audio_file}` need to be folder, audio file or manifest file")
 
     if sort_by_duration:
-        durations = [sf.SoundFile(audio_filepath).frames for audio_filepath in filepaths]
+        durations = [librosa.get_duration(path=audio_filepath) for audio_filepath in filepaths]
         filepaths_with_durations = list(zip(filepaths, durations))
         filepaths_with_durations.sort(key=lambda x: x[1])
         filepaths = [x[0] for x in filepaths_with_durations]
@@ -123,9 +123,8 @@ def calculate_duration(audio_filepaths: list[str]) -> float:
     Returns:
         (float) Total duration of the audio files
     """
-    total_dur = 0
+    total_duration = 0
     for audio_filepath in audio_filepaths:
-        sound = sf.SoundFile(audio_filepath)
-        dur = sound.frames / sound.samplerate
-        total_dur += dur
-    return total_dur
+        duration = librosa.get_duration(path=audio_filepath)
+        total_duration += duration
+    return total_duration
