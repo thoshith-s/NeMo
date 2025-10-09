@@ -16,4 +16,4 @@ compute_dtype: bfloat16                       # Compute precision: 'bfloat16' fo
 # ========================
 # Mixed Precision Settings
 # ========================
-use_amp: true                                 # Enable Automatic Mixed Precision
+use_amp: false                                # Enable Automatic Mixed Precision
