@@ -822,9 +822,10 @@ class AbstractRNNTDecoding(ConfidenceMixin):
                     for frame_conf in frame_confs:
                         if len(frame_conf) > 0:
                             frame_confidence.append(maybe_pre_aggregate(frame_conf))
-                print(hyp.alignment_labels)
-                print(frame_confidence)
-                assert(len(frame_confidence) == len(hyp.alignment_labels))
+                assert len(frame_confidence) == len(hyp.alignment_labels), (
+                        f"Length mismatch: frame_confidence has {len(frame_confidence)} elements, "
+                        f"but hyp.alignment_labels has {len(hyp.alignment_labels)} elements"
+                )
                 
                 token_confidence=[]
                 for label, frame_conf in zip(hyp.alignment_labels, frame_confidence):
