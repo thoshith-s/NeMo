@@ -831,8 +831,10 @@ class AbstractRNNTDecoding(ConfidenceMixin):
                 for label, frame_conf in zip(hyp.alignment_labels, frame_confidence):
                     if label == self.blank_id:
                         if self.exclude_blank_from_confidence:
+                            # skip if blank tokens are to be excluded from confidence calculation
                             continue
                         elif len(token_confidence) > 0:
+                            # aggregate blank confidence to the previous token if any
                             token_confidence[-1] = self._aggregate_confidence([token_confidence[-1], frame_conf])
                     else:
                         token_confidence.append(frame_conf)
