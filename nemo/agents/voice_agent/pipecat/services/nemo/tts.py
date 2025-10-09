@@ -19,6 +19,7 @@ from typing import Iterator, List, Optional
 
 import numpy as np
 import torch
+from kokoro import KPipeline
 from loguru import logger
 from pipecat.frames.frames import (
     CancelFrame,
@@ -34,7 +35,7 @@ from pipecat.services.tts_service import TTSService
 
 from nemo.collections.tts.models import FastPitchModel, HifiGanModel
 
-from kokoro import KPipeline
+
 class BaseNemoTTSService(TTSService):
     """Text-to-Speech service using Nemo TTS models.
 
@@ -401,12 +402,13 @@ class NeMoFastPitchHiFiGANTTSService(BaseNemoTTSService):
             audio = audio.detach().view(-1).cpu().numpy()
             yield audio
 
+
 class KokoroTTSService(BaseNemoTTSService):
     """Text-to-Speech service using Kokoro-82M model.
-    
+
     Kokoro is an open-weight TTS model with 82 million parameters.
     More info: https://huggingface.co/hexgrad/Kokoro-82M
-    
+
     Args:
         lang_code: Language code for the model (default: 'a' for American English)
         voice: Voice to use (default: 'af_heart')
@@ -436,37 +438,38 @@ class KokoroTTSService(BaseNemoTTSService):
             from kokoro import KPipeline
         except ImportError:
             raise ImportError(
-                "kokoro package is required for KokoroTTSService. "
-                "Install it with: pip install kokoro>=0.9.2"
+                "kokoro package is required for KokoroTTSService. " "Install it with: pip install kokoro>=0.9.2"
             )
-        
+
         logger.info(f"Loading Kokoro TTS model with lang_code={self._lang_code}, voice={self._voice}")
         pipeline = KPipeline(lang_code=self._lang_code)
         return pipeline
 
     def _generate_audio(self, text: str) -> Iterator[np.ndarray]:
         """Generate audio using the Kokoro pipeline.
-        
+
         Args:
             text: Text to convert to speech
-            
+
         Yields:
             Audio data as numpy arrays
         """
         try:
             # Generate audio using Kokoro pipeline
             generator = self._model(text, voice=self._voice, speed=self._speed)
-            
+
             # The generator yields tuples of (gs, ps, audio)
             # We only need the audio component
             for i, (gs, ps, audio) in enumerate(generator):
-                logger.debug(f"Kokoro generated audio chunk {i}: gs={gs}, ps={ps}, audio_shape={audio.shape if hasattr(audio, 'shape') else len(audio)}")
+                logger.debug(
+                    f"Kokoro generated audio chunk {i}: gs={gs}, ps={ps}, audio_shape={audio.shape if hasattr(audio, 'shape') else len(audio)}"
+                )
                 if isinstance(audio, torch.Tensor):
                     audio = audio.detach().cpu().numpy()
                 # Kokoro returns audio as numpy array in float32 format [-1, 1]
                 # The base class will handle conversion to int16 bytes
                 yield audio
-                
+
         except Exception as e:
             logger.error(f"Error generating audio with Kokoro: {e}")
             raise
