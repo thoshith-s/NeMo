@@ -13,7 +13,6 @@
 # limitations under the License.
 
 
-import torch
 from nemo.collections.asr.inference.stream.decoders.greedy.greedy_rnnt_decoder import RNNTGreedyDecoder
 from nemo.collections.asr.inference.stream.endpointing.greedy.greedy_endpointing import GreedyEndpointing
 
@@ -41,27 +40,6 @@ class RNNTGreedyEndpointing(GreedyEndpointing):
             vocabulary, ms_per_timestep, effective_buffer_size_in_secs, stop_history_eou, residue_tokens_at_end
         )
         self.greedy_rnnt_decoder = RNNTGreedyDecoder(self.vocabulary, conf_func=None)
-
-    def detect_eou(
-        self,
-        alignment: list[list[tuple[torch.Tensor, torch.Tensor]]],
-        pivot_point: int,
-        search_start_point: int = 0,
-        stop_history_eou: int | None = None,
-    ) -> tuple[bool, int]:
-        """
-        Detect end of utterance (EOU) given the RNNT alignment and pivot point
-        Args:
-            alignment (list[list[tuple[torch.Tensor, torch.Tensor]]]):
-                       alignment[t][u] is a tuple of tensors indicating log_probs and token_id
-            pivot_point (int): pivot point
-            search_start_point (int): start point for searching EOU
-            stop_history_eou (int | None): stop history of EOU, if None then use the stop history of EOU from the class
-        Returns:
-            tuple[bool, int]: (EOU detected flag, position where EOU was detected)
-        """
-        emissions = self.greedy_rnnt_decoder.get_labels(alignment)
-        return self.detect_eou_given_emissions(emissions, pivot_point, search_start_point, stop_history_eou)
 
     def is_token_start_of_word(self, token_id: int) -> bool:
         """
