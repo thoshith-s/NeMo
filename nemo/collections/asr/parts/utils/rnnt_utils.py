@@ -108,7 +108,7 @@ class Hypothesis:
     last_token: Optional[torch.Tensor] = None
     token_duration: Optional[torch.Tensor] = None
     last_frame: Optional[int] = None
-    
+
     alignment_labels: Optional[List[int]] = None  # labels corresponding to alignments (can contain blanks)
 
     @property
@@ -593,7 +593,7 @@ class BatchedAlignments:
         self.labels = torch.zeros(0, device=device, dtype=torch.long)
         if self.with_alignments or self.with_frame_confidence:
             # labels; labels can contain <blank>, different from BatchedHyps
-            # are used during token confidence calculation for TDT models 
+            # are used during token confidence calculation for TDT models
             self.labels = torch.zeros((batch_size, self._max_length), device=device, dtype=torch.long)
         if self.with_alignments:
             # logits; labels can contain <blank>, different from BatchedHyps
@@ -824,8 +824,8 @@ def batched_hyps_to_hypotheses(
                         [frame_confidence[i, start + j] for j in range(timestamp_cnt)]
                     )
                 start += timestamp_cnt
-            
+
             if alignments.with_frame_confidence:
-                hypotheses[i].alignment_labels = alignment_labels[i][:alignment_lengths[i]]
-            
+                hypotheses[i].alignment_labels = alignment_labels[i][: alignment_lengths[i]]
+
     return hypotheses
