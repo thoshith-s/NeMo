@@ -40,6 +40,9 @@ class RNNTInference(ASRInference):
         self.reset_decoding_strategy(decoder_type)
         self.set_decoding_strategy(decoder_type)
 
+        self.cast_dtype = torch.float32 if self.use_amp else self.compute_dtype
+        self.asr_model.to(self.cast_dtype)
+
     def get_blank_id(self) -> int:
         """
         Returns:
@@ -84,7 +87,7 @@ class RNNTInference(ASRInference):
         ):
 
             forward_outs = self.asr_model(
-                processed_signal=processed_signal, processed_signal_length=processed_signal_length
+                processed_signal=processed_signal.to(self.cast_dtype), processed_signal_length=processed_signal_length
             )
 
         encoded, encoded_len = forward_outs
@@ -101,6 +104,6 @@ class RNNTInference(ASRInference):
             (list) list of best hypotheses.
         """
         best_hyp = self.asr_model.decoding.rnnt_decoder_predictions_tensor(
-            encoded, encoded_len, return_hypotheses=True, partial_hypotheses=partial_hypotheses
+            encoded.to(self.cast_dtype), encoded_len, return_hypotheses=True, partial_hypotheses=partial_hypotheses
         )
         return best_hyp

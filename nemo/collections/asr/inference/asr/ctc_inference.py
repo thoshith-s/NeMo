@@ -39,6 +39,9 @@ class CTCInference(ASRInference):
         self.reset_decoding_strategy(decoder_type)
         self.set_decoding_strategy(decoder_type)
 
+        self.cast_dtype = torch.float32 if self.use_amp else self.compute_dtype
+        self.asr_model.to(self.cast_dtype)
+
     def get_blank_id(self) -> int:
         """
         Returns:
@@ -89,7 +92,7 @@ class CTCInference(ASRInference):
         ):
 
             forward_outs = self.asr_model(
-                processed_signal=processed_signal, processed_signal_length=processed_signal_length
+                processed_signal=processed_signal.to(self.cast_dtype), processed_signal_length=processed_signal_length
             )
 
         if isinstance(self.asr_model, EncDecHybridRNNTCTCModel):
