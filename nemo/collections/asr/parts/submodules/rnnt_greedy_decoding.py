@@ -2623,6 +2623,7 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
 
         if self.preserve_frame_confidence:
             hypothesis.frame_confidence = [[]]
+            hypothesis.alignment_labels = []
 
         time_idx = 0
         while time_idx < out_len:
@@ -2678,6 +2679,7 @@ class GreedyTDTInfer(_GreedyRNNTInfer):
                         if self.include_duration_confidence
                         else self._get_confidence_tensor(logp)
                     )
+                    hypothesis.alignment_labels.append(k)
 
                 del logp
 

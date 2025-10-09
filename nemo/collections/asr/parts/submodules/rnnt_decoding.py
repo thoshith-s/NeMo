@@ -820,8 +820,10 @@ class AbstractRNNTDecoding(ConfidenceMixin):
                 frame_confidence = []
                 for frame_confs in hyp.frame_confidence:
                     for frame_conf in frame_confs:
-                        frame_confidence.append(maybe_pre_aggregate(frame_conf))
-                    
+                        if len(frame_conf) > 0:
+                            frame_confidence.append(maybe_pre_aggregate(frame_conf))
+                print(hyp.alignment_labels)
+                print(frame_confidence)
                 assert(len(frame_confidence) == len(hyp.alignment_labels))
                 
                 token_confidence=[]
