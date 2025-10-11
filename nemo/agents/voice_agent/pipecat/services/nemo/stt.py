@@ -33,6 +33,7 @@ from pipecat.utils.time import time_now_iso8601
 from pipecat.utils.tracing.service_decorators import traced_stt
 from pydantic import BaseModel
 
+from nemo.agents.voice_agent.pipecat.services.nemo.audio_logger import AudioLogger
 from nemo.agents.voice_agent.pipecat.services.nemo.legacy_asr import NemoLegacyASRService
 
 try:
@@ -69,6 +70,8 @@ class NemoSTTService(STTService):
         has_turn_taking: bool = False,
         backend: Optional[str] = "legacy",
         decoder_type: Optional[str] = "rnnt",
+        record_audio_data: Optional[bool] = False,
+        audio_logger: Optional[AudioLogger] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -81,6 +84,8 @@ class NemoSTTService(STTService):
         self._has_turn_taking = has_turn_taking
         self._backend = backend
         self._decoder_type = decoder_type
+        self._record_audio_data = record_audio_data
+        self._audio_logger = audio_logger
         if not params:
             raise ValueError("params is required")
 
@@ -89,6 +94,9 @@ class NemoSTTService(STTService):
         self._load_model()
 
         self.audio_buffer = []
+        # Buffers for accumulating audio and transcriptions for a complete turn (for logging)
+        self._turn_audio_buffer = []
+        self._turn_transcription_buffer = []
 
     def _load_model(self):
         if self._backend == "legacy":
@@ -158,6 +166,13 @@ class NemoSTTService(STTService):
                 self.audio_buffer = []
 
                 transcription, is_final = self._model.transcribe(audio)
+                if self._record_audio_data and self._audio_logger:
+                    self._turn_audio_buffer.append(audio)
+                    # Accumulate transcriptions for turn-based logging
+                    if transcription:
+                        self._turn_transcription_buffer.append(transcription)
+                        self._stage_turn_audio_and_transcription()
+
                 await self.stop_ttfb_metrics()
                 await self.stop_processing_metrics()
 
@@ -201,6 +216,46 @@ class NemoSTTService(STTService):
             )
             yield None
 
+    def _stage_turn_audio_and_transcription(self):
+        """
+        Stage the complete turn audio and accumulated transcriptions.
+        
+        This method is called when a final transcription is received.
+        It joins all accumulated audio and transcription chunks and logs them together.
+        """
+        if not self._turn_audio_buffer or not self._turn_transcription_buffer:
+            logger.debug("No audio or transcription to log")
+            return
+        
+        try:
+            # Join all accumulated audio and transcriptions for this turn
+            complete_turn_audio = b"".join(self._turn_audio_buffer)
+            complete_transcription = "".join(self._turn_transcription_buffer)
+            
+            logger.debug(f"Staging a turn with: {len(self._turn_audio_buffer)} audio chunks, "
+                        f"{len(self._turn_transcription_buffer)} transcription chunks")
+            
+            self._audio_logger.stage_user_audio(
+                audio_data=complete_turn_audio,
+                transcription=complete_transcription,
+                sample_rate=self._sample_rate,
+                num_channels=1,
+                is_final=True,
+                additional_metadata={
+                    "model": self._model_name,
+                    "backend": self._backend,
+                    "audio_duration_sec": len(complete_turn_audio) / (self._sample_rate * 2),
+                    "num_transcription_chunks": len(self._turn_transcription_buffer),
+                    "num_audio_chunks": len(self._turn_audio_buffer),
+                },
+            )
+            
+            logger.info(f"Staged the audio and transcription for turn: '{complete_transcription[:50]}...'")
+            
+        except Exception as e:
+            logger.warning(f"Failed to log user audio: {e}")
+
+
     @traced_stt
     async def _handle_transcription(self, transcript: str, is_final: bool, language: Optional[str] = None):
         """Handle a transcription result.
@@ -240,4 +295,9 @@ class NemoSTTService(STTService):
             # manualy reset the state of the model when end of utterance is detected by VAD
             logger.debug("Resetting state of the model due to VADUserStoppedSpeakingFrame")
             self._model.reset_state()
+            # Clear turn buffers if logging wasn't completed (e.g., no final transcription)
+            if self._turn_audio_buffer or self._turn_transcription_buffer:
+                logger.debug("Clearing turn audio and transcription buffers due to VAD user stopped speaking")
+                self._turn_audio_buffer = []
+                self._turn_transcription_buffer = []
         await super().process_frame(frame, direction)

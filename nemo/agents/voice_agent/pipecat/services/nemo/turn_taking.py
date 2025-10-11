@@ -34,6 +34,7 @@ from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.transcriptions.language import Language
 from pipecat.utils.time import time_now_iso8601
 
+from nemo.agents.voice_agent.pipecat.services.nemo.audio_logger import AudioLogger
 from nemo.agents.voice_agent.pipecat.frames.frames import DiarResultFrame
 
 
@@ -48,6 +49,7 @@ class NeMoTurnTakingService(FrameProcessor):
         use_diar: bool = False,
         max_buffer_size: int = 3,
         bot_stop_delay: float = 0.5,
+        audio_logger: Optional[AudioLogger] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -69,6 +71,7 @@ class NeMoTurnTakingService(FrameProcessor):
         self._vad_user_speaking = False
         self._have_sent_user_started_speaking = False
         self._user_speaking_buffer = ""
+        self._audio_logger = audio_logger
         if not self.use_vad:
             # if vad is not used, we assume the user is always speaking
             self._vad_user_speaking = True
@@ -309,6 +312,8 @@ class NeMoTurnTakingService(FrameProcessor):
                 self._have_sent_user_started_speaking = False
         elif is_backchannel:
             logger.debug(f"Backchannel detected: `{self._user_speaking_buffer}`")
+            if self._audio_logger:
+                self._audio_logger.save_user_audio()
             # push the backchannel string upstream, not downstream
             await self.push_frame(
                 TranscriptionFrame(
@@ -331,6 +336,8 @@ class NeMoTurnTakingService(FrameProcessor):
             await self.push_frame(StartInterruptionFrame(), direction=FrameDirection.DOWNSTREAM)
         elif isinstance(frame, UserStoppedSpeakingFrame):
             logger.debug("User stopped speaking")
+            if self._audio_logger:
+                self._audio_logger.save_user_audio()
             await self.push_frame(frame)
         else:
             logger.debug(f"Unknown frame type for _handle_user_interruption: {type(frame)}")

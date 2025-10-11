@@ -44,6 +44,7 @@ from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
 from pipecat.processors.frameworks.rtvi import RTVIAction, RTVIConfig, RTVIObserver, RTVIProcessor
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
 
+from nemo.agents.voice_agent.pipecat.services.nemo.audio_logger import AudioLogger
 from nemo.agents.voice_agent.pipecat.services.nemo.diar import NeMoDiarInputParams, NemoDiarService
 from nemo.agents.voice_agent.pipecat.services.nemo.llm import get_llm_service_from_config
 from nemo.agents.voice_agent.pipecat.services.nemo.stt import NeMoSTTInputParams, NemoSTTService
@@ -72,6 +73,8 @@ SYSTEM_ROLE = config_manager.SYSTEM_ROLE
 
 # Transport configuration
 TRANSPORT_AUDIO_OUT_10MS_CHUNKS = config_manager.TRANSPORT_AUDIO_OUT_10MS_CHUNKS
+RECORD_AUDIO_DATA = server_config.transport.get("record_audio_data", False)
+AUDIO_LOG_DIR = server_config.transport.get("audio_log_dir", "./audio_logs")
 
 # VAD configuration
 vad_params = config_manager.get_vad_params()
@@ -122,6 +125,20 @@ async def run_bot_websocket_server():
     - Server will run indefinitely until manually stopped (Ctrl+C)
     """
 
+    # Initialize AudioLogger if recording is enabled
+    audio_logger = None
+    if RECORD_AUDIO_DATA:
+        from datetime import datetime
+        session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        audio_logger = AudioLogger(
+            log_dir=AUDIO_LOG_DIR,
+            session_id=session_id,
+            enabled=True,
+        )
+        logger.info(f"AudioLogger initialized for session: {session_id} at {AUDIO_LOG_DIR}")
+    else:
+        logger.info("Audio logging is disabled")
+
     vad_analyzer = SileroVADAnalyzer(
         sample_rate=SAMPLE_RATE,
         params=vad_params,
@@ -156,6 +173,8 @@ async def run_bot_websocket_server():
         has_turn_taking=True,
         backend="legacy",
         decoder_type="rnnt",
+        record_audio_data=RECORD_AUDIO_DATA,
+        audio_logger=audio_logger,
     )
     logger.info("STT service initialized")
 
@@ -178,6 +197,7 @@ async def run_bot_websocket_server():
         max_buffer_size=TURN_TAKING_MAX_BUFFER_SIZE,
         bot_stop_delay=TURN_TAKING_BOT_STOP_DELAY,
         backchannel_phrases=TURN_TAKING_BACKCHANNEL_PHRASES_PATH,
+        audio_logger=audio_logger,
     )
     logger.info("Turn taking service initialized")
 
@@ -195,6 +215,8 @@ async def run_bot_websocket_server():
             device=TTS_DEVICE,
             text_aggregator=text_aggregator,
             think_tokens=TTS_THINK_TOKENS,
+            record_audio_data=RECORD_AUDIO_DATA,
+            audio_logger=audio_logger,
         )
     elif TTS_TYPE == "kokoro":
         tts = KokoroTTSService(
@@ -203,6 +225,8 @@ async def run_bot_websocket_server():
             speed=config_manager.server_config.tts.speed,
             text_aggregator=text_aggregator,
             think_tokens=TTS_THINK_TOKENS,
+            record_audio_data=RECORD_AUDIO_DATA,
+            audio_logger=audio_logger,
         )
     else:
         raise ValueError(f"Invalid TTS type: {TTS_TYPE}")
@@ -309,6 +333,10 @@ async def run_bot_websocket_server():
     @ws_transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
         logger.info(f"Pipecat Client disconnected from {client.remote_address}")
+        # Finalize audio logger session if enabled
+        if audio_logger:
+            audio_logger.finalize_session()
+            logger.info("Audio logger session finalized")
         # Don't cancel the task immediately - let it handle the disconnection gracefully
         # The task will continue running and can accept new connections
         # Only send an EndTaskFrame to clean up the current session
@@ -341,6 +369,10 @@ async def run_bot_websocket_server():
         logger.error(f"Pipeline runner error: {e}")
         task_running = False
     finally:
+        # Finalize audio logger on shutdown
+        if audio_logger:
+            audio_logger.finalize_session()
+            logger.info("Audio logger session finalized on shutdown")
         logger.info("Pipeline runner stopped")
 
 
