@@ -25,9 +25,9 @@ from megatron.core.transformer.mlp import MLP, MLPSubmodules
 from megatron.core.transformer.spec_utils import ModuleSpec
 from megatron.core.transformer.transformer_layer import TransformerLayer, TransformerLayerSubmodules
 
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_block import HyenaStack, HyenaStackSubmodules
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_layer import HyenaLayer, HyenaLayerSubmodules
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_mixer import HyenaMixer, HyenaMixerSubmodules
+from .hyena_block import HyenaStack, HyenaStackSubmodules
+from .hyena_layer import HyenaLayer, HyenaLayerSubmodules
+from .hyena_mixer import HyenaMixer, HyenaMixerSubmodules
 
 try:
     from megatron.core.extensions.transformer_engine import (
@@ -57,12 +57,22 @@ except ImportError:
     TERowParallelLinear = _raise_te_import_error
     TEDotProductAttention = _raise_te_import_error
 
+try:
+    import nvidia_kitchen  # pylint: disable=unused-import
+
+    from megatron.core.extensions.kitchen import KitchenSpecProvider
+
+    HAVE_KITCHEN = True
+except ImportError:
+    HAVE_KITCHEN = False
+
 
 def get_hyena_stack_spec(
     use_te=HAVE_TE,
     vortex_style_fp8=False,
     unfused_rmsnorm=False,
     plain_row_linear=False,
+    use_kitchen=False,
 ):
     """Construct desired Hyena stack spec based on given parameters."""
     if use_te:
@@ -70,6 +80,13 @@ def get_hyena_stack_spec(
         col_linear = TELayerNormColumnParallelLinear
         pre_layernorm = IdentityOp  # fused Norm+Linear, so no pre norm
         core_attention = TEDotProductAttention
+    elif use_kitchen:
+        assert HAVE_KITCHEN
+        backend = KitchenSpecProvider()
+        row_linear = backend.row_parallel_linear()
+        col_linear = backend.column_parallel_layer_norm_linear()
+        pre_layernorm = IdentityOp  # fused Norm+Linear, so no pre norm
+        core_attention = backend.core_attention()
     else:
         row_linear = RowParallelLinear
         col_linear = ColumnParallelLinear

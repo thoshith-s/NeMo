@@ -37,8 +37,8 @@ from megatron.core.utils import WrappedTensor, deprecate_inference_params
 from torch import Tensor
 from torch.nn.parameter import Parameter
 
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_config import HyenaConfig
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_utils import (
+from .hyena_config import HyenaConfig
+from .hyena_utils import (
     get_init_method,
     make_upper_case,
     reweighted_cross_entropy,

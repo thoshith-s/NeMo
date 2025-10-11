@@ -37,7 +37,7 @@ from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.transformer.utils import make_sharded_tensors_for_checkpoint, sharded_state_dict_default
 from torch.autograd.function import Function
 
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_config import HyenaConfig
+from .hyena_config import HyenaConfig
 
 try:
     from einops import rearrange

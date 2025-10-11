@@ -28,7 +28,7 @@ from megatron.core.transformer.transformer_config import TransformerConfig
 from megatron.core.utils import deprecate_inference_params
 from torch import Tensor
 
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_config import HyenaConfig
+from .hyena_config import HyenaConfig
 
 
 @dataclass

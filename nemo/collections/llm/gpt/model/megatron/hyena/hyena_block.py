@@ -33,9 +33,9 @@ from megatron.core.transformer.utils import sharded_state_dict_default
 from megatron.core.utils import WrappedTensor, deprecate_inference_params, make_viewless_tensor
 from torch import Tensor, nn
 
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_config import HyenaConfig
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_hybrid_layer_allocation import Symbols as LayerSymbols
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_hybrid_layer_allocation import allocate_layers
+from .hyena_config import HyenaConfig
+from .hyena_hybrid_layer_allocation import Symbols as LayerSymbols
+from .hyena_hybrid_layer_allocation import allocate_layers
 
 try:
     from megatron.core.extensions.transformer_engine import TEDelayedScaling, TENorm, te_checkpoint
