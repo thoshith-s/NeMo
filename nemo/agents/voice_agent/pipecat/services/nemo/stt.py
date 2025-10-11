@@ -25,6 +25,7 @@ from pipecat.frames.frames import (
     StartFrame,
     TranscriptionFrame,
     VADUserStoppedSpeakingFrame,
+    VADUserStartedSpeakingFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.stt_service import STTService
@@ -86,6 +87,7 @@ class NemoSTTService(STTService):
         self._decoder_type = decoder_type
         self._record_audio_data = record_audio_data
         self._audio_logger = audio_logger
+        self._is_vad_active = False
         if not params:
             raise ValueError("params is required")
 
@@ -291,13 +293,18 @@ class NemoSTTService(STTService):
         self._load_model()
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
-        if isinstance(frame, VADUserStoppedSpeakingFrame) and isinstance(self._model, NemoLegacyASRService):
-            # manualy reset the state of the model when end of utterance is detected by VAD
-            logger.debug("Resetting state of the model due to VADUserStoppedSpeakingFrame")
-            self._model.reset_state()
-            # Clear turn buffers if logging wasn't completed (e.g., no final transcription)
-            if self._turn_audio_buffer or self._turn_transcription_buffer:
-                logger.debug("Clearing turn audio and transcription buffers due to VAD user stopped speaking")
-                self._turn_audio_buffer = []
-                self._turn_transcription_buffer = []
+        if isinstance(self._model, NemoLegacyASRService):
+            if isinstance(frame, VADUserStoppedSpeakingFrame):
+                self._is_vad_active = False
+                # manualy reset the state of the model when end of utterance is detected by VAD
+                logger.debug("Resetting state of the model due to VADUserStoppedSpeakingFrame")
+                self._model.reset_state()
+                # Clear turn buffers if logging wasn't completed (e.g., no final transcription)
+                if len(self._turn_audio_buffer) > 0 or len(self._turn_transcription_buffer) > 0:
+                    logger.debug("Clearing turn audio and transcription buffers due to VAD user stopped speaking")
+                    self._turn_audio_buffer = []
+                    self._turn_transcription_buffer = []
+            elif isinstance(frame, VADUserStartedSpeakingFrame):
+                self._is_vad_active = True
+        
         await super().process_frame(frame, direction)
