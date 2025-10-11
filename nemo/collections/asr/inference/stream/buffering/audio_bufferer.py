@@ -47,8 +47,8 @@ class AudioBufferer:
             raise RuntimeError(f"Frame size ({frame.size}) exceeds buffer size ({self.buffer_size})")
 
         shift = frame.size
-        self.sample_buffer[:-shift] = self.sample_buffer[shift:].clone()
-        self.sample_buffer[-shift:] = frame.samples.clone()
+        self.sample_buffer = torch.roll(self.sample_buffer, -shift)
+        self.sample_buffer[-shift:].copy_(frame.samples)
         self.left_padding = max(0, self.left_padding - shift)
 
     def get_buffer(self) -> Tensor:

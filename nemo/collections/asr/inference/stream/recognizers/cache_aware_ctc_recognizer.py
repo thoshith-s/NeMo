@@ -203,7 +203,6 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
 
     def reset_session(self) -> None:
         """Reset the frame buffer and internal state pool"""
-        self.bufferer.reset()
         self.context_manager.reset()
         super().reset_session()
 

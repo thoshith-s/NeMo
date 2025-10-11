@@ -184,7 +184,6 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
 
     def reset_session(self) -> None:
         """Reset the frame buffer and internal state pool"""
-        self.bufferer.reset()
         super().reset_session()
 
     def create_state(self, options: ASRRequestOptions) -> CTCStreamingState:

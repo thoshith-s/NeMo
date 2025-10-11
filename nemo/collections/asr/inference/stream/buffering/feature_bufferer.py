@@ -119,8 +119,7 @@ class BatchedFeatureBufferer:
         Args:
             stream_id (int): stream id
         """
-        if stream_id in self.bufferers:
-            del self.bufferers[stream_id]
+        self.bufferers.pop(stream_id, None)
 
     def update(self, fbuffers: list[FeatureBuffer]) -> list[torch.Tensor]:
         """
