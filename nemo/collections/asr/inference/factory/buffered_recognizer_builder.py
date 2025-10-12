@@ -15,8 +15,8 @@
 from omegaconf.dictconfig import DictConfig
 
 from nemo.collections.asr.inference.factory.base_builder import BaseBuilder
-from nemo.collections.asr.inference.stream.recognizers.buffered_ctc_recognizer import CTCBufferedSpeechRecognizer
-from nemo.collections.asr.inference.stream.recognizers.buffered_rnnt_recognizer import RNNTBufferedSpeechRecognizer
+from nemo.collections.asr.inference.recognizers.buffered_ctc_recognizer import CTCBufferedSpeechRecognizer
+from nemo.collections.asr.inference.recognizers.buffered_rnnt_recognizer import RNNTBufferedSpeechRecognizer
 from nemo.collections.asr.inference.utils.enums import ASRDecodingType
 from nemo.collections.asr.parts.submodules.ctc_decoding import CTCDecodingConfig
 from nemo.collections.asr.parts.submodules.rnnt_decoding import RNNTDecodingConfig

@@ -18,7 +18,7 @@ from typing import Callable
 
 import numpy as np
 
-from nemo.collections.asr.inference.stream.state.state import StreamingState
+from nemo.collections.asr.inference.streaming.state.state import StreamingState
 from nemo.collections.asr.inference.utils.constants import (
     POST_WORD_PUNCTUATION,
     ROUND_PRECISION,

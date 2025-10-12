@@ -17,7 +17,7 @@ import os
 
 import librosa
 
-from nemo.collections.asr.inference.stream.recognizers.base_recognizer import RecognizerOutput
+from nemo.collections.asr.inference.recognizers.base_recognizer import RecognizerOutput
 from nemo.collections.asr.inference.utils.constants import DEFAULT_OUTPUT_DIR_NAME
 from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
 from nemo.collections.common.parts.preprocessing.manifest import get_full_path

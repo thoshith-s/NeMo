@@ -15,8 +15,8 @@
 import pytest
 import torch
 
-from nemo.collections.asr.inference.stream.decoders.greedy.greedy_ctc_decoder import CTCGreedyDecoder
-from nemo.collections.asr.inference.stream.decoders.greedy.greedy_rnnt_decoder import RNNTGreedyDecoder
+from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_ctc_decoder import CTCGreedyDecoder
+from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_rnnt_decoder import RNNTGreedyDecoder
 
 
 class TestCTCGreedyDecoder:

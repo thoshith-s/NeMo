@@ -16,9 +16,9 @@
 import pytest
 import torch
 
-from nemo.collections.asr.inference.stream.buffering.audio_bufferer import AudioBufferer, BatchedAudioBufferer
-from nemo.collections.asr.inference.stream.framing.mono_stream import MonoStream
-from nemo.collections.asr.inference.stream.framing.multi_stream import MultiStream
+from nemo.collections.asr.inference.streaming.buffering.audio_bufferer import AudioBufferer, BatchedAudioBufferer
+from nemo.collections.asr.inference.streaming.framing.mono_stream import MonoStream
+from nemo.collections.asr.inference.streaming.framing.multi_stream import MultiStream
 
 
 @pytest.fixture(scope="module")

@@ -15,8 +15,8 @@
 import pytest
 import torch
 
-from nemo.collections.asr.inference.stream.endpointing.greedy.greedy_ctc_endpointing import CTCGreedyEndpointing
-from nemo.collections.asr.inference.stream.endpointing.greedy.greedy_rnnt_endpointing import RNNTGreedyEndpointing
+from nemo.collections.asr.inference.streaming.endpointing.greedy.greedy_ctc_endpointing import CTCGreedyEndpointing
+from nemo.collections.asr.inference.streaming.endpointing.greedy.greedy_rnnt_endpointing import RNNTGreedyEndpointing
 from nemo.collections.asr.inference.utils.endpointing_utils import millisecond_to_frames
 
 
