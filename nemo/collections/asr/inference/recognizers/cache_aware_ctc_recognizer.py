@@ -23,13 +23,13 @@ from omegaconf import DictConfig
 from torch import Tensor
 
 from nemo.collections.asr.inference.asr.cache_aware_ctc_inference import CacheAwareCTCInference
+from nemo.collections.asr.inference.recognizers.base_recognizer import BaseRecognizer
 from nemo.collections.asr.inference.streaming.buffering.cache_feature_bufferer import BatchedCacheFeatureBufferer
 from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_ctc_decoder import CTCGreedyDecoder
 from nemo.collections.asr.inference.streaming.endpointing.greedy.greedy_ctc_endpointing import CTCGreedyEndpointing
 from nemo.collections.asr.inference.streaming.framing.multi_stream import ContinuousBatchedRequestStreamer
 from nemo.collections.asr.inference.streaming.framing.request import FeatureBuffer, Frame
 from nemo.collections.asr.inference.streaming.framing.request_options import ASRRequestOptions
-from nemo.collections.asr.inference.recognizers.base_recognizer import BaseRecognizer
 from nemo.collections.asr.inference.streaming.state.cache_aware_ctc_state import CacheAwareCTCStreamingState
 from nemo.collections.asr.inference.streaming.text.text_processing import StreamingTextPostprocessor
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder

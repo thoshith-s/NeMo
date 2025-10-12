@@ -16,10 +16,10 @@ import re
 from abc import abstractmethod
 from typing import Any, Iterable
 
+from nemo.collections.asr.inference.recognizers.recognizer_interface import RecognizerInterface
 from nemo.collections.asr.inference.streaming.framing.multi_stream import ContinuousBatchedRequestStreamer
 from nemo.collections.asr.inference.streaming.framing.request import FeatureBuffer, Frame, Request
 from nemo.collections.asr.inference.streaming.framing.request_options import ASRRequestOptions
-from nemo.collections.asr.inference.recognizers.recognizer_interface import RecognizerInterface
 from nemo.collections.asr.inference.utils.progressbar import ProgressBar
 from nemo.collections.asr.inference.utils.text_segment import TextSegment
 from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
