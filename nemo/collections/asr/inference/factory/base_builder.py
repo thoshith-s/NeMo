@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from omegaconf import open_dict
 from omegaconf.dictconfig import DictConfig
 
 from nemo.collections.asr.inference.asr.asr_inference import ASRInference
@@ -140,9 +141,10 @@ class BaseBuilder:
                 raise ValueError("Language is not specified. Cannot load PnC model.")
 
             itn_cfg = cfg.itn
-            itn_cfg.lang = target_lang
-            itn_cfg.input_case = input_case
-            itn_cfg.cache_dir = cfg.cache_dir
+            with open_dict(itn_cfg):
+                itn_cfg.lang = target_lang
+                itn_cfg.input_case = input_case
+                itn_cfg.cache_dir = cfg.cache_dir
 
             itn_model = AlignmentPreservingInverseNormalizer(
                 lang=itn_cfg.lang,

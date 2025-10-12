@@ -20,11 +20,11 @@ The script performs the following steps:
         - Note: Input audio files must be 16 kHz, mono-channel WAV files.
     (2) Creates a recognizer object to run the ASR pipeline.
     (3) Runs inference on the input audio files.
-    (4) Writes the transcriptions to an output json/jsonl file. Word-level output is written to a separate CTM file.
+    (4) Writes the transcriptions to an output json/jsonl file. Word/Segment level output is written to a separate JSON file.
 
 Example usage:
 python asr_streaming_infer.py \
-        --config-path=./conf \
+        --config-path=../conf/asr_chunked_inference/ \
         --config-name=config.yaml \
         audio_file=<path to audio file, directory of audio files, or manifest file> \
         output_filename=<path to output jsonfile> \
@@ -33,7 +33,7 @@ python asr_streaming_infer.py \
         verbatim_transcripts=True \
         asr_output_granularity=segment \
         ...
-        # See conf/*.yaml for all available options
+        # See ../conf/asr_chunked_inference/*.yaml for all available options
 
 Note:
     The output file is a json file with the following structure:

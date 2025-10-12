@@ -1,11 +1,33 @@
 # ================================
-# Default configurations
+# ASR Configuration
 # ================================
-defaults:
-  - _self_
-  - asr: rnnt_asr_config                      # ASR configuration
-  - pnc: punctuation_capitalization_config    # Punctuation & capitalization model config
-  - itn: inverse_normalization_config         # Inverse text normalization config
+asr:
+  model_name: nvidia/parakeet-ctc-1.1b         # Pre-trained CTC/hybrid model from NGC/HuggingFace or local .nemo file path
+  device: cuda                                 # Device for inference: 'cuda' or 'cpu'
+  device_id: 0                                 # GPU device ID
+  compute_dtype: bfloat16                      # Compute precision: 'bfloat16' for Ampere+, 'float16' for older GPUs, or 'float32' 
+  use_amp: false                               # Enable Automatic Mixed Precision
+
+
+# ========================================
+# Punctuation and Capitalization Configuration
+# ========================================
+pnc:
+  model_name: "punctuation_en_bert"            # Pre-trained PNC model from NGC/HuggingFace or local .nemo file path
+  device: "cuda"                               # Device for inference: 'cuda' or 'cpu'
+  device_id: 0                                 # GPU device ID
+  compute_dtype: bfloat16                      # Compute precision: 'bfloat16' for Ampere+, 'float16' for older GPUs, or 'float32'
+  use_amp: false                               # Enable Automatic Mixed Precision
+
+
+# ==========================================
+# Inverse Text Normalization Configuration
+# ==========================================
+itn:
+  input_case: lower_cased                       # Input text case handling: 'lower_cased', 'cased'
+  whitelist: null                               # Custom whitelist for ITN processing
+  overwrite_cache: false                        # Whether to overwrite existing cache files
+  max_number_of_permutations_per_split: 729     # Maximum permutations allowed per text split during ITN processing
 
 
 # ========================
@@ -18,8 +40,7 @@ confidence:
     name: entropy                             # Confidence estimation method: 'max_prob' or 'entropy'
     entropy_type: tsallis                     
     alpha: 0.5                                
-    entropy_norm: exp 
-
+    entropy_norm: exp                         
 
 # ========================
 # Endpointing settings
@@ -40,7 +61,6 @@ streaming:
   chunk_size: 4.8                             # Audio chunk size in seconds
   word_boundary_tolerance: 4                  # Tolerance for word boundaries
   request_type: feature_buffer                # Type of request: frame or feature_buffer
-  stateful: true                              # Whether to use stateful processing
   padding_mode: right                         # Padding mode: left or right. How to pad frames to match the required buffer length
 
 
@@ -64,10 +84,10 @@ text_postprocessor:
 # ========================
 # Recognizer settings
 # ========================
-matmul_precision: high                     # Matrix multiplication precision: highest, high, medium
-log_level: 20                              # Logging level: 0 (NOTSET), 10 (DEBUG), 20 (INFO), 30 (WARNING), 40 (ERROR), 50 (CRITICAL)
-recognizer_type: buffered                  # Recognizer type: buffered, cache_aware
-asr_decoding_type: rnnt                    # Decoding method: ctc or rnnt
+matmul_precision: high                        # Matrix multiplication precision: highest, high, medium
+log_level: 20                                 # Logging level: 0 (NOTSET), 10 (DEBUG), 20 (INFO), 30 (WARNING), 40 (ERROR), 50 (CRITICAL)
+recognizer_type: buffered                     # Recognizer type: buffered, cache_aware
+asr_decoding_type: ctc                        # Decoding method: ctc or rnnt
 
 
 # ========================
