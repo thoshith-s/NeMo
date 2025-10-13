@@ -22,11 +22,22 @@ class CacheAwareRNNTStreamingState(CacheAwareStreamingState):
     State of the cache aware RNNT streaming recognizers
     """
 
+    def __init__(self):
+        super().__init__()
+        self._additional_params_reset()
+
     def reset(self) -> None:
         """
         Reset the state
         """
         super().reset()
+        self._additional_params_reset()
+
+    def _additional_params_reset(self) -> None:
+        """
+        Reset non-inherited parameters
+        """
+        super()._additional_params_reset()
         self.previous_hypothesis = None
 
     def set_previous_hypothesis(self, previous_hypothesis: Hypothesis) -> None:

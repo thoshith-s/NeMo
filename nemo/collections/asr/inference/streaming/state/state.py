@@ -32,9 +32,15 @@ KEEP_LAST_N_WORDS = 30
 
 class StreamingState:
     def __init__(self):
-        self.reset()
+        self._reset_streaming_state()
 
     def reset(self) -> None:
+        """
+        Reset the state to its initial values
+        """
+        self._reset_streaming_state()
+
+    def _reset_streaming_state(self) -> None:
         """
         Initialize the state with default values
         """

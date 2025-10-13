@@ -21,11 +21,21 @@ class CacheAwareStreamingState(StreamingState):
     State of the cache aware CTC/RNNT streaming recognizers
     """
 
+    def __init__(self):
+        super().__init__()
+        self._additional_params_reset()
+
     def reset(self) -> None:
         """
         Reset the state
         """
         super().reset()
+        self._additional_params_reset()
+
+    def _additional_params_reset(self) -> None:
+        """
+        Reset non-inherited parameters
+        """
         # label_buffer will be used to detect EoU
         self.label_buffer = []
         self.label_buffer_size = 0

@@ -20,10 +20,20 @@ class RNNTStreamingState(StreamingState):
     State of the streaming RNNT recognizer
     """
 
+    def __init__(self):
+        super().__init__()
+        self._additional_params_reset()
+
     def reset(self) -> None:
         """
         Reset the state
         """
         super().reset()
+        self._additional_params_reset()
+
+    def _additional_params_reset(self) -> None:
+        """
+        Reset non-inherited parameters
+        """
         self.timestamp_offset = 0
         self.hyp_decoding_state = None
