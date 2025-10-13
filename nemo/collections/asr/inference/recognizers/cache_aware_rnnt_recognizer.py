@@ -78,13 +78,12 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         self.sample_rate = self.streaming_cfg.sample_rate
 
         self.asr_model_cfg = self.asr_model.copy_asr_config()
-        self.model_normalize_type = self.asr_model_cfg.preprocessor.normalize
         self.asr_model_cfg = make_preprocessor_deterministic(self.asr_model_cfg)
 
-        model_stride = self.asr_model.get_subsampling_factor()  # 8, 4, etc
-        window_stride_in_secs = self.asr_model_cfg.preprocessor.window_stride  # 0.01
-        self.model_stride_in_secs = window_stride_in_secs * model_stride  # 0.08, 0.04, etc
-        self.model_stride_in_milisecs = math.ceil(self.model_stride_in_secs * 1000)  # 80, 40, etc
+        subsampling_factor = self.asr_model.get_subsampling_factor()  # 8, 4, etc
+        window_stride = self.asr_model.get_window_stride()  # 0.01
+        self.model_stride_in_secs = self.asr_model.get_model_stride(in_secs=True)  # 0.08, 0.04, etc
+        self.model_stride_in_milliseconds = self.asr_model.get_model_stride(in_milliseconds=True)  # 80, 40, etc
 
         self.pre_encode_cache_size = self.asr_model.get_pre_encode_cache_size()
         self.model_chunk_size = self.asr_model.get_chunk_size()
@@ -96,18 +95,18 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
 
         if self.streaming_cfg.get("chunk_size_in_secs", None) is not None:
             self.chunk_size_in_secs = self.streaming_cfg.chunk_size_in_secs
-            self.tokens_per_frame = math.ceil(np.trunc(self.chunk_size_in_secs / window_stride_in_secs) / model_stride)
+            self.tokens_per_frame = math.ceil(np.trunc(self.chunk_size_in_secs / window_stride) / subsampling_factor)
             # overwrite the encoder streaming params with proper shift size for cache aware streaming
             self.asr_model.setup_streaming_params(
-                chunk_size=self.model_chunk_size // model_stride, shift_size=self.tokens_per_frame
+                chunk_size=self.model_chunk_size // subsampling_factor, shift_size=self.tokens_per_frame
             )
         else:
-            self.chunk_size_in_secs = self.model_chunk_size * window_stride_in_secs
-            self.tokens_per_frame = math.ceil(self.model_chunk_size / model_stride)
+            self.chunk_size_in_secs = self.model_chunk_size * window_stride
+            self.tokens_per_frame = math.ceil(self.model_chunk_size / subsampling_factor)
 
         if isinstance(self.pre_encode_cache_size, list):
             self.pre_encode_cache_size = self.pre_encode_cache_size[1]
-        self.pre_encode_cache_size_in_secs = self.pre_encode_cache_size * window_stride_in_secs
+        self.pre_encode_cache_size_in_secs = self.pre_encode_cache_size * window_stride
 
         # Context Manager
         self.batch_size = self.streaming_cfg.batch_size
@@ -120,7 +119,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         )
 
         # Feature Bufferer
-        model_chunk_size_in_secs = self.model_chunk_size * window_stride_in_secs
+        model_chunk_size_in_secs = self.model_chunk_size * window_stride
 
         if self.use_cache:
             # if using cache, we need to pad some samples for pre_encode
@@ -133,7 +132,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             if left_context_size < 0:
                 raise ValueError(f"Left context size should not be a negative value: {left_context_size}")
             self.buffer_size_in_secs = (
-                model_chunk_size_in_secs + left_context_size * model_stride * window_stride_in_secs
+                model_chunk_size_in_secs + left_context_size * subsampling_factor * window_stride
             )
             self.drop_left_context = left_context_size
             self.valid_out_len = self.tokens_per_frame
@@ -178,7 +177,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         self.residue_tokens_at_end = cfg.endpointing.residue_tokens_at_end
         self.endpointer = RNNTGreedyEndpointing(
             vocabulary=self.vocabulary,
-            ms_per_timestep=self.model_stride_in_milisecs,
+            ms_per_timestep=self.model_stride_in_milliseconds,
             stop_history_eou=self.stop_history_eou_in_millisecs,
             residue_tokens_at_end=self.residue_tokens_at_end,
         )
@@ -219,7 +218,9 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
 
         eou_label_buffer_size = 0
         if new_options.stop_history_eou > 0:
-            eou_label_buffer_size = millisecond_to_frames(new_options.stop_history_eou, self.model_stride_in_milisecs)
+            eou_label_buffer_size = millisecond_to_frames(
+                new_options.stop_history_eou, math.ceil(self.model_stride_in_milliseconds)
+            )
             eou_label_buffer_size += self.residue_tokens_at_end
         state.setup_label_buffer(eou_label_buffer_size, self.blank_id)
         state.set_previous_hypothesis(None)

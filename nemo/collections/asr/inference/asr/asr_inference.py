@@ -22,6 +22,7 @@ from omegaconf import DictConfig, open_dict
 
 from nemo.collections.asr.inference.utils.constants import SENTENCEPIECE_UNDERSCORE
 from nemo.collections.asr.inference.utils.device_utils import setup_device
+from nemo.collections.asr.inference.utils.recognizer_utils import make_preprocessor_deterministic
 from nemo.collections.asr.models import ASRModel, EncDecHybridRNNTCTCModel
 from nemo.collections.asr.parts.submodules.ctc_decoding import CTCDecodingConfig
 from nemo.collections.asr.parts.submodules.rnnt_decoding import RNNTDecodingConfig
@@ -113,6 +114,20 @@ class ASRInference:
             (DictConfig) copy of the ASR model configuration.
         """
         return copy.deepcopy(self.asr_model_cfg)
+
+    def create_preprocessor(self) -> Callable:
+        """
+        Creates a deterministic preprocessor from the ASR model configuration.
+        Disables normalization, dither and padding.
+        Returns:
+            (Callable, DictConfig) deterministic preprocessor and its configuration.
+        """
+        new_asr_config = self.copy_asr_config()
+        new_asr_config = make_preprocessor_deterministic(new_asr_config)
+        preprocessor_config = copy.deepcopy(new_asr_config.preprocessor)
+        preprocessor = ASRModel.from_config_dict(preprocessor_config)
+        preprocessor.to(self.device)
+        return preprocessor, preprocessor_config
 
     def supports_capitalization(self) -> bool:
         """
@@ -207,6 +222,32 @@ class ASRInference:
         self.asr_model.preprocessor.featurizer.dither = 0.0
         with open_dict(self.asr_model_cfg):
             self.asr_model_cfg.preprocessor.dither = 0.0
+
+    def get_window_stride(self) -> float:
+        """
+        Get the window stride for the model.
+        Returns:
+            (float) window stride for the model.
+        """
+        return self.asr_model_cfg.preprocessor.window_stride
+
+    def get_model_stride(self, in_secs: bool = False, in_milliseconds: bool = False) -> float:
+        """
+        Get the model stride in seconds for the model.
+        Args:
+            in_secs: (bool) Whether to return the model stride in seconds.
+            in_milliseconds: (bool) Whether to return the model stride in milliseconds.
+        Returns:
+            (float) model stride in seconds or milliseconds.
+        """
+        if in_secs and in_milliseconds:
+            raise ValueError("Cannot return both seconds and milliseconds at the same time.")
+        if in_secs:
+            return self.get_window_stride() * self.get_subsampling_factor()
+        if in_milliseconds:
+            return self.get_window_stride() * self.get_subsampling_factor() * 1000
+
+        return self.get_window_stride() * self.get_subsampling_factor()
 
     # Methods that must be implemented in the derived classes.
     def __post_init__(self):

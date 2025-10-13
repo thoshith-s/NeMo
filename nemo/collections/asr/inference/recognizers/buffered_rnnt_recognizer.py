@@ -39,11 +39,9 @@ from nemo.collections.asr.inference.utils.recognizer_utils import (
     drop_trailing_features,
     get_confidence_utils,
     get_leading_punctuation_regex_pattern,
-    make_preprocessor_deterministic,
     normalize_features,
     update_punctuation_and_language_tokens_timestamps,
 )
-from nemo.collections.asr.models import ASRModel
 from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis as NemoHypothesis
 
 if TYPE_CHECKING:
@@ -76,10 +74,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         self.tokens_to_move = self.punctuation_ids.union(self.language_token_ids)
         self.asr_output_granularity = cfg.asr_output_granularity
 
-        self.asr_model_cfg = self.asr_model.copy_asr_config()
-        self.asr_model_cfg = make_preprocessor_deterministic(self.asr_model_cfg)
-        self.preprocessor = ASRModel.from_config_dict(self.asr_model_cfg.preprocessor)
-        self.preprocessor.to(self.device)
+        self.preprocessor, self.preprocessor_config = self.asr_model.create_preprocessor()
 
         # Streaming related fields
         self.streaming_cfg = cfg.streaming
@@ -88,10 +83,10 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         self.stateless = not self.stateful
 
         self.subsampling_factor = self.asr_model.get_subsampling_factor()
+        self.window_stride = self.asr_model.get_window_stride()
+        self.model_stride_in_secs = self.asr_model.get_model_stride(in_secs=True)
+        self.model_stride_in_milliseconds = self.asr_model.get_model_stride(in_milliseconds=True)
 
-        self.window_stride = self.asr_model_cfg.preprocessor.window_stride
-        self.model_stride_in_secs = self.window_stride * self.subsampling_factor
-        self.model_stride_in_milisecs = self.model_stride_in_secs * 1000
         self.chunk_size = self.streaming_cfg.chunk_size
         self.left_padding_size = self.streaming_cfg.left_padding_size
         self.right_padding_size = self.streaming_cfg.right_padding_size
@@ -135,7 +130,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
             self.bufferer = BatchedFeatureBufferer(
                 sample_rate=self.sample_rate,
                 buffer_size_in_secs=self.buffer_size_in_secs,
-                preprocessor_cfg=self.asr_model_cfg.preprocessor,
+                preprocessor_cfg=self.preprocessor_config,
                 device=self.device,
             )
         elif self.request_type is RequestType.FRAME:
@@ -153,7 +148,7 @@ class RNNTBufferedSpeechRecognizer(BaseRecognizer):
         self.stop_history_eou_in_millisecs = cfg.endpointing.stop_history_eou
         self.endpointer = RNNTGreedyEndpointing(
             vocabulary=self.vocabulary,
-            ms_per_timestep=self.model_stride_in_milisecs,
+            ms_per_timestep=self.model_stride_in_milliseconds,
             effective_buffer_size_in_secs=effective_buffer_size_in_secs,
             stop_history_eou=self.stop_history_eou_in_millisecs,
             residue_tokens_at_end=cfg.endpointing.residue_tokens_at_end,
