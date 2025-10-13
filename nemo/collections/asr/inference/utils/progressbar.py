@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from tqdm import tqdm
+
 
 class ProgressBar:
     def __init__(self, value: float = 0.0, total: float = 1.0):
@@ -50,8 +52,6 @@ class ProgressBar:
 class TQDMProgressBar(ProgressBar):
     def __init__(self, value: float = 0.0, total: float = 1.0):
         super().__init__(value, total)
-        from tqdm import tqdm
-
         self.bar = tqdm(total=self.total, bar_format='{l_bar}{bar}')
         self.prev_value = value
 
