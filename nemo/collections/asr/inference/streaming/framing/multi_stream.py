@@ -214,6 +214,8 @@ class ContinuousBatchedFrameStreamer:
             self.finish_progress_bar()
             raise StopIteration
 
+        raise ValueError("stream_id > self.n_audio_files unexpected")
+
 
 class ContinuousBatchedRequestStreamer:
     """
