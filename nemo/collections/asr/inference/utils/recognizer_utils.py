@@ -21,7 +21,8 @@ import torch
 from omegaconf import DictConfig, open_dict
 from torch import Tensor
 
-from nemo.collections.asr.inference.utils.constants import BIG_EPSILON, LOG_MEL_ZERO, SMALL_EPSILON
+from nemo.collections.asr.inference.utils.constants import BIG_EPSILON, SMALL_EPSILON
+from nemo.collections.asr.parts.preprocessing.features import normalize_batch
 from nemo.collections.asr.parts.utils.asr_confidence_utils import (
     get_confidence_aggregation_bank,
     get_confidence_measure_bank,
@@ -36,28 +37,7 @@ def normalize_features(features: Tensor, feature_lens: Tensor = None) -> Tensor:
     Returns:
         (Tensor) normalized features. Shape is torch.Size([B, C, T]).
     """
-    if feature_lens is None:
-        var, mean = torch.var_mean(features, dim=2, keepdim=True, unbiased=False)
-        return (features - mean) / (torch.sqrt(var) + SMALL_EPSILON)
-
-    # Vectorized masked normalization over variable-length time dimension
-    batch_size, num_channels, num_timesteps = features.shape
-
-    time_indices = torch.arange(num_timesteps, device=features.device).unsqueeze(0)  # [1, T]
-    mask = (time_indices < feature_lens.view(-1, 1)).unsqueeze(1)  # [B, 1, T] (bool)
-
-    valid_counts = feature_lens.clamp(min=1).view(batch_size, 1, 1).to(dtype=features.dtype)  # [B, 1, 1]
-
-    masked_features = features * mask.to(dtype=features.dtype)
-    sum_values = masked_features.sum(dim=2, keepdim=True)  # [B, C, 1]
-    mean = sum_values / valid_counts
-
-    sum_squares = (features.pow(2) * mask.to(dtype=features.dtype)).sum(dim=2, keepdim=True)
-    var = (sum_squares / valid_counts) - mean.pow(2)
-    var = torch.clamp(var, min=0.0)
-
-    normalized = (features - mean) / (torch.sqrt(var) + SMALL_EPSILON)
-    return torch.where(mask, normalized, LOG_MEL_ZERO)
+    return normalize_batch(features, feature_lens, "per_feature")[0]
 
 
 def memoize_normalization_mode():
@@ -266,7 +246,8 @@ def seconds_to_frames(seconds: float | int | Iterable[float | int], model_stride
     """
     if isinstance(seconds, (float, int)):
         return int(seconds / model_stride_in_secs)
-    elif isinstance(seconds, Iterable):
+
+    if isinstance(seconds, Iterable):
         return [int(s / model_stride_in_secs) for s in seconds]
 
     raise ValueError(f"Invalid type for seconds: {type(seconds)}")

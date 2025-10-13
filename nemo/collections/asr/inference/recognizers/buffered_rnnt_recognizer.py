@@ -38,7 +38,6 @@ from nemo.collections.asr.inference.utils.recognizer_utils import (
     adjust_vad_segments,
     drop_trailing_features,
     get_confidence_utils,
-    get_leading_punctuation_regex_pattern,
     normalize_features,
     update_punctuation_and_language_tokens_timestamps,
 )
