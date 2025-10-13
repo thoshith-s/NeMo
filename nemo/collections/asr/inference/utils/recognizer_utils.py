@@ -226,7 +226,7 @@ def update_punctuation_and_language_tokens_timestamps(
     return updated_timestamps
 
 
-def adjust_vad_segments(vad_segments: torch.Tensor, left_padding_size: float) -> torch.Tensor:
+def adjust_vad_segments(vad_segments: torch.Tensor, left_padding_size: float) -> torch.Tensor | None:
     """
     Adjust VAD segments for stateful mode by subtracting left_padding and applying clipping rules.
     Args:

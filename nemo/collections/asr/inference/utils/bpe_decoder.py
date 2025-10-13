@@ -90,7 +90,9 @@ class BPEDecoder:
         else:
             raise ValueError(f"Invalid output granularity: {state.options.asr_output_granularity}")
 
-    def group_tokens_into_segment(self, tokens: list, timesteps: list, confidences: list) -> tuple[TextSegment, bool]:
+    def group_tokens_into_segment(
+        self, tokens: list, timesteps: list, confidences: list
+    ) -> tuple[TextSegment | None, bool]:
         """
         Group tokens into a text segment with timestamps and confidence scores.
         Args:

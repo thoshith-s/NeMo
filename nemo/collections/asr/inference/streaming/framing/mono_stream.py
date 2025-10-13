@@ -41,11 +41,12 @@ class MonoStream(Stream):
         self.options = None
         super().__init__(stream_id)
 
-    def load_audio(self, audio: str | torch.Tensor, options: RequestOptions) -> None:
+    def load_audio(self, audio: str | torch.Tensor, options: RequestOptions | None = None) -> None:
         """
         Load the audio file either from a file or from a torch tensor
         Args:
             audio (str or torch.Tensor): audio file path or torch tensor of audio samples
+            options (RequestOptions | None): optional options for the request
         """
         if isinstance(audio, str):
             # Read the audio file and convert to mono

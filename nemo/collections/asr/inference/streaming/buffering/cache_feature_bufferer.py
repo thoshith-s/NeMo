@@ -102,7 +102,7 @@ class CacheFeatureBufferer:
 
     def preprocess(
         self, audio_signal: torch.Tensor, right_padding: int = 0, expected_feat_len: int = None
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, int]:
         """
         Preprocess the audio signal using the preprocessor
         Args:
@@ -111,6 +111,7 @@ class CacheFeatureBufferer:
             expected_feat_len (int): expected feature length
         Returns:
             torch.Tensor: preprocessed features
+            int: right padding
         """
         sig_len = len(audio_signal)
         if right_padding > 0:
