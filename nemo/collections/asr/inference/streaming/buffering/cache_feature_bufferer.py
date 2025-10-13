@@ -237,12 +237,12 @@ class BatchedCacheFeatureBufferer:
 
             if bufferer is None:
                 bufferer = CacheFeatureBufferer(
-                    self.sample_rate,
-                    self.buffer_size_in_secs,
-                    self.chunk_size_in_secs,
-                    self.preprocessor_cfg,
-                    self.device,
-                    self.right_padding_ratio,
+                    sample_rate=self.sample_rate,
+                    buffer_size_in_secs=self.buffer_size_in_secs,
+                    chunk_size_in_secs=self.chunk_size_in_secs,
+                    preprocessor_cfg=self.preprocessor_cfg,
+                    device=self.device,
+                    right_padding_ratio=self.right_padding_ratio,
                 )
                 self.bufferers[frame.stream_id] = bufferer
 
