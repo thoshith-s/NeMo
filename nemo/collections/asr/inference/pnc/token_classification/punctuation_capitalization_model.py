@@ -15,7 +15,7 @@
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -34,7 +34,7 @@ from nemo.core.neural_types import LogitsType, NeuralType
 from nemo.utils import logging
 
 
-def load_label_ids(file_path: Union[str, os.PathLike]) -> Dict[str, int]:
+def load_label_ids(file_path: str | os.PathLike) -> dict[str, int]:
     ids = {}
     with open(file_path, encoding='utf_8') as f:
         for i, line in enumerate(f):
@@ -73,7 +73,7 @@ class PunctuationCapitalizationModel(NLPModel):
     """
 
     @property
-    def output_types(self) -> Optional[Dict[str, NeuralType]]:
+    def output_types(self) -> dict[str, NeuralType] | None:
         """Neural types of a :meth:`forward` method output."""
         return {
             "punct_logits": NeuralType(('B', 'T', 'C'), LogitsType()),
@@ -92,10 +92,10 @@ class PunctuationCapitalizationModel(NLPModel):
             cfg = legacy_model_config_to_new_model_config(cfg)
 
         # For structure of `self.metrics` attribute see `self._setup_metrics_dictionary` method.
-        self.metrics: Optional[torch.nn.ModuleDict] = None
+        self.metrics: torch.nn.ModuleDict | None = None
         self.label_ids_are_set: bool = False
-        self.punct_label_ids: Optional[Dict[str, int]] = None
-        self.capit_label_ids: Optional[Dict[str, int]] = None
+        self.punct_label_ids: dict[str, int] | None = None
+        self.capit_label_ids: dict[str, int] | None = None
         super().__init__(cfg=cfg, trainer=None)
         if not self.label_ids_are_set:
             self._set_label_ids()
@@ -122,8 +122,8 @@ class PunctuationCapitalizationModel(NLPModel):
 
     @typecheck()
     def forward(
-        self, input_ids: torch.Tensor, attention_mask: torch.Tensor, token_type_ids: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, input_ids: torch.Tensor, attention_mask: torch.Tensor, token_type_ids: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Executes a forward pass through the model. For more details see ``forward`` method of HuggingFace BERT-like
         (models which accept ``input_ids``, ``attention_mask``, ``token_type_ids`` arguments) models.
@@ -155,7 +155,7 @@ class PunctuationCapitalizationModel(NLPModel):
         capit_logits = self.capit_classifier(hidden_states=hidden_states)
         return punct_logits.float(), capit_logits.float()
 
-    def _extract_label_vocab_files_from_config(self) -> Tuple[Optional[Path], Optional[Path]]:
+    def _extract_label_vocab_files_from_config(self) -> tuple[Path | None, Path | None]:
         if self._is_model_being_restored():
             punct_label_vocab_file = self._cfg.class_labels.punct_labels_file
             capit_label_vocab_file = self._cfg.class_labels.capit_labels_file
@@ -228,14 +228,14 @@ class PunctuationCapitalizationModel(NLPModel):
 
     def _setup_infer_dataloader(
         self,
-        queries: List[str],
+        queries: list[str],
         batch_size: int,
         max_seq_length: int,
         step: int,
         margin: int,
-        dataloader_kwargs: Optional[Dict[str, Any]],
-        audio_queries: Optional[Union[List[bytes], List[str]]] = None,
-        target_sr: Optional[int] = None,
+        dataloader_kwargs: dict[str, Any] | None = None,
+        audio_queries: list[bytes] | list[str] | None = None,
+        target_sr: int | None = None,
     ) -> torch.utils.data.DataLoader:
         """
         Setup function for an infer data loader.
@@ -289,11 +289,11 @@ class PunctuationCapitalizationModel(NLPModel):
         punct_logits: torch.Tensor,
         capit_logits: torch.Tensor,
         subtokens_mask: torch.Tensor,
-        start_word_ids: Tuple[int],
+        start_word_ids: tuple[int],
         margin: int,
-        is_first: Tuple[bool],
-        is_last: Tuple[bool],
-    ) -> Tuple[List[np.ndarray], List[np.ndarray], List[int]]:
+        is_first: tuple[bool],
+        is_last: tuple[bool],
+    ) -> tuple[list[np.ndarray], list[np.ndarray], list[int]]:
         """
         Applies softmax to get punctuation and capitalization probabilities, applies ``subtokens_mask`` to extract
         probabilities for words from probabilities for tokens, removes ``margin`` probabilities near edges of a segment.
@@ -338,8 +338,8 @@ class PunctuationCapitalizationModel(NLPModel):
 
     @staticmethod
     def _move_acc_probs_to_token_preds(
-        pred: List[int], acc_prob: np.ndarray, number_of_probs_to_move: int
-    ) -> Tuple[List[int], np.ndarray]:
+        pred: list[int], acc_prob: np.ndarray, number_of_probs_to_move: int
+    ) -> tuple[list[int], np.ndarray]:
         """
         ``number_of_probs_to_move`` rows in the beginning are removed from ``acc_prob``. From every remove row the label
         with the largest probability is selected and appended to ``pred``.
@@ -374,7 +374,7 @@ class PunctuationCapitalizationModel(NLPModel):
         acc_prob = np.concatenate([acc_prob * update[: acc_prob.shape[0]], update[acc_prob.shape[0] :]], axis=0)
         return acc_prob
 
-    def _apply_punct_capit_predictions(self, query: str, punct_preds: List[int], capit_preds: List[int]) -> str:
+    def _apply_punct_capit_predictions(self, query: str, punct_preds: list[int], capit_preds: list[int]) -> str:
         """
         Restores punctuation and capitalization in ``query``.
         Args:
@@ -406,7 +406,7 @@ class PunctuationCapitalizationModel(NLPModel):
             query_with_punct_and_capit += ' '
         return query_with_punct_and_capit[:-1]
 
-    def _get_labels(self, punct_preds: List[int], capit_preds: List[int]) -> str:
+    def _get_labels(self, punct_preds: list[int], capit_preds: list[int]) -> str:
         """
         Returns punctuation and capitalization labels in NeMo format for encoded punctuation ``punct_preds``
         and ``capit_preds`` labels (see https://docs.nvidia.com/deeplearning/nemo/
@@ -431,14 +431,14 @@ class PunctuationCapitalizationModel(NLPModel):
 
     def add_punctuation_capitalization(
         self,
-        queries: List[str],
+        queries: list[str],
         batch_size: int = None,
         max_seq_length: int = 64,
         step: int = 8,
         margin: int = 16,
         return_labels: bool = False,
-        dataloader_kwargs: Dict[str, Any] = None,
-    ) -> List[str]:
+        dataloader_kwargs: dict[str, Any] | None = None,
+    ) -> list[str]:
         """
         Adds punctuation and capitalization to the queries. Use this method for inference.
 
@@ -478,7 +478,7 @@ class PunctuationCapitalizationModel(NLPModel):
                 data loader. May include keys: ``'num_workers'``, ``'pin_memory'``, ``'worker_init_fn'``,
                 ``'prefetch_factor'``, ``'persistent_workers'``.
         Returns:
-            :obj:`List[str]`: a list of queries with restored capitalization and punctuation if
+            :obj:`list[str]`: a list of queries with restored capitalization and punctuation if
             ``return_labels=False``, else a list of punctuation and capitalization labels strings for all queries
         """
         if len(queries) == 0:
@@ -486,7 +486,7 @@ class PunctuationCapitalizationModel(NLPModel):
         if batch_size is None:
             batch_size = len(queries)
             logging.info(f'Using batch size {batch_size} for inference')
-        result: List[str] = []
+        result: list[str] = []
         mode = self.training
         try:
             self.eval()
@@ -494,8 +494,8 @@ class PunctuationCapitalizationModel(NLPModel):
                 queries, batch_size, max_seq_length, step, margin, dataloader_kwargs
             )
             # Predicted labels for queries. List of labels for every query
-            all_punct_preds: List[List[int]] = [[] for _ in queries]
-            all_capit_preds: List[List[int]] = [[] for _ in queries]
+            all_punct_preds: list[list[int]] = [[] for _ in queries]
+            all_capit_preds: list[list[int]] = [[] for _ in queries]
             # Accumulated probabilities (or product of probabilities acquired from different segments) of punctuation
             # and capitalization. Probabilities for words in a query are extracted using `subtokens_mask`. Probabilities
             # for newly processed words are appended to the accumulated probabilities. If probabilities for a word are
@@ -504,8 +504,8 @@ class PunctuationCapitalizationModel(NLPModel):
             # input query. When all segments with a word are processed, a label with the highest probability
             # (or product of probabilities) is chosen and appended to an appropriate list in `all_preds`. After adding
             # prediction to `all_preds`, probabilities for a word are removed from `acc_probs`.
-            acc_punct_probs: List[Optional[np.ndarray]] = [None for _ in queries]
-            acc_capit_probs: List[Optional[np.ndarray]] = [None for _ in queries]
+            acc_punct_probs: list[np.ndarray | None] = [None for _ in queries]
+            acc_capit_probs: list[np.ndarray | None] = [None for _ in queries]
             d = self.device
             for batch_i, batch in enumerate(infer_datalayer):
                 inp_ids, inp_type_ids, inp_mask, subtokens_mask, start_word_ids, query_ids, is_first, is_last = batch
@@ -550,12 +550,12 @@ class PunctuationCapitalizationModel(NLPModel):
         return result
 
     @classmethod
-    def list_available_models(cls) -> List[PretrainedModelInfo]:
+    def list_available_models(cls) -> list[PretrainedModelInfo]:
         """
         This method returns a list of pre-trained models which can be instantiated directly from NVIDIA's NGC cloud.
 
         Returns:
-            :obj:`List[PretrainedModelInfo]`: a list of available pre-trained models.
+            :obj:`list[PretrainedModelInfo]`: a list of available pre-trained models.
         """
         result = [
             PretrainedModelInfo(

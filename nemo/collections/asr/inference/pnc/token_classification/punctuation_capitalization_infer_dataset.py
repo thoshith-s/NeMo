@@ -15,7 +15,7 @@
 
 import io
 import itertools
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import torch
@@ -39,24 +39,24 @@ except (ImportError, ModuleNotFoundError):
 
 
 def get_features_infer(
-    queries: List[str],
+    queries: list[str],
     tokenizer: TokenizerSpec,
     max_seq_length: int = 64,
-    step: Optional[int] = 8,
-    margin: Optional[int] = 16,
-    audio_queries: Optional[Union[List[bytes], List[str]]] = None,
-    target_sr: Optional[int] = None,
-) -> Tuple[
-    List[List[int]],
-    List[List[int]],
-    List[List[int]],
-    List[List[int]],
-    List[int],
-    List[int],
-    List[bool],
-    List[bool],
-    Optional[List[float]],
-    Optional[List[int]],
+    step: int | None = 8,
+    margin: int | None = 16,
+    audio_queries: list[bytes] | list[str] | None = None,
+    target_sr: int | None = None,
+) -> tuple[
+    list[list[int]],
+    list[list[int]],
+    list[list[int]],
+    list[list[int]],
+    list[int],
+    list[int],
+    list[bool],
+    list[bool],
+    list[float] | None,
+    list[int] | None,
 ]:
     """
     Processes the data and returns features.
@@ -202,7 +202,7 @@ def _check_max_seq_length_and_margin_and_step(max_seq_length: int, margin: int, 
         )
 
 
-def _get_subtokens_and_subtokens_mask(query: str, tokenizer: TokenizerSpec) -> Tuple[List[str], List[bool]]:
+def _get_subtokens_and_subtokens_mask(query: str, tokenizer: TokenizerSpec) -> tuple[list[str], list[bool]]:
     """
     Tokenizes input query into subtokens and creates subtokens mask. Subtokens mask is an array of the same length as
     subtokens array and contains zeros and ones in which. If element of mask equals 1, then corresponding subtoken in
@@ -264,7 +264,7 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
     """
 
     @property
-    def output_types(self) -> Optional[Dict[str, NeuralType]]:
+    def output_types(self) -> dict[str, NeuralType] | None:
         """Returns neural types of :meth:`collate_fn` output."""
         if self.use_audio:
             return {
@@ -292,13 +292,13 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
 
     def __init__(
         self,
-        queries: List[str],
+        queries: list[str],
         tokenizer: TokenizerSpec,
         max_seq_length: int = 64,
         step: int = 8,
         margin: int = 16,
-        audio_queries: Optional[Union[List[bytes], List[str]]] = None,
-        target_sr: Optional[int] = None,
+        audio_queries: list[bytes] | list[str] | None = None,
+        target_sr: int | None = None,
     ):
         features = get_features_infer(
             queries=queries,
@@ -309,16 +309,16 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             audio_queries=audio_queries,
             target_sr=target_sr,
         )
-        self.all_input_ids: List[List[int]] = features[0]
-        self.all_segment_ids: List[List[int]] = features[1]
-        self.all_input_mask: List[List[int]] = features[2]
-        self.all_subtokens_mask: List[List[int]] = features[3]
-        self.all_quantities_of_preceding_words: List[int] = features[4]
-        self.all_query_ids: List[int] = features[5]
-        self.all_is_first: List[bool] = features[6]
-        self.all_is_last: List[bool] = features[7]
-        self.all_audio_queries: Optional[List[List[float]]] = features[8]
-        self.all_audio_lengths: Optional[List[List[int]]] = features[9]
+        self.all_input_ids: list[list[int]] = features[0]
+        self.all_segment_ids: list[list[int]] = features[1]
+        self.all_input_mask: list[list[int]] = features[2]
+        self.all_subtokens_mask: list[list[int]] = features[3]
+        self.all_quantities_of_preceding_words: list[int] = features[4]
+        self.all_query_ids: list[int] = features[5]
+        self.all_is_first: list[bool] = features[6]
+        self.all_is_last: list[bool] = features[7]
+        self.all_audio_queries: list[list[float]] | None = features[8]
+        self.all_audio_lengths: list[list[int]] | None = features[9]
         self.use_audio = audio_queries is not None
 
     def __len__(self) -> int:
@@ -326,8 +326,8 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
 
     def collate_fn(
         self,
-        batch: List[
-            Tuple[
+        batch: list[
+            tuple[
                 np.ndarray,
                 np.ndarray,
                 np.ndarray,
@@ -336,14 +336,14 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
                 int,
                 bool,
                 bool,
-                Optional[np.ndarray],
-                Optional[np.ndarray],
+                np.ndarray | None,
+                np.ndarray | None,
             ]
         ],
-    ) -> Union[
-        Tuple[Tensor, Tensor, Tensor, Tensor, Any, Any, Any, Any],
-        Tuple[Tensor, Tensor, Tensor, Tensor, Any, Any, Any, Any, Any, Any],
-    ]:
+    ) -> (
+        tuple[Tensor, Tensor, Tensor, Tensor, Any, Any, Any, Any]
+        | tuple[Tensor, Tensor, Tensor, Tensor, Any, Any, Any, Any, Any, Any]
+    ):
         """
         Collates samples into batches.
 
@@ -407,10 +407,12 @@ class BertPunctuationCapitalizationInferDataset(Dataset):
             torch.tensor(features_length, dtype=torch.long),
         )
 
-    def __getitem__(self, idx: int) -> Union[
-        Tuple[ndarray, ndarray, ndarray, ndarray, int, int, bool, bool],
-        Tuple[ndarray, ndarray, ndarray, ndarray, int, int, bool, bool, ndarray, List[int]],
-    ]:
+    def __getitem__(
+        self, idx: int
+    ) -> (
+        tuple[ndarray, ndarray, ndarray, ndarray, int, int, bool, bool]
+        | tuple[ndarray, ndarray, ndarray, ndarray, int, int, bool, bool, ndarray, list[int]]
+    ):
         """
         Returns batch used for punctuation and capitalization inference.
 

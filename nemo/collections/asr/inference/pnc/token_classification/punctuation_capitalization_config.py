@@ -14,7 +14,7 @@
 
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 from omegaconf.omegaconf import MISSING, DictConfig, OmegaConf, open_dict
 from nemo.core.config.modelPT import NemoConfig
@@ -24,11 +24,11 @@ from nemo.core.config.modelPT import NemoConfig
 class FreezeConfig:
     is_enabled: bool = False
     """Freeze audio encoder weight and add Conformer Layers on top of it"""
-    d_model: Optional[int] = 256
+    d_model: int | None = 256
     """`d_model` parameter of ``ConformerLayer``"""
-    d_ff: Optional[int] = 1024
+    d_ff: int | None = 1024
     """``d_ff`` parameter of ``ConformerLayer``"""
-    num_layers: Optional[int] = 8
+    num_layers: int | None = 8
     """``num_layers`` number of ``ConformerLayer`` modules to add on top of audio encoder"""
 
 
@@ -42,11 +42,11 @@ class AdapterConfig:
 
 @dataclass
 class FusionConfig:
-    num_layers: Optional[int] = 4
+    num_layers: int | None = 4
     """"Number of layers to use in fusion"""
-    num_attention_heads: Optional[int] = 4
+    num_attention_heads: int | None = 4
     """Number of attention heads to use in fusion"""
-    inner_size: Optional[int] = 2048
+    inner_size: int | None = 2048
     """Fusion inner size"""
 
 
@@ -54,16 +54,16 @@ class FusionConfig:
 class AudioEncoderConfig:
     pretrained_model: str = MISSING
     """A configuration for restoring pretrained audio encoder"""
-    freeze: Optional[FreezeConfig] = None
-    adapter: Optional[AdapterConfig] = None
-    fusion: Optional[FusionConfig] = None
+    freeze: FreezeConfig | None = None
+    adapter: AdapterConfig | None = None
+    fusion: FusionConfig | None = None
 
 
 @dataclass
 class TokenizerConfig:
     """A structure and default values of source text tokenizer."""
 
-    vocab_file: Optional[str] = None
+    vocab_file: str | None = None
     """A path to vocabulary file which is used in ``'word'``, ``'char'``, and HuggingFace tokenizers"""
 
     tokenizer_name: str = MISSING
@@ -72,11 +72,11 @@ class TokenizerConfig:
     ``nemo.collections.nlp.modules.common.get_tokenizer``. The tokenizer must have properties ``cls_id``, ``pad_id``,
     ``sep_id``, ``unk_id``."""
 
-    special_tokens: Optional[Dict[str, str]] = None
+    special_tokens: dict[str, str] | None = None
     """A dictionary with special tokens passed to constructors of ``'char'``, ``'word'``, ``'sentencepiece'``, and
     various HuggingFace tokenizers."""
 
-    tokenizer_model: Optional[str] = None
+    tokenizer_model: str | None = None
     """A path to a tokenizer model required for ``'sentencepiece'`` tokenizer."""
 
 
@@ -95,13 +95,13 @@ class LanguageModelConfig:
     pretrained_model_name: str = MISSING
     """A mandatory parameter containing name of HuggingFace pretrained model. For example, ``'bert-base-uncased'``."""
 
-    config_file: Optional[str] = None
+    config_file: str | None = None
     """A path to a file with HuggingFace model config which is used to reinitialize language model."""
 
-    config: Optional[Dict] = None
+    config: dict | None = None
     """A HuggingFace config which is used to reinitialize language model."""
 
-    lm_checkpoint: Optional[str] = None
+    lm_checkpoint: str | None = None
     """A path to a ``torch`` checkpoint of a language model."""
 
 
@@ -176,17 +176,17 @@ class CommonDatasetParametersConfig:
     ignore_start_end: bool = True
     """If ``False``, then loss is computed on [CLS] and [SEP] tokens."""
 
-    punct_label_ids: Optional[Dict[str, int]] = None
+    punct_label_ids: dict[str, int] | None = None
     """A dictionary with punctuation label ids. ``pad_label`` must have ``0`` id in this dictionary. You can omit this
     parameter and pass label ids through ``class_labels.punct_labels_file`` or let the model to infer label ids from
     dataset or load them from checkpoint."""
 
-    capit_label_ids: Optional[Dict[str, int]] = None
+    capit_label_ids: dict[str, int] | None = None
     """A dictionary with capitalization label ids. ``pad_label`` must have ``0`` id in this dictionary. You can omit
     this parameter and pass label ids through ``class_labels.capit_labels_file`` or let model to infer label ids from
     dataset or load them from checkpoint."""
 
-    label_vocab_dir: Optional[str] = None
+    label_vocab_dir: str | None = None
     """A path to directory which contains class labels files. See :class:`ClassLabelsConfig`. If this parameter is
     provided, then labels will be loaded from files which are located in ``label_vocab_dir`` and have names specified
     in ``model.class_labels`` configuration section. A label specified in ``pad_label`` has to be on the first lines
@@ -213,18 +213,18 @@ class PunctuationCapitalizationModelConfig:
     for passing vocabularies, please provide path to vocabulary files in
     ``model.common_dataset_parameters.label_vocab_dir`` parameter."""
 
-    common_dataset_parameters: Optional[CommonDatasetParametersConfig] = field(
+    common_dataset_parameters: CommonDatasetParametersConfig | None = field(
         default_factory=CommonDatasetParametersConfig
     )
     """Label ids and loss mask information information."""
 
-    train_ds: Optional[Any] = None
+    train_ds: Any | None = None
     """A configuration for creating training dataset and data loader."""
 
-    validation_ds: Optional[Any] = None
+    validation_ds: Any | None = None
     """A configuration for creating validation datasets and data loaders."""
 
-    test_ds: Optional[Any] = None
+    test_ds: Any | None = None
     """A configuration for creating test datasets and data loaders."""
 
     punct_head: HeadConfig = field(default_factory=HeadConfig)
@@ -239,7 +239,7 @@ class PunctuationCapitalizationModelConfig:
     language_model: LanguageModelConfig = field(default_factory=LanguageModelConfig)
     """A configuration of a BERT-like language model which serves as a model body."""
 
-    optim: Optional[Any] = None
+    optim: Any | None = None
     """A configuration of optimizer and learning rate scheduler. There is much variability in such config. For
     description see `Optimizers
     <https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/main/core/core.html#optimizers>`_ section in
@@ -256,13 +256,13 @@ class PunctuationCapitalizationConfig(NemoConfig):
     <https://github.com/NVIDIA/NeMo/blob/main/examples/nlp/token_classification/conf/punctuation_capitalization_config.yaml>`_
     """
 
-    pretrained_model: Optional[str] = None
+    pretrained_model: str | None = None
     """Can be an NVIDIA's NGC cloud model or a path to a .nemo checkpoint. You can get list of possible cloud options
     by calling method
     :func:`~nemo.collections.nlp.models.token_classification.punctuation_capitalization_model.PunctuationCapitalizationModel.list_available_models`.
     """
 
-    name: Optional[str] = 'Punctuation_and_Capitalization'
+    name: str | None = 'Punctuation_and_Capitalization'
     """A name of the model. Used for naming output directories and ``.nemo`` checkpoints."""
 
     do_training: bool = True
