@@ -23,4 +23,4 @@ texterrors<1.0.0 # Version 1.0.6 of texterrors introduces a new StringVector obj
 # causing it to error. We'd need to figure out how to cast lists into StringVectors -
 # but for now we're just pinning it down.
 whisper_normalizer
-diskcache==5.6.3
+diskcache
