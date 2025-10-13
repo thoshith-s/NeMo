@@ -37,7 +37,6 @@ from nemo.collections.asr.inference.utils.enums import FeatureBufferPaddingMode,
 from nemo.collections.asr.inference.utils.recognizer_utils import (
     drop_trailing_features,
     get_confidence_utils,
-    get_leading_punctuation_regex_pattern,
     normalize_features,
     normalize_log_probs,
 )
@@ -56,28 +55,13 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         pnc_model: PunctuationCapitalizer | None = None,
         itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):
-
-        # ASR Related fields
-        self.asr_model = asr_model
-        self.device = self.asr_model.device
-        self.supports_punctuation = self.asr_model.supports_punctuation()
-        self.asr_supported_puncts = self.asr_model.supported_punctuation()
-        self.leading_regex_pattern = get_leading_punctuation_regex_pattern(self.asr_supported_puncts)
-        self.blank_id = self.asr_model.get_blank_id()
-        self.vocabulary = self.asr_model.get_vocabulary()
-        self.sep = self.asr_model.word_separator
-        self.asr_output_granularity = cfg.asr_output_granularity  # Global flag for word level output
-
-        self.preprocessor, self.preprocessor_config = self.asr_model.create_preprocessor()
+        self.copy_asr_model_attributes(asr_model)
 
         # Streaming related fields
         self.streaming_cfg = cfg.streaming
         self.sample_rate = self.streaming_cfg.sample_rate
+        self.asr_output_granularity = cfg.asr_output_granularity  # Global flag for word level output
 
-        self.subsampling_factor = self.asr_model.get_subsampling_factor()
-        self.window_stride = self.asr_model.get_window_stride()
-        self.model_stride_in_secs = self.asr_model.get_model_stride(in_secs=True)
-        self.model_stride_in_milliseconds = self.asr_model.get_model_stride(in_milliseconds=True)
         self.chunk_size = self.streaming_cfg.chunk_size
         self.left_padding_size = self.streaming_cfg.left_padding_size
         self.right_padding_size = self.streaming_cfg.right_padding_size
@@ -123,7 +107,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
         # BPE Decoder
         self.bpe_decoder = BPEDecoder(
             vocabulary=self.vocabulary,
-            tokenizer=self.asr_model.tokenizer,
+            tokenizer=self.tokenizer,
             confidence_aggregator=self.confidence_aggregator,
             asr_supported_puncts=self.asr_supported_puncts,
             word_boundary_tolerance=self.streaming_cfg.word_boundary_tolerance,
@@ -148,7 +132,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
             asr_supports_punctuation=self.supports_punctuation,
             confidence_aggregator=self.confidence_aggregator,
             sep=self.sep,
-            segment_separators=self.asr_model.segment_separators,
+            segment_separators=self.segment_separators,
             automatic_punctuation=cfg.automatic_punctuation,
             verbatim_transcripts=cfg.verbatim_transcripts,
         )
@@ -368,7 +352,7 @@ class CTCBufferedSpeechRecognizer(BaseRecognizer):
             postponed_requests = next_postponed_requests.copy()
             next_postponed_requests.clear()
 
-        self.update_partial_transcript(requests, self.asr_model.tokenizer, self.leading_regex_pattern)
+        self.update_partial_transcript(requests, self.tokenizer, self.leading_regex_pattern)
 
     def transcribe_step_for_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> None:
         """

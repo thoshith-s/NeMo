@@ -36,11 +36,7 @@ from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.context_manager import CacheAwareContextManager
 from nemo.collections.asr.inference.utils.endpointing_utils import millisecond_to_frames
 from nemo.collections.asr.inference.utils.enums import RequestType
-from nemo.collections.asr.inference.utils.recognizer_utils import (
-    get_confidence_utils,
-    get_leading_punctuation_regex_pattern,
-    make_preprocessor_deterministic,
-)
+from nemo.collections.asr.inference.utils.recognizer_utils import get_confidence_utils
 from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 
 if TYPE_CHECKING:
@@ -57,16 +53,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         pnc_model: PunctuationCapitalizer | None = None,
         itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):
-
-        # ASR Related fields
-        self.asr_model = asr_model
-        self.device = self.asr_model.device
-        self.supports_punctuation = self.asr_model.supports_punctuation()
-        self.asr_supported_puncts = self.asr_model.supported_punctuation()
-        self.leading_regex_pattern = get_leading_punctuation_regex_pattern(self.asr_supported_puncts)
-        self.blank_id = self.asr_model.get_blank_id()
-        self.vocabulary = self.asr_model.get_vocabulary()
-        self.sep = self.asr_model.word_separator
+        self.copy_asr_model_attributes(asr_model)
         self.asr_output_granularity = cfg.asr_output_granularity
 
         # Set the attention context size if it is provided
@@ -76,14 +63,6 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         # Streaming related fields
         self.streaming_cfg = cfg.streaming
         self.sample_rate = self.streaming_cfg.sample_rate
-
-        self.asr_model_cfg = self.asr_model.copy_asr_config()
-        self.asr_model_cfg = make_preprocessor_deterministic(self.asr_model_cfg)
-
-        subsampling_factor = self.asr_model.get_subsampling_factor()  # 8, 4, etc
-        window_stride = self.asr_model.get_window_stride()  # 0.01
-        self.model_stride_in_secs = self.asr_model.get_model_stride(in_secs=True)  # 0.08, 0.04, etc
-        self.model_stride_in_milliseconds = self.asr_model.get_model_stride(in_milliseconds=True)  # 80, 40, etc
 
         self.pre_encode_cache_size = self.asr_model.get_pre_encode_cache_size()
         self.model_chunk_size = self.asr_model.get_chunk_size()
@@ -95,18 +74,20 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
 
         if self.streaming_cfg.get("chunk_size_in_secs", None) is not None:
             self.chunk_size_in_secs = self.streaming_cfg.chunk_size_in_secs
-            self.tokens_per_frame = math.ceil(np.trunc(self.chunk_size_in_secs / window_stride) / subsampling_factor)
+            self.tokens_per_frame = math.ceil(
+                np.trunc(self.chunk_size_in_secs / self.window_stride) / self.subsampling_factor
+            )
             # overwrite the encoder streaming params with proper shift size for cache aware streaming
             self.asr_model.setup_streaming_params(
-                chunk_size=self.model_chunk_size // subsampling_factor, shift_size=self.tokens_per_frame
+                chunk_size=self.model_chunk_size // self.subsampling_factor, shift_size=self.tokens_per_frame
             )
         else:
-            self.chunk_size_in_secs = self.model_chunk_size * window_stride
-            self.tokens_per_frame = math.ceil(self.model_chunk_size / subsampling_factor)
+            self.chunk_size_in_secs = self.model_chunk_size * self.window_stride
+            self.tokens_per_frame = math.ceil(self.model_chunk_size / self.subsampling_factor)
 
         if isinstance(self.pre_encode_cache_size, list):
             self.pre_encode_cache_size = self.pre_encode_cache_size[1]
-        self.pre_encode_cache_size_in_secs = self.pre_encode_cache_size * window_stride
+        self.pre_encode_cache_size_in_secs = self.pre_encode_cache_size * self.window_stride
 
         # Context Manager
         self.batch_size = self.streaming_cfg.batch_size
@@ -119,7 +100,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         )
 
         # Feature Bufferer
-        model_chunk_size_in_secs = self.model_chunk_size * window_stride
+        model_chunk_size_in_secs = self.model_chunk_size * self.window_stride
 
         if self.use_cache:
             # if using cache, we need to pad some samples for pre_encode
@@ -132,7 +113,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             if left_context_size < 0:
                 raise ValueError(f"Left context size should not be a negative value: {left_context_size}")
             self.buffer_size_in_secs = (
-                model_chunk_size_in_secs + left_context_size * subsampling_factor * window_stride
+                model_chunk_size_in_secs + left_context_size * self.subsampling_factor * self.window_stride
             )
             self.drop_left_context = left_context_size
             self.valid_out_len = self.tokens_per_frame
@@ -152,7 +133,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             sample_rate=self.sample_rate,
             buffer_size_in_secs=self.buffer_size_in_secs,
             chunk_size_in_secs=chunk_size_for_feature_buffer,
-            preprocessor_cfg=self.asr_model_cfg.preprocessor,
+            preprocessor_cfg=self.preprocessor_config,
             device=self.device,
         )
 
@@ -162,7 +143,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
         # BPE Decoder
         self.bpe_decoder = BPEDecoder(
             vocabulary=self.vocabulary,
-            tokenizer=self.asr_model.tokenizer,
+            tokenizer=self.tokenizer,
             confidence_aggregator=self.confidence_aggregator,
             asr_supported_puncts=self.asr_supported_puncts,
             word_boundary_tolerance=self.streaming_cfg.word_boundary_tolerance,
@@ -191,7 +172,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             asr_supports_punctuation=self.supports_punctuation,
             confidence_aggregator=self.confidence_aggregator,
             sep=self.sep,
-            segment_separators=self.asr_model.segment_separators,
+            segment_separators=self.segment_separators,
             automatic_punctuation=cfg.automatic_punctuation,
             verbatim_transcripts=cfg.verbatim_transcripts,
         )
@@ -381,7 +362,7 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
             ready_state_ids.clear()
 
-        self.update_partial_transcript(frames, self.asr_model.tokenizer, self.leading_regex_pattern)
+        self.update_partial_transcript(frames, self.tokenizer, self.leading_regex_pattern)
 
     def get_request_generator(self) -> ContinuousBatchedRequestStreamer:
         """Initialize the request generator."""

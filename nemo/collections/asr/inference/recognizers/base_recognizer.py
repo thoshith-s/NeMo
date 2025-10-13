@@ -16,11 +16,13 @@ import re
 from abc import abstractmethod
 from typing import Any, Iterable
 
+from nemo.collections.asr.inference.asr.asr_inference import ASRInference
 from nemo.collections.asr.inference.recognizers.recognizer_interface import RecognizerInterface
 from nemo.collections.asr.inference.streaming.framing.multi_stream import ContinuousBatchedRequestStreamer
 from nemo.collections.asr.inference.streaming.framing.request import FeatureBuffer, Frame, Request
 from nemo.collections.asr.inference.streaming.framing.request_options import ASRRequestOptions
 from nemo.collections.asr.inference.utils.progressbar import ProgressBar
+from nemo.collections.asr.inference.utils.recognizer_utils import get_leading_punctuation_regex_pattern
 from nemo.collections.asr.inference.utils.text_segment import TextSegment
 from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 
@@ -111,6 +113,31 @@ class BaseRecognizer(RecognizerInterface):
             self.transcribe_step_for_feature_buffers(fbuffers=requests)
         else:
             raise ValueError(f"Invalid request type: {type(requests[0])}")
+
+    def copy_asr_model_attributes(self, asr_model: ASRInference) -> None:
+        """
+        Copy the attributes from the ASR model to the recognizer
+        Args:
+            asr_model (ASRInference): ASR model to copy the attributes from.
+        """
+        self.asr_model = asr_model
+        self.tokenizer = asr_model.tokenizer
+        self.device = asr_model.device
+        self.supports_punctuation = asr_model.supports_punctuation()
+        self.asr_supported_puncts = asr_model.supported_punctuation()
+        self.leading_regex_pattern = get_leading_punctuation_regex_pattern(self.asr_supported_puncts)
+        self.blank_id = asr_model.get_blank_id()
+        self.vocabulary = asr_model.get_vocabulary()
+        self.sep = asr_model.word_separator
+        self.segment_separators = asr_model.segment_separators
+        self.underscore_id = asr_model.underscore_id
+        self.punctuation_ids = asr_model.punctuation_ids
+        self.language_token_ids = asr_model.language_token_ids
+        self.preprocessor, self.preprocessor_config = asr_model.create_preprocessor()
+        self.subsampling_factor = asr_model.get_subsampling_factor()
+        self.window_stride = asr_model.get_window_stride()
+        self.model_stride_in_secs = asr_model.get_model_stride(in_secs=True)
+        self.model_stride_in_milliseconds = asr_model.get_model_stride(in_milliseconds=True)
 
     def update_partial_transcript(
         self, requests: list[Request], tokenizer: TokenizerSpec, leading_regex_pattern: str
