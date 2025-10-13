@@ -22,12 +22,7 @@ def millisecond_to_frames(millisecond: int, ms_per_timestep: int) -> int:
     Returns:
         int: number of frames
     """
-    residual = millisecond % ms_per_timestep
-    return (
-        millisecond // ms_per_timestep
-        if residual == 0
-        else (millisecond + ms_per_timestep - residual) // ms_per_timestep
-    )
+    return (millisecond + ms_per_timestep - 1) // ms_per_timestep
 
 
 def get_custom_stop_history_eou(
