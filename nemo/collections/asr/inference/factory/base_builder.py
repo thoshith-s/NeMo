@@ -78,22 +78,19 @@ class BaseBuilder:
         return asr_model
 
     @classmethod
-    def _build_pnc(
-        cls, cfg: DictConfig, asr_supports_pnc: bool, force_to_use_pnc_model: bool
-    ) -> PunctuationCapitalizer | None:
+    def _build_pnc(cls, cfg: DictConfig, asr_supports_pnc: bool) -> PunctuationCapitalizer | None:
         """
         Build the PNC model based on the config.
         Args:
             cfg: (DictConfig) Config
             asr_supports_pnc: (bool) Whether the ASR model supports PNC
-            force_to_use_pnc_model: (bool) Whether to force the use of the PNC model
         Returns:
             (PunctuationCapitalizer | None) PNC model
         """
 
         pnc_model = None
 
-        if cfg.enable_pnc and asr_supports_pnc and not force_to_use_pnc_model:
+        if cfg.enable_pnc and asr_supports_pnc and not cfg.pnc.force_to_use_pnc_model:
             # no need to load the PNC model if the ASR model already supports it
             logging.info("Automatic punctuation is already supported by the ASR model.")
             return pnc_model

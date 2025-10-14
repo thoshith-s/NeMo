@@ -162,7 +162,8 @@ class BufferedRNNTPipeline(BasePipeline):
 
         # PnC and ITN related fields
         self.text_postprocessor = StreamingTextPostprocessor(
-            text_postprocessor_cfg=cfg.text_postprocessor,
+            pnc_cfg=cfg.pnc,
+            itn_cfg=cfg.itn,
             pnc_model=pnc_model,
             itn_model=itn_model,
             asr_supported_puncts=self.asr_supported_puncts,

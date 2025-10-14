@@ -20,6 +20,12 @@ pnc:
   device_id: 0                                 # GPU device ID
   compute_dtype: bfloat16                      # Compute precision: 'bfloat16' for Ampere+, 'float16' for older GPUs, or 'float32'
   use_amp: false                               # Enable Automatic Mixed Precision
+  left_padding_search_size: 45                 # Look-back window (#words) for punctuation context
+  batch_size: 128                              # Batch size for PnC model inference
+  max_seq_length: 64                           # Max sequence length processed at once
+  step: 8                                      # Sliding step size
+  margin: 16                                   # Overlap between windows to ensure smooth transitions
+  force_to_use_pnc_model: false                # Force use of BERT based PnC restoration model
 
 
 # ==========================================
@@ -30,6 +36,9 @@ itn:
   whitelist: null                               # Custom whitelist for ITN processing
   overwrite_cache: false                        # Whether to overwrite existing cache files
   max_number_of_permutations_per_split: 729     # Maximum permutations allowed per text split during ITN processing
+  left_padding_size: 4                          # Padding size (#spans) for ITN context
+  batch_size: 32                                # Batch size for ITN inference
+  n_jobs: 16                                    # Number of parallel jobs for ITN processing
 
 
 # ========================
@@ -66,23 +75,6 @@ streaming:
   request_type: feature_buffer                # Type of request: frame or feature_buffer
   stateful: true                              # Whether to use stateful processing
   padding_mode: right                         # Padding mode: left or right. How to pad frames to match the required buffer length
-
-
-# ============================
-# Text postprocessing settings
-# ============================
-text_postprocessor:
-  force_to_use_pnc_model: false               # Force use of BERT based PnC restoration model
-  pnc:
-    left_padding_search_size: 45              # Look-back window (#words) for punctuation context
-    batch_size: 128                           # Batch size for PnC model inference
-    max_seq_length: 64                        # Max sequence length processed at once
-    step: 8                                   # Sliding step size
-    margin: 16                                # Overlap between windows to ensure smooth transitions
-  itn:
-    left_padding_size: 4                      # Padding size (#spans) for ITN context
-    batch_size: 32                            # Batch size for ITN inference
-    n_jobs: 16                                # Number of parallel jobs for ITN processing
 
 
 # ========================

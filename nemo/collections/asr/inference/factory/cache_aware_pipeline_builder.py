@@ -86,11 +86,7 @@ class CacheAwarePipelineBuilder(BaseBuilder):
 
         # building PnC model
         asr_supports_pnc = asr_model.supports_punctuation()
-        pnc_model = cls._build_pnc(
-            cfg,
-            asr_supports_pnc=asr_supports_pnc,
-            force_to_use_pnc_model=cfg.text_postprocessor.force_to_use_pnc_model,
-        )
+        pnc_model = cls._build_pnc(cfg, asr_supports_pnc=asr_supports_pnc)
         if pnc_model is not None:
             logging.info(f"PnC model `{cfg.pnc.model_name}` loaded")
 
@@ -99,6 +95,7 @@ class CacheAwarePipelineBuilder(BaseBuilder):
         if itn_model is not None:
             logging.info("ITN model loaded")
 
+        # building cache aware RNNT pipeline
         ca_rnnt_pipeline = CacheAwareRNNTPipeline(cfg, asr_model, pnc_model=pnc_model, itn_model=itn_model)
         logging.info(f"`{type(ca_rnnt_pipeline).__name__}` pipeline loaded")
         return ca_rnnt_pipeline
@@ -119,11 +116,7 @@ class CacheAwarePipelineBuilder(BaseBuilder):
 
         # building PnC model
         asr_supports_pnc = asr_model.supports_punctuation()
-        pnc_model = cls._build_pnc(
-            cfg,
-            asr_supports_pnc=asr_supports_pnc,
-            force_to_use_pnc_model=cfg.text_postprocessor.force_to_use_pnc_model,
-        )
+        pnc_model = cls._build_pnc(cfg, asr_supports_pnc=asr_supports_pnc)
         if pnc_model is not None:
             logging.info(f"PnC model `{cfg.pnc.model_name}` loaded")
 
@@ -132,6 +125,7 @@ class CacheAwarePipelineBuilder(BaseBuilder):
         if itn_model is not None:
             logging.info("ITN model loaded")
 
+        # building cache aware CTC pipeline
         ca_ctc_pipeline = CacheAwareCTCPipeline(cfg, asr_model, pnc_model=pnc_model, itn_model=itn_model)
         logging.info(f"`{type(ca_ctc_pipeline).__name__}` pipeline loaded")
         return ca_ctc_pipeline

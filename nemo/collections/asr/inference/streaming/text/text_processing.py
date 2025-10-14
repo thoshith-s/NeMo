@@ -46,7 +46,8 @@ class StreamingTextPostprocessor:
 
     def __init__(
         self,
-        text_postprocessor_cfg: DictConfig,
+        pnc_cfg: DictConfig,
+        itn_cfg: DictConfig,
         pnc_model: PunctuationCapitalizer | None,
         itn_model: AlignmentPreservingInverseNormalizer | None,
         asr_supported_puncts: set,
@@ -55,13 +56,14 @@ class StreamingTextPostprocessor:
         sep: str,
         segment_separators: list[str],
         enable_pnc: bool = False,
-        enable_itn: bool = True,
+        enable_itn: bool = False,
     ):
         """
         Initialize the streaming text postprocessor.
 
         Args:
-            text_postprocessor_cfg (DictConfig): Configuration object for text post-processing settings.
+            pnc_cfg (DictConfig): PnC parameters.
+            itn_cfg (DictConfig): ITN parameters.
             pnc_model (PunctuationCapitalizer | None): Model for punctuation and capitalization (PnC).
             itn_model (AlignmentPreservingInverseNormalizer | None): Model for inverse text normalization (ITN).
             asr_supported_puncts (set): Set of punctuation marks recognized by the ASR model.
@@ -69,8 +71,8 @@ class StreamingTextPostprocessor:
             confidence_aggregator (Callable): Function for aggregating confidence scores.
             sep (str): String separator used in ASR output processing.
             segment_separators (list[str]): List of characters used as segment boundaries.
-            enable_pnc (bool): Boolean to enable PnC.
-            enable_itn (bool): Boolean to enable ITN.
+            enable_pnc (bool): Boolean to enable PnC. Default is False.
+            enable_itn (bool): Boolean to enable ITN. Default is False.
         """
 
         self.pnc_model = pnc_model
@@ -78,21 +80,29 @@ class StreamingTextPostprocessor:
         if enable_pnc:
             self.pnc_enabled = pnc_model is not None or asr_supports_punctuation
 
-        self.force_to_use_pnc_model = text_postprocessor_cfg.force_to_use_pnc_model
+        self.force_to_use_pnc_model = pnc_cfg.force_to_use_pnc_model
         if self.pnc_model is None:
             self.force_to_use_pnc_model = False
 
         self.supports_punctuation = asr_supports_punctuation
-        self.pnc_params = text_postprocessor_cfg.pnc
-        self.pnc_left_padding_search_size = text_postprocessor_cfg.pnc.left_padding_search_size
+        self.pnc_runtime_params = {
+            "batch_size": pnc_cfg.batch_size,
+            "max_seq_length": pnc_cfg.max_seq_length,
+            "step": pnc_cfg.step,
+            "margin": pnc_cfg.margin,
+        }
+        self.pnc_left_padding_search_size = pnc_cfg.left_padding_search_size
 
         self.itn_model = itn_model
         self.itn_enabled = False
         if enable_itn:
             self.itn_enabled = itn_model is not None
 
-        self.itn_params = text_postprocessor_cfg.itn
-        self.itn_left_padding_size = text_postprocessor_cfg.itn.left_padding_size
+        self.itn_runtime_params = {
+            "batch_size": itn_cfg.batch_size,
+            "n_jobs": itn_cfg.n_jobs,
+        }
+        self.itn_left_padding_size = itn_cfg.left_padding_size
 
         self.asr_supported_puncts = asr_supported_puncts
         self.asr_supported_puncts_str = ''.join(self.asr_supported_puncts)
@@ -217,7 +227,7 @@ class StreamingTextPostprocessor:
             if len(texts) > 0:
                 # apply ITN
                 processed_texts = self.itn_model.inverse_normalize_list(
-                    texts=[text for _, _, text in texts], params=self.itn_params
+                    texts=[text for _, _, text in texts], params=self.itn_runtime_params
                 )
                 # update states with ITN-processed texts
                 for (i, j, _), processed_text in zip(texts, processed_texts):
@@ -247,7 +257,7 @@ class StreamingTextPostprocessor:
             if len(texts) > 0:
                 # apply PnC
                 processed_texts = self.pnc_model.add_punctuation_capitalization_list(
-                    transcriptions=[text for _, _, text in texts], params=self.pnc_params
+                    transcriptions=[text for _, _, text in texts], params=self.pnc_runtime_params
                 )
                 # update states with PnC-processed texts
                 for (i, j, _), processed_text in zip(texts, processed_texts):
@@ -457,10 +467,10 @@ class StreamingTextPostprocessor:
                 logging.info("Forcing to use BERT-based PnC model.")
                 if self.supports_punctuation:
                     self.rm_punctuation_capitalization_from_segments_fn(asr_words_list)
-                return self.add_pnc_to_words(asr_words_list, self.pnc_params)
+                return self.add_pnc_to_words(asr_words_list, self.pnc_runtime_params)
 
             if not self.supports_punctuation:
-                return self.add_pnc_to_words(asr_words_list, self.pnc_params)
+                return self.add_pnc_to_words(asr_words_list, self.pnc_runtime_params)
 
         elif self.supports_punctuation:
             self.rm_punctuation_capitalization_from_segments_fn(asr_words_list)
@@ -485,7 +495,9 @@ class StreamingTextPostprocessor:
             pnc_words_list.append([word.copy() for word in state.pnc_words[s:]])
             itn_indices.append((state_idx, jdx, s, t, cut_point))
             jdx += 1
-        output = self.alignment_aware_itn_model(asr_words_list, pnc_words_list, self.itn_params, return_alignment=True)
+        output = self.alignment_aware_itn_model(
+            asr_words_list, pnc_words_list, self.itn_runtime_params, return_alignment=True
+        )
         self.update_itn_words(states, output, itn_indices)
 
     def calculate_itn_lookback(self, state: StreamingState) -> tuple[int, int, int]:

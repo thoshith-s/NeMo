@@ -98,11 +98,7 @@ class BufferedPipelineBuilder(BaseBuilder):
 
         # building PnC model
         asr_supports_pnc = asr_model.supports_punctuation()
-        pnc_model = cls._build_pnc(
-            cfg,
-            asr_supports_pnc=asr_supports_pnc,
-            force_to_use_pnc_model=cfg.text_postprocessor.force_to_use_pnc_model,
-        )
+        pnc_model = cls._build_pnc(cfg, asr_supports_pnc=asr_supports_pnc)
         if pnc_model is not None:
             logging.info(f"PnC model `{cfg.pnc.model_name}` loaded")
 
@@ -113,7 +109,6 @@ class BufferedPipelineBuilder(BaseBuilder):
 
         # building RNNT pipeline
         rnnt_pipeline = BufferedRNNTPipeline(cfg, asr_model, pnc_model, itn_model)
-
         logging.info(f"`{type(rnnt_pipeline).__name__}` pipeline loaded")
         return rnnt_pipeline
 
@@ -133,11 +128,7 @@ class BufferedPipelineBuilder(BaseBuilder):
 
         # building PnC model
         asr_supports_pnc = asr_model.supports_punctuation()
-        pnc_model = cls._build_pnc(
-            cfg,
-            asr_supports_pnc=asr_supports_pnc,
-            force_to_use_pnc_model=cfg.text_postprocessor.force_to_use_pnc_model,
-        )
+        pnc_model = cls._build_pnc(cfg, asr_supports_pnc=asr_supports_pnc)
         if pnc_model is not None:
             logging.info(f"PnC model `{cfg.pnc.model_name}` loaded")
 
@@ -148,6 +139,5 @@ class BufferedPipelineBuilder(BaseBuilder):
 
         # building CTC pipeline
         ctc_pipeline = BufferedCTCPipeline(cfg, asr_model, pnc_model, itn_model)
-
         logging.info(f"`{type(ctc_pipeline).__name__}` pipeline loaded")
         return ctc_pipeline
