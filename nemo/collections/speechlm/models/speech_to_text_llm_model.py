@@ -1277,6 +1277,7 @@ class SpeechToTextLLM(SpeechLanguageModel):
                 )
                 inference_config.pop(key)
         self._inference_config = inference_config
+        logging.info(f"Setting inference config: {self._inference_config}")
 
     def get_inference_config(self):
         return dict(self._inference_config) if self._inference_config is not None else None
