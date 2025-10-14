@@ -15,7 +15,9 @@
 import torch
 from torch import Tensor
 
-from nemo.collections.asr.inference.model_wrappers.cache_aware_asr_inference_wrapper import CacheAwareASRInferenceWrapper
+from nemo.collections.asr.inference.model_wrappers.cache_aware_asr_inference_wrapper import (
+    CacheAwareASRInferenceWrapper,
+)
 from nemo.collections.asr.inference.utils.context_manager import CacheAwareContext
 from nemo.collections.asr.models import EncDecHybridRNNTCTCModel, EncDecRNNTModel
 from nemo.collections.asr.parts.mixins.streaming import StreamingEncoder

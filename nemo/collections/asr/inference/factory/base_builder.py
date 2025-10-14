@@ -20,8 +20,12 @@ from omegaconf import open_dict
 from omegaconf.dictconfig import DictConfig
 
 from nemo.collections.asr.inference.model_wrappers.asr_inference_wrapper import ASRInferenceWrapper
-from nemo.collections.asr.inference.model_wrappers.cache_aware_ctc_inference_wrapper import CacheAwareCTCInferenceWrapper
-from nemo.collections.asr.inference.model_wrappers.cache_aware_rnnt_inference_wrapper import CacheAwareRNNTInferenceWrapper
+from nemo.collections.asr.inference.model_wrappers.cache_aware_ctc_inference_wrapper import (
+    CacheAwareCTCInferenceWrapper,
+)
+from nemo.collections.asr.inference.model_wrappers.cache_aware_rnnt_inference_wrapper import (
+    CacheAwareRNNTInferenceWrapper,
+)
 from nemo.collections.asr.inference.model_wrappers.ctc_inference_wrapper import CTCInferenceWrapper
 from nemo.collections.asr.inference.model_wrappers.rnnt_inference_wrapper import RNNTInferenceWrapper
 from nemo.collections.asr.inference.utils.enums import ASRDecodingType, PipelineType
