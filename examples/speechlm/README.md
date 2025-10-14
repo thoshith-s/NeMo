@@ -184,6 +184,13 @@ python speech_to_text_llm_validate.py \
     ++data.validation_ds.output_dir=$OUTPUT_DIR \ # directory to save the predictions
     name="${CONFIG_NAME}_run1_eval" \  
     trainer.devices=1 \
+    data.common.tokens_to_generate=256 \
+    ++model.inference_config.tokens_to_generate=256 \
+    ++model.inference_config.temperature=1.0 \
+    ++model.inference_config.top_k=50 \
+    ++model.inference_config.top_p=0.95 \
+    ++model.inference_config.greedy=false \  # set to `true` to use greedy decoding instead of sampling
+    ++model.inference_config.repetition_penalty=1.0 \
     ~logger.wandb  # remove wandb logger
 ```
 
