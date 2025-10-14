@@ -173,8 +173,8 @@ class CacheAwareRNNTSpeechRecognizer(BaseRecognizer):
             confidence_aggregator=self.confidence_aggregator,
             sep=self.sep,
             segment_separators=self.segment_separators,
-            automatic_punctuation=cfg.automatic_punctuation,
-            verbatim_transcripts=cfg.verbatim_transcripts,
+            enable_pnc=cfg.enable_pnc,
+            enable_itn=cfg.enable_itn,
         )
 
         self.return_tail_result = cfg.return_tail_result

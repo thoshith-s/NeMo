@@ -89,12 +89,12 @@ class BaseBuilder:
 
         pnc_model = None
 
-        if cfg.automatic_punctuation and asr_supports_pnc and not force_to_use_pnc_model:
+        if cfg.enable_pnc and asr_supports_pnc and not force_to_use_pnc_model:
             # no need to load the PNC model if the ASR model already supports it
             logging.info("Automatic punctuation is already supported by the ASR model.")
             return pnc_model
 
-        if cfg.automatic_punctuation:
+        if cfg.enable_pnc:
 
             target_lang = getattr(cfg, "lang", getattr(cfg, "target_lang", None))
             if target_lang is None:
@@ -126,7 +126,7 @@ class BaseBuilder:
             (AlignmentPreservingInverseNormalizer | None) ITN model
         """
         itn_model = None
-        if not cfg.verbatim_transcripts:
+        if cfg.enable_itn:
             # Do not remove this import. It is used to avoid nemo_text_processing import when verbatim transcripts is enabled.
             from nemo.collections.asr.inference.itn.inverse_normalizer import AlignmentPreservingInverseNormalizer
 

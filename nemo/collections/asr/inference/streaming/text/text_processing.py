@@ -54,8 +54,8 @@ class StreamingTextPostprocessor:
         confidence_aggregator: Callable,
         sep: str,
         segment_separators: list[str],
-        automatic_punctuation: bool = False,
-        verbatim_transcripts: bool = True,
+        enable_pnc: bool = False,
+        enable_itn: bool = True,
     ):
         """
         Initialize the streaming text postprocessor.
@@ -69,11 +69,13 @@ class StreamingTextPostprocessor:
             confidence_aggregator (Callable): Function for aggregating confidence scores.
             sep (str): String separator used in ASR output processing.
             segment_separators (list[str]): List of characters used as segment boundaries.
+            enable_pnc (bool): Boolean to enable PnC.
+            enable_itn (bool): Boolean to enable ITN.
         """
 
         self.pnc_model = pnc_model
         self.pnc_enabled = False
-        if automatic_punctuation:
+        if enable_pnc:
             self.pnc_enabled = pnc_model is not None or asr_supports_punctuation
 
         self.force_to_use_pnc_model = text_postprocessor_cfg.force_to_use_pnc_model
@@ -86,7 +88,7 @@ class StreamingTextPostprocessor:
 
         self.itn_model = itn_model
         self.itn_enabled = False
-        if not verbatim_transcripts:
+        if enable_itn:
             self.itn_enabled = itn_model is not None
 
         self.itn_params = text_postprocessor_cfg.itn

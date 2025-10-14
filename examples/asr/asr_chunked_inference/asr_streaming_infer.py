@@ -29,8 +29,8 @@ python asr_streaming_infer.py \
         audio_file=<path to audio file, directory of audio files, or manifest file> \
         output_filename=<path to output jsonfile> \
         lang=en \
-        automatic_punctuation=False \
-        verbatim_transcripts=True \
+        enable_pnc=False \
+        enable_itn=True \
         asr_output_granularity=segment \
         ...
         # See ../conf/asr_chunked_inference/*.yaml for all available options
