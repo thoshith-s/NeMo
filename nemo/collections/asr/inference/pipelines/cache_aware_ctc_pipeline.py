@@ -22,7 +22,9 @@ import torch
 from omegaconf import DictConfig
 from torch import Tensor
 
-from nemo.collections.asr.inference.asr.cache_aware_ctc_inference import CacheAwareCTCInference
+from nemo.collections.asr.inference.model_wrappers.cache_aware_ctc_inference_wrapper import (
+    CacheAwareCTCInferenceWrapper,
+)
 from nemo.collections.asr.inference.pipelines.base_pipeline import BasePipeline
 from nemo.collections.asr.inference.streaming.buffering.cache_feature_bufferer import BatchedCacheFeatureBufferer
 from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_ctc_decoder import CTCGreedyDecoder
@@ -48,7 +50,7 @@ class CacheAwareCTCPipeline(BasePipeline):
     def __init__(
         self,
         cfg: DictConfig,
-        asr_model: CacheAwareCTCInference,
+        asr_model: CacheAwareCTCInferenceWrapper,
         pnc_model: PunctuationCapitalizer | None = None,
         itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):

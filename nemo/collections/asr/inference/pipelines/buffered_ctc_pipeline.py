@@ -21,7 +21,7 @@ import torch
 from omegaconf import DictConfig
 from torch import Tensor
 
-from nemo.collections.asr.inference.asr.ctc_inference import CTCInference
+from nemo.collections.asr.inference.model_wrappers.ctc_inference_wrapper import CTCInferenceWrapper
 from nemo.collections.asr.inference.pipelines.base_pipeline import BasePipeline
 from nemo.collections.asr.inference.streaming.buffering.audio_bufferer import BatchedAudioBufferer
 from nemo.collections.asr.inference.streaming.buffering.feature_bufferer import BatchedFeatureBufferer
@@ -51,7 +51,7 @@ class BufferedCTCPipeline(BasePipeline):
     def __init__(
         self,
         cfg: DictConfig,
-        asr_model: CTCInference,
+        asr_model: CTCInferenceWrapper,
         pnc_model: PunctuationCapitalizer | None = None,
         itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):

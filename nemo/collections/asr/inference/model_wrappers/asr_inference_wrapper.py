@@ -31,7 +31,7 @@ from nemo.collections.asr.parts.utils.asr_confidence_utils import get_confidence
 SUPPORTED_CONFIDENCE_AGGREGATORS = get_confidence_aggregation_bank()
 
 
-class ASRInference:
+class ASRInferenceWrapper:
 
     def __init__(
         self,

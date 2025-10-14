@@ -16,7 +16,7 @@ import re
 from abc import abstractmethod
 from typing import Any, Iterable
 
-from nemo.collections.asr.inference.asr.asr_inference import ASRInference
+from nemo.collections.asr.inference.model_wrappers.asr_inference_wrapper import ASRInferenceWrapper
 from nemo.collections.asr.inference.pipelines.pipeline_interface import PipelineInterface
 from nemo.collections.asr.inference.streaming.framing.multi_stream import ContinuousBatchedRequestStreamer
 from nemo.collections.asr.inference.streaming.framing.request import FeatureBuffer, Frame, Request
@@ -114,11 +114,11 @@ class BasePipeline(PipelineInterface):
         else:
             raise ValueError(f"Invalid request type: {type(requests[0])}")
 
-    def copy_asr_model_attributes(self, asr_model: ASRInference) -> None:
+    def copy_asr_model_attributes(self, asr_model: ASRInferenceWrapper) -> None:
         """
         Copy the attributes from the ASR model
         Args:
-            asr_model (ASRInference): ASR model to copy the attributes from.
+            asr_model (ASRInferenceWrapper): ASR model to copy the attributes from.
         """
         self.asr_model = asr_model
         self.tokenizer = asr_model.tokenizer

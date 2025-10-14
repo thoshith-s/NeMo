@@ -15,7 +15,7 @@
 import pytest
 import torch
 
-from nemo.collections.asr.inference.asr.ctc_inference import CTCInference
+from nemo.collections.asr.inference.model_wrappers.ctc_inference_wrapper import CTCInferenceWrapper
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.text_segment import TextSegment, Word
 from nemo.collections.asr.parts.submodules.ctc_decoding import CTCDecodingConfig
@@ -23,7 +23,7 @@ from nemo.collections.asr.parts.submodules.ctc_decoding import CTCDecodingConfig
 
 @pytest.fixture(scope="module")
 def bpe_decoder():
-    asr_model = CTCInference(
+    asr_model = CTCInferenceWrapper(
         model_name="stt_en_conformer_ctc_small",
         decoding_cfg=CTCDecodingConfig(),
         device="cuda" if torch.cuda.is_available() else "cpu",

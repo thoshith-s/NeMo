@@ -16,11 +16,11 @@
 import torch
 from torch import Tensor
 
-from nemo.collections.asr.inference.asr.asr_inference import ASRInference
+from nemo.collections.asr.inference.model_wrappers.asr_inference_wrapper import ASRInferenceWrapper
 from nemo.collections.asr.models import EncDecHybridRNNTCTCModel, EncDecRNNTModel
 
 
-class RNNTInference(ASRInference):
+class RNNTInferenceWrapper(ASRInferenceWrapper):
 
     def __post_init__(self) -> None:
         """

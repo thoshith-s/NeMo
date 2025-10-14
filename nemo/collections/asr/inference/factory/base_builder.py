@@ -19,11 +19,11 @@ from typing import TYPE_CHECKING, Any
 from omegaconf import open_dict
 from omegaconf.dictconfig import DictConfig
 
-from nemo.collections.asr.inference.asr.asr_inference import ASRInference
-from nemo.collections.asr.inference.asr.cache_aware_ctc_inference import CacheAwareCTCInference
-from nemo.collections.asr.inference.asr.cache_aware_rnnt_inference import CacheAwareRNNTInference
-from nemo.collections.asr.inference.asr.ctc_inference import CTCInference
-from nemo.collections.asr.inference.asr.rnnt_inference import RNNTInference
+from nemo.collections.asr.inference.model_wrappers.asr_inference_wrapper import ASRInferenceWrapper
+from nemo.collections.asr.inference.model_wrappers.cache_aware_ctc_inference_wrapper import CacheAwareCTCInferenceWrapper
+from nemo.collections.asr.inference.model_wrappers.cache_aware_rnnt_inference_wrapper import CacheAwareRNNTInferenceWrapper
+from nemo.collections.asr.inference.model_wrappers.ctc_inference_wrapper import CTCInferenceWrapper
+from nemo.collections.asr.inference.model_wrappers.rnnt_inference_wrapper import RNNTInferenceWrapper
 from nemo.collections.asr.inference.utils.enums import ASRDecodingType, PipelineType
 from nemo.collections.asr.parts.submodules.ctc_decoding import CTCDecodingConfig
 from nemo.collections.asr.parts.submodules.rnnt_decoding import RNNTDecodingConfig
@@ -37,27 +37,27 @@ if TYPE_CHECKING:
 class BaseBuilder:
 
     @classmethod
-    def _build_asr(cls, cfg: DictConfig, decoding_cfg: CTCDecodingConfig | RNNTDecodingConfig) -> ASRInference:
+    def _build_asr(cls, cfg: DictConfig, decoding_cfg: CTCDecodingConfig | RNNTDecodingConfig) -> ASRInferenceWrapper:
         """
         Build the ASR model based on the config.
         Args:
             cfg: (DictConfig) Config
             decoding_cfg: (CTCDecodingConfig | RNNTDecodingConfig) Decoding config
         Returns:
-            (ASRInference) ASR inference model
+            (ASRInferenceWrapper) ASR inference model
         """
 
         asr_decoding_type = ASRDecodingType.from_str(cfg.asr_decoding_type)
         pipeline_type = PipelineType.from_str(cfg.pipeline_type)
         match (asr_decoding_type, pipeline_type):
             case (ASRDecodingType.CTC, PipelineType.BUFFERED):
-                asr_class = CTCInference
+                asr_class = CTCInferenceWrapper
             case (ASRDecodingType.RNNT, PipelineType.BUFFERED):
-                asr_class = RNNTInference
+                asr_class = RNNTInferenceWrapper
             case (ASRDecodingType.CTC, PipelineType.CACHE_AWARE):
-                asr_class = CacheAwareCTCInference
+                asr_class = CacheAwareCTCInferenceWrapper
             case (ASRDecodingType.RNNT, PipelineType.CACHE_AWARE):
-                asr_class = CacheAwareRNNTInference
+                asr_class = CacheAwareRNNTInferenceWrapper
             case _:
                 raise ValueError(
                     f"Wrong combination of ASR decoding type and pipeline type: {asr_decoding_type, pipeline_type}"

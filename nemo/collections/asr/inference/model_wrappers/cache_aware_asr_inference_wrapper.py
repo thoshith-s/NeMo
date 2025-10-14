@@ -15,10 +15,10 @@
 
 from torch import Tensor
 
-from nemo.collections.asr.inference.asr.asr_inference import ASRInference
+from nemo.collections.asr.inference.model_wrappers.asr_inference_wrapper import ASRInferenceWrapper
 
 
-class CacheAwareASRInference(ASRInference):
+class CacheAwareASRInferenceWrapper(ASRInferenceWrapper):
 
     def get_input_features(self) -> int:
         """

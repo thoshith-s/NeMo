@@ -21,7 +21,7 @@ import torch
 from omegaconf import DictConfig
 from torch import Tensor
 
-from nemo.collections.asr.inference.asr.rnnt_inference import RNNTInference
+from nemo.collections.asr.inference.model_wrappers.rnnt_inference_wrapper import RNNTInferenceWrapper
 from nemo.collections.asr.inference.pipelines.base_pipeline import BasePipeline
 from nemo.collections.asr.inference.streaming.buffering.audio_bufferer import BatchedAudioBufferer
 from nemo.collections.asr.inference.streaming.buffering.feature_bufferer import BatchedFeatureBufferer
@@ -53,7 +53,7 @@ class BufferedRNNTPipeline(BasePipeline):
     def __init__(
         self,
         cfg: DictConfig,
-        asr_model: RNNTInference,
+        asr_model: RNNTInferenceWrapper,
         pnc_model: PunctuationCapitalizer | None = None,
         itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):

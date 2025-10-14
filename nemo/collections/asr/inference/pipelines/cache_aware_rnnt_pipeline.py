@@ -22,7 +22,9 @@ import torch
 from omegaconf import DictConfig
 from torch import Tensor
 
-from nemo.collections.asr.inference.asr.cache_aware_rnnt_inference import CacheAwareRNNTInference
+from nemo.collections.asr.inference.model_wrappers.cache_aware_rnnt_inference_wrapper import (
+    CacheAwareRNNTInferenceWrapper,
+)
 from nemo.collections.asr.inference.pipelines.base_pipeline import BasePipeline
 from nemo.collections.asr.inference.streaming.buffering.cache_feature_bufferer import BatchedCacheFeatureBufferer
 from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_rnnt_decoder import RNNTGreedyDecoder
@@ -49,7 +51,7 @@ class CacheAwareRNNTPipeline(BasePipeline):
     def __init__(
         self,
         cfg: DictConfig,
-        asr_model: CacheAwareRNNTInference,
+        asr_model: CacheAwareRNNTInferenceWrapper,
         pnc_model: PunctuationCapitalizer | None = None,
         itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):

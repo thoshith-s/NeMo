@@ -16,13 +16,13 @@
 import torch
 from torch import Tensor
 
-from nemo.collections.asr.inference.asr.cache_aware_asr_inference import CacheAwareASRInference
+from nemo.collections.asr.inference.model_wrappers.cache_aware_asr_inference_wrapper import CacheAwareASRInferenceWrapper
 from nemo.collections.asr.inference.utils.context_manager import CacheAwareContext
 from nemo.collections.asr.models import EncDecCTCModel, EncDecHybridRNNTCTCModel
 from nemo.collections.asr.parts.mixins.streaming import StreamingEncoder
 
 
-class CacheAwareCTCInference(CacheAwareASRInference):
+class CacheAwareCTCInferenceWrapper(CacheAwareASRInferenceWrapper):
 
     def __post_init__(self) -> None:
         """
