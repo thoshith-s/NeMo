@@ -39,7 +39,7 @@ class ASROutputGranularity(StrEnumMixin, Enum):
     SEGMENT = auto()
 
 
-class RecognizerType(StrEnumMixin, Enum):
+class PipelineType(StrEnumMixin, Enum):
     BUFFERED = auto()
     CACHE_AWARE = auto()
 

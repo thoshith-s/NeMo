@@ -18,13 +18,13 @@ from typing import Any
 import torch
 from omegaconf.dictconfig import DictConfig
 
-from nemo.collections.asr.inference.factory.buffered_recognizer_builder import BufferedSpeechRecognizerBuilder
-from nemo.collections.asr.inference.factory.cache_aware_recognizer_builder import CacheAwareSpeechRecognizerBuilder
-from nemo.collections.asr.inference.utils.enums import RecognizerType
+from nemo.collections.asr.inference.factory.buffered_pipeline_builder import BufferedPipelineBuilder
+from nemo.collections.asr.inference.factory.cache_aware_pipeline_builder import CacheAwarePipelineBuilder
+from nemo.collections.asr.inference.utils.enums import PipelineType
 from nemo.utils import logging
 
 
-class RecognizerBuilder:
+class PipelineBuilder:
 
     @staticmethod
     def set_matmul_precision(matmul_precision: str) -> None:
@@ -53,22 +53,22 @@ class RecognizerBuilder:
         logging.setLevel(log_level)
 
     @staticmethod
-    def build_recognizer(cfg: DictConfig) -> Any:
+    def build_pipeline(cfg: DictConfig) -> Any:
         """
-        Build the recognizer based on the config.
+        Build the pipeline based on the config.
         Args:
             cfg: (DictConfig) Config
         Returns:
-            Returns Recognizer object
+            Returns Pipeline object
         """
-        RecognizerBuilder.set_log_level(cfg.log_level)
-        RecognizerBuilder.set_matmul_precision(cfg.matmul_precision)
-        recognizer_type = RecognizerType.from_str(cfg.recognizer_type)
-        if recognizer_type is RecognizerType.BUFFERED:
-            builder = BufferedSpeechRecognizerBuilder
-        elif recognizer_type is RecognizerType.CACHE_AWARE:
-            builder = CacheAwareSpeechRecognizerBuilder
+        PipelineBuilder.set_log_level(cfg.log_level)
+        PipelineBuilder.set_matmul_precision(cfg.matmul_precision)
+        pipeline_type = PipelineType.from_str(cfg.pipeline_type)
+        if pipeline_type is PipelineType.BUFFERED:
+            builder = BufferedPipelineBuilder
+        elif pipeline_type is PipelineType.CACHE_AWARE:
+            builder = CacheAwarePipelineBuilder
         else:
-            raise ValueError(f"Invalid recognizer type: {cfg.recognizer_type}")
+            raise ValueError(f"Invalid pipeline type: {cfg.pipeline_type}")
 
         return builder.build(cfg)

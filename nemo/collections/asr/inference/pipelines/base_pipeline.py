@@ -17,19 +17,19 @@ from abc import abstractmethod
 from typing import Any, Iterable
 
 from nemo.collections.asr.inference.asr.asr_inference import ASRInference
-from nemo.collections.asr.inference.recognizers.recognizer_interface import RecognizerInterface
+from nemo.collections.asr.inference.pipelines.pipeline_interface import PipelineInterface
 from nemo.collections.asr.inference.streaming.framing.multi_stream import ContinuousBatchedRequestStreamer
 from nemo.collections.asr.inference.streaming.framing.request import FeatureBuffer, Frame, Request
 from nemo.collections.asr.inference.streaming.framing.request_options import ASRRequestOptions
+from nemo.collections.asr.inference.utils.pipeline_utils import get_leading_punctuation_regex_pattern
 from nemo.collections.asr.inference.utils.progressbar import ProgressBar
-from nemo.collections.asr.inference.utils.recognizer_utils import get_leading_punctuation_regex_pattern
 from nemo.collections.asr.inference.utils.text_segment import TextSegment
 from nemo.collections.common.tokenizers.tokenizer_spec import TokenizerSpec
 
 
-class RecognizerOutput:
+class PipelineOutput:
     """
-    Class to store the output of the recognizer.
+    Class to store the output of the pipeline.
     """
 
     def __init__(self, texts: list[str] | None = None, segments: list[list[TextSegment]] | None = None):
@@ -39,9 +39,9 @@ class RecognizerOutput:
         self.segments = segments
 
 
-class BaseRecognizer(RecognizerInterface):
+class BasePipeline(PipelineInterface):
     """
-    Base class for all recognizers.
+    Base class for all pipelines.
     """
 
     def __init__(self):
@@ -116,7 +116,7 @@ class BaseRecognizer(RecognizerInterface):
 
     def copy_asr_model_attributes(self, asr_model: ASRInference) -> None:
         """
-        Copy the attributes from the ASR model to the recognizer
+        Copy the attributes from the ASR model
         Args:
             asr_model (ASRInference): ASR model to copy the attributes from.
         """
@@ -167,16 +167,16 @@ class BaseRecognizer(RecognizerInterface):
         audio_filepaths: list[str],
         options: list[ASRRequestOptions] | None = None,
         progress_bar: ProgressBar | None = None,
-    ) -> RecognizerOutput:
+    ) -> PipelineOutput:
         """
         Orchestrates reading from audio_filepaths in a streaming manner,
-        transcribes them, and packs the results into a RecognizerOutput.
+        transcribes them, and packs the results into a PipelineOutput.
         Args:
             audio_filepaths (list[str]): List of audio filepaths to transcribe.
             options (list[ASRRequestOptions] | None): List of RequestOptions for each stream.
             progress_bar (ProgressBar | None): Progress bar to show the progress. Default is None.
         Returns:
-            RecognizerOutput: A dataclass containing transcriptions and segments.
+            PipelineOutput: A dataclass containing transcriptions and segments.
         """
         if progress_bar is not None and not isinstance(progress_bar, ProgressBar):
             raise ValueError("progress_bar must be an instance of ProgressBar.")
@@ -202,7 +202,7 @@ class BaseRecognizer(RecognizerInterface):
         self.close_session()
         return output
 
-    def pack_output(self) -> RecognizerOutput:
+    def pack_output(self) -> PipelineOutput:
         """Pack the output from the internal state pool."""
         texts, segments = [], []
         for stream_id in sorted(self._state_pool):
@@ -218,4 +218,4 @@ class BaseRecognizer(RecognizerInterface):
             texts.append(state_text)
             segments.append(state_segments)
 
-        return RecognizerOutput(texts=texts, segments=segments)
+        return PipelineOutput(texts=texts, segments=segments)

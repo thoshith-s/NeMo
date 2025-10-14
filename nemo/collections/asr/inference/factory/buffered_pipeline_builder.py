@@ -15,38 +15,38 @@
 from omegaconf.dictconfig import DictConfig
 
 from nemo.collections.asr.inference.factory.base_builder import BaseBuilder
-from nemo.collections.asr.inference.recognizers.buffered_ctc_recognizer import CTCBufferedSpeechRecognizer
-from nemo.collections.asr.inference.recognizers.buffered_rnnt_recognizer import RNNTBufferedSpeechRecognizer
+from nemo.collections.asr.inference.pipelines.buffered_ctc_pipeline import BufferedCTCPipeline
+from nemo.collections.asr.inference.pipelines.buffered_rnnt_pipeline import BufferedRNNTPipeline
 from nemo.collections.asr.inference.utils.enums import ASRDecodingType
 from nemo.collections.asr.parts.submodules.ctc_decoding import CTCDecodingConfig
 from nemo.collections.asr.parts.submodules.rnnt_decoding import RNNTDecodingConfig
 from nemo.utils import logging
 
 
-class BufferedSpeechRecognizerBuilder(BaseBuilder):
+class BufferedPipelineBuilder(BaseBuilder):
 
     @classmethod
-    def build(cls, cfg: DictConfig) -> RNNTBufferedSpeechRecognizer | CTCBufferedSpeechRecognizer:
+    def build(cls, cfg: DictConfig) -> BufferedRNNTPipeline | BufferedCTCPipeline:
         """
-        Build the buffered streaming recognizer based on the config.
+        Build the buffered streaming pipeline based on the config.
         Args:
             cfg: (DictConfig) Config
         Returns:
-            Returns RNNTBufferedSpeechRecognizer or CTCBufferedSpeechRecognizer object
+            Returns BufferedRNNTPipeline or BufferedCTCPipeline object
         """
         asr_decoding_type = ASRDecodingType.from_str(cfg.asr_decoding_type)
 
         if asr_decoding_type is ASRDecodingType.RNNT:
-            return cls.build_buffered_rnnt_speech_recognizer(cfg)
+            return cls.build_buffered_rnnt_pipeline(cfg)
         elif asr_decoding_type is ASRDecodingType.CTC:
-            return cls.build_buffered_ctc_speech_recognizer(cfg)
+            return cls.build_buffered_ctc_pipeline(cfg)
 
         raise ValueError("Invalid asr decoding type for buffered streaming. Need to be one of ['CTC', 'RNNT']")
 
     @classmethod
     def get_rnnt_decoding_cfg(cls, cfg: DictConfig) -> RNNTDecodingConfig:
         """
-        Get the decoding config for the RNNT recognizer.
+        Get the decoding config for the RNNT pipeline.
         Returns:
             (RNNTDecodingConfig) Decoding config
         """
@@ -74,7 +74,7 @@ class BufferedSpeechRecognizerBuilder(BaseBuilder):
     @classmethod
     def get_ctc_decoding_cfg(cls) -> CTCDecodingConfig:
         """
-        Get the decoding config for the CTC recognizer.
+        Get the decoding config for the CTC pipeline.
         Returns:
             (CTCDecodingConfig) Decoding config
         """
@@ -83,13 +83,13 @@ class BufferedSpeechRecognizerBuilder(BaseBuilder):
         return decoding_cfg
 
     @classmethod
-    def build_buffered_rnnt_speech_recognizer(cls, cfg: DictConfig) -> RNNTBufferedSpeechRecognizer:
+    def build_buffered_rnnt_pipeline(cls, cfg: DictConfig) -> BufferedRNNTPipeline:
         """
-        Build the RNNT streaming recognizer based on the config.
+        Build the RNNT streaming pipeline based on the config.
         Args:
             cfg: (DictConfig) Config
         Returns:
-            Returns RNNTBufferedSpeechRecognizer object
+            Returns BufferedRNNTPipeline object
         """
         # building ASR model
         decoding_cfg = cls.get_rnnt_decoding_cfg(cfg)
@@ -111,20 +111,20 @@ class BufferedSpeechRecognizerBuilder(BaseBuilder):
         if itn_model is not None:
             logging.info("ITN model loaded")
 
-        # building RNNT recognizer
-        rnnt_recognizer = RNNTBufferedSpeechRecognizer(cfg, asr_model, pnc_model, itn_model)
+        # building RNNT pipeline
+        rnnt_pipeline = BufferedRNNTPipeline(cfg, asr_model, pnc_model, itn_model)
 
-        logging.info(f"`{type(rnnt_recognizer).__name__}` recognizer loaded")
-        return rnnt_recognizer
+        logging.info(f"`{type(rnnt_pipeline).__name__}` pipeline loaded")
+        return rnnt_pipeline
 
     @classmethod
-    def build_buffered_ctc_speech_recognizer(cls, cfg: DictConfig) -> CTCBufferedSpeechRecognizer:
+    def build_buffered_ctc_pipeline(cls, cfg: DictConfig) -> BufferedCTCPipeline:
         """
-        Build the CTC buffered streaming recognizer based on the config.
+        Build the CTC buffered streaming pipeline based on the config.
         Args:
             cfg: (DictConfig) Config
         Returns:
-            Returns CTCBufferedSpeechRecognizer object
+            Returns BufferedCTCPipeline object
         """
         # building ASR model
         decoding_cfg = cls.get_ctc_decoding_cfg()
@@ -146,8 +146,8 @@ class BufferedSpeechRecognizerBuilder(BaseBuilder):
         if itn_model is not None:
             logging.info("ITN model loaded")
 
-        # building CTC recognizer
-        ctc_recognizer = CTCBufferedSpeechRecognizer(cfg, asr_model, pnc_model, itn_model)
+        # building CTC pipeline
+        ctc_pipeline = BufferedCTCPipeline(cfg, asr_model, pnc_model, itn_model)
 
-        logging.info(f"`{type(ctc_recognizer).__name__}` recognizer loaded")
-        return ctc_recognizer
+        logging.info(f"`{type(ctc_pipeline).__name__}` pipeline loaded")
+        return ctc_pipeline

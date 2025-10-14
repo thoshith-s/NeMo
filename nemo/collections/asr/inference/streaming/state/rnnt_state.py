@@ -17,7 +17,7 @@ from nemo.collections.asr.inference.streaming.state.state import StreamingState
 
 class RNNTStreamingState(StreamingState):
     """
-    State of the streaming RNNT recognizer
+    State of the streaming RNNT pipeline
     """
 
     def __init__(self):

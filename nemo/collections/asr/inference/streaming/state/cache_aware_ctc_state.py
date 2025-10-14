@@ -18,7 +18,7 @@ from nemo.collections.asr.inference.streaming.state.cache_aware_state import Cac
 
 class CacheAwareCTCStreamingState(CacheAwareStreamingState):
     """
-    State of the cache aware CTC streaming recognizers
+    State of the cache aware CTC streaming pipelines
     """
 
     pass

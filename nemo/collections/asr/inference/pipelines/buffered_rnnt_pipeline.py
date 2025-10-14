@@ -22,7 +22,7 @@ from omegaconf import DictConfig
 from torch import Tensor
 
 from nemo.collections.asr.inference.asr.rnnt_inference import RNNTInference
-from nemo.collections.asr.inference.recognizers.base_recognizer import BaseRecognizer
+from nemo.collections.asr.inference.pipelines.base_pipeline import BasePipeline
 from nemo.collections.asr.inference.streaming.buffering.audio_bufferer import BatchedAudioBufferer
 from nemo.collections.asr.inference.streaming.buffering.feature_bufferer import BatchedFeatureBufferer
 from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_rnnt_decoder import ClippedRNNTGreedyDecoder
@@ -34,7 +34,7 @@ from nemo.collections.asr.inference.streaming.state.rnnt_state import RNNTStream
 from nemo.collections.asr.inference.streaming.text.text_processing import StreamingTextPostprocessor
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.enums import FeatureBufferPaddingMode, RequestType
-from nemo.collections.asr.inference.utils.recognizer_utils import (
+from nemo.collections.asr.inference.utils.pipeline_utils import (
     adjust_vad_segments,
     drop_trailing_features,
     get_confidence_utils,
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from nemo.collections.asr.inference.pnc.punctuation_capitalizer import PunctuationCapitalizer
 
 
-class RNNTBufferedSpeechRecognizer(BaseRecognizer):
+class BufferedRNNTPipeline(BasePipeline):
 
     def __init__(
         self,

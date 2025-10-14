@@ -17,7 +17,7 @@ from nemo.collections.asr.inference.streaming.state.state import StreamingState
 
 class CTCStreamingState(StreamingState):
     """
-    State of the streaming CTC recognizer
+    State of the streaming CTC pipeline
     """
 
     pass

@@ -18,7 +18,7 @@ This script serves as the entry point for local ASR inference, supporting buffer
 The script performs the following steps:
     (1) Accepts as input a single audio file, a directory of audio files, or a manifest file.
         - Note: Input audio files must be 16 kHz, mono-channel WAV files.
-    (2) Creates a recognizer object to run the ASR pipeline.
+    (2) Creates a pipeline object to perform inference.
     (3) Runs inference on the input audio files.
     (4) Writes the transcriptions to an output json/jsonl file. Word/Segment level output is written to a separate JSON file.
 
@@ -46,7 +46,7 @@ from time import time
 import hydra
 
 
-from nemo.collections.asr.inference.factory.recognizer_builder import RecognizerBuilder
+from nemo.collections.asr.inference.factory.pipeline_builder import PipelineBuilder
 from nemo.collections.asr.inference.utils.manifest_io import calculate_duration, dump_output, get_audio_filepaths
 from nemo.collections.asr.inference.utils.progressbar import TQDMProgressBar
 from nemo.utils import logging
@@ -72,13 +72,13 @@ def main(cfg):
     audio_filepaths = get_audio_filepaths(cfg.audio_file, sort_by_duration=True)
     logging.info(f"Found {len(audio_filepaths)} audio files")
 
-    # Build the recognizer
-    recognizer = RecognizerBuilder.build_recognizer(cfg)
+    # Build the pipeline
+    pipeline = PipelineBuilder.build_pipeline(cfg)
     progress_bar = TQDMProgressBar()
 
-    # Run the recognizer
+    # Run the pipeline
     start = time()
-    output = recognizer.run(audio_filepaths, progress_bar=progress_bar)
+    output = pipeline.run(audio_filepaths, progress_bar=progress_bar)
     exec_dur = time() - start
 
     # Calculate RTFX

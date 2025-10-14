@@ -24,7 +24,7 @@ from nemo.collections.asr.inference.asr.cache_aware_ctc_inference import CacheAw
 from nemo.collections.asr.inference.asr.cache_aware_rnnt_inference import CacheAwareRNNTInference
 from nemo.collections.asr.inference.asr.ctc_inference import CTCInference
 from nemo.collections.asr.inference.asr.rnnt_inference import RNNTInference
-from nemo.collections.asr.inference.utils.enums import ASRDecodingType, RecognizerType
+from nemo.collections.asr.inference.utils.enums import ASRDecodingType, PipelineType
 from nemo.collections.asr.parts.submodules.ctc_decoding import CTCDecodingConfig
 from nemo.collections.asr.parts.submodules.rnnt_decoding import RNNTDecodingConfig
 from nemo.utils import logging
@@ -48,19 +48,19 @@ class BaseBuilder:
         """
 
         asr_decoding_type = ASRDecodingType.from_str(cfg.asr_decoding_type)
-        recognizer_type = RecognizerType.from_str(cfg.recognizer_type)
-        match (asr_decoding_type, recognizer_type):
-            case (ASRDecodingType.CTC, RecognizerType.BUFFERED):
+        pipeline_type = PipelineType.from_str(cfg.pipeline_type)
+        match (asr_decoding_type, pipeline_type):
+            case (ASRDecodingType.CTC, PipelineType.BUFFERED):
                 asr_class = CTCInference
-            case (ASRDecodingType.RNNT, RecognizerType.BUFFERED):
+            case (ASRDecodingType.RNNT, PipelineType.BUFFERED):
                 asr_class = RNNTInference
-            case (ASRDecodingType.CTC, RecognizerType.CACHE_AWARE):
+            case (ASRDecodingType.CTC, PipelineType.CACHE_AWARE):
                 asr_class = CacheAwareCTCInference
-            case (ASRDecodingType.RNNT, RecognizerType.CACHE_AWARE):
+            case (ASRDecodingType.RNNT, PipelineType.CACHE_AWARE):
                 asr_class = CacheAwareRNNTInference
             case _:
                 raise ValueError(
-                    f"Wrong combination of ASR decoding type and recognizer type: {asr_decoding_type, recognizer_type}"
+                    f"Wrong combination of ASR decoding type and pipeline type: {asr_decoding_type, pipeline_type}"
                 )
 
         asr_model = asr_class(
@@ -160,7 +160,7 @@ class BaseBuilder:
     @classmethod
     def build(cls, cfg: DictConfig) -> Any:
         """
-        Build the recognizer based on the config.
+        Build the pipeline based on the config.
         Args:
             cfg: (DictConfig) Config
         Returns:

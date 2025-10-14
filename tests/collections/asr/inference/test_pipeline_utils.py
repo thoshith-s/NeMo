@@ -18,14 +18,14 @@ import re
 import pytest
 import torch
 
-from nemo.collections.asr.inference.utils.recognizer_utils import (
+from nemo.collections.asr.inference.utils.pipeline_utils import (
     drop_trailing_features,
     get_leading_punctuation_regex_pattern,
     get_repeated_punctuation_regex_pattern,
 )
 
 
-class TestRecognizerUtils:
+class TestPipelineUtils:
 
     @pytest.mark.unit
     def test_drop_trailing_features(self):

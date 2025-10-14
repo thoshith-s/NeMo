@@ -19,7 +19,7 @@ from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 
 class CacheAwareRNNTStreamingState(CacheAwareStreamingState):
     """
-    State of the cache aware RNNT streaming recognizers
+    State of the cache aware RNNT streaming pipelines
     """
 
     def __init__(self):

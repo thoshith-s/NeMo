@@ -22,7 +22,7 @@ from omegaconf import DictConfig, open_dict
 
 from nemo.collections.asr.inference.utils.constants import SENTENCEPIECE_UNDERSCORE
 from nemo.collections.asr.inference.utils.device_utils import setup_device
-from nemo.collections.asr.inference.utils.recognizer_utils import make_preprocessor_deterministic
+from nemo.collections.asr.inference.utils.pipeline_utils import make_preprocessor_deterministic
 from nemo.collections.asr.models import ASRModel, EncDecHybridRNNTCTCModel
 from nemo.collections.asr.parts.submodules.ctc_decoding import CTCDecodingConfig
 from nemo.collections.asr.parts.submodules.rnnt_decoding import RNNTDecodingConfig

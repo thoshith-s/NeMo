@@ -22,39 +22,38 @@ import torch
 from omegaconf import DictConfig
 from torch import Tensor
 
-from nemo.collections.asr.inference.asr.cache_aware_ctc_inference import CacheAwareCTCInference
-from nemo.collections.asr.inference.recognizers.base_recognizer import BaseRecognizer
+from nemo.collections.asr.inference.asr.cache_aware_rnnt_inference import CacheAwareRNNTInference
+from nemo.collections.asr.inference.pipelines.base_pipeline import BasePipeline
 from nemo.collections.asr.inference.streaming.buffering.cache_feature_bufferer import BatchedCacheFeatureBufferer
-from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_ctc_decoder import CTCGreedyDecoder
-from nemo.collections.asr.inference.streaming.endpointing.greedy.greedy_ctc_endpointing import CTCGreedyEndpointing
+from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_rnnt_decoder import RNNTGreedyDecoder
+from nemo.collections.asr.inference.streaming.endpointing.greedy.greedy_rnnt_endpointing import RNNTGreedyEndpointing
 from nemo.collections.asr.inference.streaming.framing.multi_stream import ContinuousBatchedRequestStreamer
 from nemo.collections.asr.inference.streaming.framing.request import FeatureBuffer, Frame
 from nemo.collections.asr.inference.streaming.framing.request_options import ASRRequestOptions
-from nemo.collections.asr.inference.streaming.state.cache_aware_ctc_state import CacheAwareCTCStreamingState
+from nemo.collections.asr.inference.streaming.state.cache_aware_rnnt_state import CacheAwareRNNTStreamingState
 from nemo.collections.asr.inference.streaming.text.text_processing import StreamingTextPostprocessor
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.context_manager import CacheAwareContextManager
 from nemo.collections.asr.inference.utils.endpointing_utils import millisecond_to_frames
 from nemo.collections.asr.inference.utils.enums import RequestType
-from nemo.collections.asr.inference.utils.recognizer_utils import get_confidence_utils, normalize_log_probs
+from nemo.collections.asr.inference.utils.pipeline_utils import get_confidence_utils
+from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 
 if TYPE_CHECKING:
     from nemo.collections.asr.inference.itn.inverse_normalizer import AlignmentPreservingInverseNormalizer
     from nemo.collections.asr.inference.pnc.punctuation_capitalizer import PunctuationCapitalizer
 
 
-class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
+class CacheAwareRNNTPipeline(BasePipeline):
 
     def __init__(
         self,
         cfg: DictConfig,
-        asr_model: CacheAwareCTCInference,
+        asr_model: CacheAwareRNNTInference,
         pnc_model: PunctuationCapitalizer | None = None,
         itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):
-
         self.copy_asr_model_attributes(asr_model)
-
         self.asr_output_granularity = cfg.asr_output_granularity
 
         # Set the attention context size if it is provided
@@ -126,7 +125,6 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             # Calculate mel-spec features for the whole buffer
             chunk_size_for_feature_buffer = self.buffer_size_in_secs
 
-        # Cached Feature Bufferer
         self.request_type = RequestType.from_str(self.streaming_cfg.request_type)
         if self.request_type is not RequestType.FRAME:
             raise ValueError(f"Request type {self.request_type} is not supported for cache-aware streaming.")
@@ -152,14 +150,13 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             token_duration_in_secs=self.model_stride_in_secs,
         )
 
-        # CTC greedy decoder
-        self.ctc_decoder = CTCGreedyDecoder(vocabulary=self.vocabulary, conf_func=self.conf_func)
-        self.return_tail_result = cfg.return_tail_result
+        # RNNT gready decoder
+        self.greedy_rnnt_decoder = RNNTGreedyDecoder(vocabulary=self.vocabulary, conf_func=self.conf_func)
 
         # Endpointing
         self.stop_history_eou_in_millisecs = cfg.endpointing.stop_history_eou
         self.residue_tokens_at_end = cfg.endpointing.residue_tokens_at_end
-        self.endpointer = CTCGreedyEndpointing(
+        self.endpointer = RNNTGreedyEndpointing(
             vocabulary=self.vocabulary,
             ms_per_timestep=self.model_stride_in_milliseconds,
             stop_history_eou=self.stop_history_eou_in_millisecs,
@@ -180,6 +177,8 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             enable_itn=cfg.enable_itn,
         )
 
+        self.return_tail_result = cfg.return_tail_result
+
         super().__init__()
 
     def reset_session(self) -> None:
@@ -187,9 +186,9 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         self.context_manager.reset()
         super().reset_session()
 
-    def create_state(self, options: ASRRequestOptions) -> CacheAwareCTCStreamingState:
+    def create_state(self, options: ASRRequestOptions) -> CacheAwareRNNTStreamingState:
         """Create new empty state."""
-        state = CacheAwareCTCStreamingState()
+        state = CacheAwareRNNTStreamingState()
         state.set_global_offset(0)
         new_options = options.augment_with_defaults(
             default_enable_itn=self.text_postprocessor.is_itn_enabled(),
@@ -205,6 +204,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             )
             eou_label_buffer_size += self.residue_tokens_at_end
         state.setup_label_buffer(eou_label_buffer_size, self.blank_id)
+        state.set_previous_hypothesis(None)
         state.set_options(new_options)
         return state
 
@@ -212,7 +212,7 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         """Return the separator for the text postprocessor."""
         return self.sep
 
-    def preprocess(self, buffers: list[Tensor], right_paddings: list[int] | None = None):
+    def preprocess(self, buffers: list[Tensor], right_paddings: list[int] | None = None) -> tuple[Tensor, Tensor]:
         """Preprocess the feature buffers by stacking them and computing the lengths"""
         feature_buffers = [f_buffer.unsqueeze_(0) for f_buffer in buffers]
         feature_buffer_lens = torch.tensor([f_buffer.shape[2] for f_buffer in feature_buffers], device=self.device)
@@ -222,20 +222,27 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         feature_buffers = torch.cat(feature_buffers).to(self.device)
         return feature_buffers, feature_buffer_lens
 
-    def run_greedy_decoder(self, state: CacheAwareCTCStreamingState, frame: Frame, log_probs: torch.Tensor):
+    def run_greedy_decoder(self, state: CacheAwareRNNTStreamingState, frame: Frame, hyp: Hypothesis) -> bool:
         """
-        Run the greedy CTC decoder on the log_probs and update the state
+        Run the greedy RNNT decoder on the hypothesis and update the state
         Args:
             state: The state of the stream
             frame: The current frame
-            log_probs: The log probabilities of the current frame
+            hyp: The hypothesis of the current frame
         Returns:
             updates the state and returns a boolean indicating if EOU is detected
         """
         eou_detected = frame.is_last
-        last_token = state.label_buffer[-1] if len(state.label_buffer) > 0 else self.blank_id
-        cur_output = self.ctc_decoder(log_probs, compute_confidence=True, previous=last_token)
-        state.update_label_buffer(cur_output["labels"])
+        cur_output, cur_labels, new_offset = self.greedy_rnnt_decoder(
+            global_timestamps=hyp.timestamp,
+            tokens=hyp.y_sequence,
+            length=self.tokens_per_frame,
+            offset=state.offset,
+        )
+        state.set_offset(new_offset)
+
+        # cur labels contains blank tokens as well, it is needed for EOU detection
+        state.update_label_buffer(cur_labels)
 
         if not eou_detected:
             emissions = state.get_label_buffer()
@@ -245,32 +252,13 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
             )
 
         state.update_state(cur_output, eou_detected=eou_detected)
-        state.increment_global_offset(self.tokens_per_frame)
         return eou_detected
-
-    def decode_log_probs(
-        self, frames: list[Frame], log_probs: Tensor, tail_log_probs: Tensor | None, ready_state_ids: set
-    ):
-
-        for idx, frame in enumerate(frames):
-            state = self.get_state(frame.stream_id)
-            eou_detected = self.run_greedy_decoder(state, frame, log_probs[idx])
-
-            if eou_detected:
-                self.bpe_decoder.decode_bpe_tokens(state)
-                state.cleanup_after_eou()
-                ready_state_ids.add(frame.stream_id)
-
-            if tail_log_probs is not None:
-                last_token = state.label_buffer[-1] if len(state.label_buffer) > 0 else self.blank_id
-                tail_output = self.ctc_decoder(tail_log_probs[idx], compute_confidence=False, previous=last_token)
-                state.set_incomplete_segment_tokens(tail_output["tokens"])
 
     def cache_aware_transcribe_step(
         self,
         frames: list[Frame],
-        buffered_features: list[Tensor],
-        right_paddings: list[int] | None,
+        features: list[Tensor],
+        right_paddings: list[int],
         ready_state_ids: set,
         keep_all_outputs: bool = False,
     ) -> None:
@@ -279,34 +267,59 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         It receives a list of frames and features and do the following:
 
         1. Preprocess the features by stacking them and computing the lengths
-        2. Get the context and mapping from the context manager for cache aware streaming
-        3. Perform a streaming step with the ASR model
-        4. Update the cache and reset the cache slots for the streams that has ended
-        5. Decode the log probabilities and update the state
+        2. Collecting previous hypotheses for stateful decoding
+        3. Get the context and mapping from the context manager for cache aware streaming
+        4. Perform a streaming step with the ASR model
+        5. Update the cache and reset the cache slots for the streams that has ended
+        6. Update the previous hypothesis and reset the previous hypothesis for the streams that has ended
+        7. Perform greedy RNNT decoding to get the best hypothesis and update the states
+        8. Update the ready states to indicate that the state is ready for text post-processing
         """
-        feature_buffers, feature_buffer_lens = self.preprocess(buffered_features, right_paddings)
 
-        stream_ids = [frame.stream_id for frame in frames]
-        eos_flags = [frame.is_last for frame in frames]
+        feature_buffers, feature_buffer_lens = self.preprocess(features, right_paddings)
+        states, stream_ids, eos_flags = [], [], []
+        for frame in frames:
+            states.append(self.get_state(frame.stream_id))
+            stream_ids.append(frame.stream_id)
+            eos_flags.append(frame.is_last)
+
+        previous_hypotheses = [state.get_previous_hypothesis() for state in states]
         context, mapping = self.context_manager.get_context(stream_ids)
 
         drop_extra_pre_encoded = 0 if not self.use_cache else self.asr_model.drop_extra_pre_encoded
-        log_probs, tail_log_probs, new_context = self.asr_model.stream_step(
+        best_hyp, new_context = self.asr_model.stream_step(
             processed_signal=feature_buffers,
             processed_signal_length=feature_buffer_lens,
             context=context,
+            previous_hypotheses=previous_hypotheses,
             drop_extra_pre_encoded=drop_extra_pre_encoded,
             keep_all_outputs=keep_all_outputs,
             drop_left_context=self.drop_left_context,
             valid_out_len=self.valid_out_len,
-            return_tail_result=self.return_tail_result,
         )
 
-        if log_probs is not None:
-            log_probs = normalize_log_probs(log_probs)
+        # update the cache and reset the cache slots for the streams that has ended
         self.context_manager.update_cache(stream_ids, new_context, mapping)
         self.context_manager.reset_slots(stream_ids, eos_flags)
-        self.decode_log_probs(frames, log_probs, tail_log_probs, ready_state_ids)
+
+        # update the previous hypothesis and reset the previous hypothesis for the streams that has ended
+        for state, hyp, eos in zip(states, best_hyp, eos_flags):
+            if eos:
+                state.reset_previous_hypothesis()
+            else:
+                state.set_previous_hypothesis(hyp)
+
+        # run greedy decoder for each frame-state-hypothesis tuple
+        for frame, state, hyp in zip(frames, states, best_hyp):
+            eou_detected = self.run_greedy_decoder(state, frame, hyp)
+            if eou_detected:
+                self.bpe_decoder.decode_bpe_tokens(state)
+                state.cleanup_after_eou()
+                ready_state_ids.add(frame.stream_id)
+
+    def transcribe_step_for_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> None:
+        """Transcribe a step for feature buffers"""
+        raise NotImplementedError("Feature buffer type is not supported for cache aware streaming.")
 
     def transcribe_step_for_frames(self, frames: list[Frame]) -> None:
         """
@@ -314,45 +327,47 @@ class CacheAwareCTCSpeechRecognizer(BaseRecognizer):
         After detecting EOU, it updates the state and run text postprocessor.
         If there are multiple streams, it waits until all states are ready to run text postprocessor.
         """
-        all_fbuffers, right_paddings = self.bufferer.update(frames)
 
+        all_fbuffers, right_paddings = self.bufferer.update(frames)
         ready_state_ids = set()
+
+        # streams that contains multiple frames
         if len(all_fbuffers) > 0:
-            nonfinal_frames, nonfinal_fbuffers = [], []
             final_frames, final_fbuffers = [], []
+            nonfinal_frames, nonfinal_fbuffers = [], []
             final_right_paddings = []
             for jdx, bfeature in enumerate(all_fbuffers):
-                frame = frames[jdx]
-                if frame.is_last:
-                    final_frames.append(frame)
+                bframe = frames[jdx]
+
+                if bframe.is_last:
+                    final_frames.append(bframe)
                     final_fbuffers.append(bfeature)
                     final_right_paddings.append(right_paddings[jdx])
                 else:
-                    nonfinal_frames.append(frame)
+                    nonfinal_frames.append(bframe)
                     nonfinal_fbuffers.append(bfeature)
 
             if len(nonfinal_frames) > 0:
                 self.cache_aware_transcribe_step(
                     nonfinal_frames, nonfinal_fbuffers, None, ready_state_ids, keep_all_outputs=False
                 )
+
             if len(final_frames) > 0:
                 self.cache_aware_transcribe_step(
                     final_frames, final_fbuffers, final_right_paddings, ready_state_ids, keep_all_outputs=True
                 )
 
-        # Postprocess the ready states
+        # post-process the ready states
         if len(ready_state_ids) > 0:
             self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
             ready_state_ids.clear()
 
         self.update_partial_transcript(frames, self.tokenizer, self.leading_regex_pattern)
 
-    def transcribe_step_for_feature_buffers(self, fbuffers: list[FeatureBuffer]) -> None:
-        """Transcribe a step for feature buffers"""
-        raise NotImplementedError("Feature buffer type is not supported for cache aware streaming.")
-
     def get_request_generator(self) -> ContinuousBatchedRequestStreamer:
         """Initialize the request generator."""
+
+        # for cache aware streaming we need to process one frame at a time -> n_frames_per_stream=1
         request_generator = ContinuousBatchedRequestStreamer(
             n_frames_per_stream=1,
             frame_size_in_secs=self.chunk_size_in_secs,

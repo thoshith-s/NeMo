@@ -19,14 +19,14 @@ from nemo.collections.asr.inference.streaming.framing.request import Request
 from nemo.collections.asr.inference.streaming.framing.request_options import ASRRequestOptions
 
 
-class RecognizerInterface(ABC):
+class PipelineInterface(ABC):
     """
-    The base interface for speech recognizers
-    Base usage for all recognizers:
-        recognizer.start_session()
+    The base interface for streaming speech pipelines
+    Base usage for all pipelines:
+        pipeline.start_session()
         for requests in request_generator:
-            recognizer.transcribe_step(requests)
-        recognizer.close_session()
+            pipeline.transcribe_step(requests)
+        pipeline.close_session()
     """
 
     @abstractmethod

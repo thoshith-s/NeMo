@@ -86,7 +86,7 @@ text_postprocessor:
 # ========================
 matmul_precision: high                        # Matrix multiplication precision: highest, high, medium
 log_level: 20                                 # Logging level: 0 (NOTSET), 10 (DEBUG), 20 (INFO), 30 (WARNING), 40 (ERROR), 50 (CRITICAL)
-recognizer_type: buffered                     # Recognizer type: buffered, cache_aware
+pipeline_type: buffered                       # Pipeline type: buffered, cache_aware
 asr_decoding_type: ctc                        # Decoding method: ctc or rnnt
 
 

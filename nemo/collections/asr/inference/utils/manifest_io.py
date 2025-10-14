@@ -17,7 +17,7 @@ import os
 
 import librosa
 
-from nemo.collections.asr.inference.recognizers.base_recognizer import RecognizerOutput
+from nemo.collections.asr.inference.pipelines.base_pipeline import PipelineOutput
 from nemo.collections.asr.inference.utils.constants import DEFAULT_OUTPUT_DIR_NAME
 from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
 from nemo.collections.common.parts.preprocessing.manifest import get_full_path
@@ -81,13 +81,13 @@ def get_stem(file_path: str) -> str:
 
 
 def dump_output(
-    audio_filepaths: list[str], output: RecognizerOutput, output_filename: str, output_dir: str | None = None
+    audio_filepaths: list[str], output: PipelineOutput, output_filename: str, output_dir: str | None = None
 ) -> None:
     """
     Dump the transcriptions to a output file
     Args:
         audio_filepaths: (list[str]) List of audio file
-        output (RecognizerOutput): Recognizer output
+        output (PipelineOutput): Pipeline output
         output_filename: (str) Path to the output file
         output_dir: (str | None) Path to the output directory, if None, will write at the same level as the output file
     """

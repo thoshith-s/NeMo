@@ -15,38 +15,38 @@
 from omegaconf.dictconfig import DictConfig
 
 from nemo.collections.asr.inference.factory.base_builder import BaseBuilder
-from nemo.collections.asr.inference.recognizers.cache_aware_ctc_recognizer import CacheAwareCTCSpeechRecognizer
-from nemo.collections.asr.inference.recognizers.cache_aware_rnnt_recognizer import CacheAwareRNNTSpeechRecognizer
+from nemo.collections.asr.inference.pipelines.cache_aware_ctc_pipeline import CacheAwareCTCPipeline
+from nemo.collections.asr.inference.pipelines.cache_aware_rnnt_pipeline import CacheAwareRNNTPipeline
 from nemo.collections.asr.inference.utils.enums import ASRDecodingType
 from nemo.collections.asr.parts.submodules.ctc_decoding import CTCDecodingConfig
 from nemo.collections.asr.parts.submodules.rnnt_decoding import RNNTDecodingConfig
 from nemo.utils import logging
 
 
-class CacheAwareSpeechRecognizerBuilder(BaseBuilder):
+class CacheAwarePipelineBuilder(BaseBuilder):
 
     @classmethod
-    def build(cls, cfg: DictConfig) -> CacheAwareCTCSpeechRecognizer | CacheAwareRNNTSpeechRecognizer:
+    def build(cls, cfg: DictConfig) -> CacheAwareCTCPipeline | CacheAwareRNNTPipeline:
         """
-        Build the cache aware streaming recognizer based on the config.
+        Build the cache aware streaming pipeline based on the config.
         Args:
             cfg: (DictConfig) Config
         Returns:
-            Returns CacheAwareCTCSpeechRecognizer or CacheAwareRNNTSpeechRecognizer object
+            Returns CacheAwareCTCPipeline or CacheAwareRNNTPipeline object
         """
         asr_decoding_type = ASRDecodingType.from_str(cfg.asr_decoding_type)
 
         if asr_decoding_type is ASRDecodingType.RNNT:
-            return cls.build_cache_aware_rnnt_speech_recognizer(cfg)
+            return cls.build_cache_aware_rnnt_pipeline(cfg)
         elif asr_decoding_type is ASRDecodingType.CTC:
-            return cls.build_cache_aware_ctc_speech_recognizer(cfg)
+            return cls.build_cache_aware_ctc_pipeline(cfg)
 
         raise ValueError("Invalid asr decoding type for cache aware streaming. Need to be one of ['CTC', 'RNNT']")
 
     @classmethod
     def get_rnnt_decoding_cfg(cls) -> RNNTDecodingConfig:
         """
-        Get the decoding config for the RNNT recognizer.
+        Get the decoding config for the RNNT pipeline.
         Returns:
             (RNNTDecodingConfig) Decoding config
         """
@@ -61,7 +61,7 @@ class CacheAwareSpeechRecognizerBuilder(BaseBuilder):
     @classmethod
     def get_ctc_decoding_cfg(cls) -> CTCDecodingConfig:
         """
-        Get the decoding config for the CTC recognizer.
+        Get the decoding config for the CTC pipeline.
         Returns:
             (CTCDecodingConfig) Decoding config
         """
@@ -71,13 +71,13 @@ class CacheAwareSpeechRecognizerBuilder(BaseBuilder):
         return decoding_cfg
 
     @classmethod
-    def build_cache_aware_rnnt_speech_recognizer(cls, cfg: DictConfig) -> CacheAwareRNNTSpeechRecognizer:
+    def build_cache_aware_rnnt_pipeline(cls, cfg: DictConfig) -> CacheAwareRNNTPipeline:
         """
-        Build the cache aware RNNT streaming recognizer based on the config.
+        Build the cache aware RNNT streaming pipeline based on the config.
         Args:
             cfg: (DictConfig) Config
         Returns:
-            Returns CacheAwareRNNTSpeechRecognizer object
+            Returns CacheAwareRNNTPipeline object
         """
         # building ASR model
         decoding_cfg = cls.get_rnnt_decoding_cfg()
@@ -99,18 +99,18 @@ class CacheAwareSpeechRecognizerBuilder(BaseBuilder):
         if itn_model is not None:
             logging.info("ITN model loaded")
 
-        ca_rnnt_recognizer = CacheAwareRNNTSpeechRecognizer(cfg, asr_model, pnc_model=pnc_model, itn_model=itn_model)
-        logging.info(f"`{type(ca_rnnt_recognizer).__name__}` recognizer loaded")
-        return ca_rnnt_recognizer
+        ca_rnnt_pipeline = CacheAwareRNNTPipeline(cfg, asr_model, pnc_model=pnc_model, itn_model=itn_model)
+        logging.info(f"`{type(ca_rnnt_pipeline).__name__}` pipeline loaded")
+        return ca_rnnt_pipeline
 
     @classmethod
-    def build_cache_aware_ctc_speech_recognizer(cls, cfg: DictConfig) -> CacheAwareCTCSpeechRecognizer:
+    def build_cache_aware_ctc_pipeline(cls, cfg: DictConfig) -> CacheAwareCTCPipeline:
         """
-        Build the cache aware CTC streaming recognizer based on the config.
+        Build the cache aware CTC streaming pipeline based on the config.
         Args:
             cfg: (DictConfig) Config
         Returns:
-            Returns CacheAwareCTCSpeechRecognizer object
+            Returns CacheAwareCTCPipeline object
         """
         # building ASR model
         decoding_cfg = cls.get_ctc_decoding_cfg()
@@ -132,6 +132,6 @@ class CacheAwareSpeechRecognizerBuilder(BaseBuilder):
         if itn_model is not None:
             logging.info("ITN model loaded")
 
-        ca_ctc_recognizer = CacheAwareCTCSpeechRecognizer(cfg, asr_model, pnc_model=pnc_model, itn_model=itn_model)
-        logging.info(f"`{type(ca_ctc_recognizer).__name__}` recognizer loaded")
-        return ca_ctc_recognizer
+        ca_ctc_pipeline = CacheAwareCTCPipeline(cfg, asr_model, pnc_model=pnc_model, itn_model=itn_model)
+        logging.info(f"`{type(ca_ctc_pipeline).__name__}` pipeline loaded")
+        return ca_ctc_pipeline

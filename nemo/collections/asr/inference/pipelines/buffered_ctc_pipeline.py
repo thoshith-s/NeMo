@@ -22,7 +22,7 @@ from omegaconf import DictConfig
 from torch import Tensor
 
 from nemo.collections.asr.inference.asr.ctc_inference import CTCInference
-from nemo.collections.asr.inference.recognizers.base_recognizer import BaseRecognizer
+from nemo.collections.asr.inference.pipelines.base_pipeline import BasePipeline
 from nemo.collections.asr.inference.streaming.buffering.audio_bufferer import BatchedAudioBufferer
 from nemo.collections.asr.inference.streaming.buffering.feature_bufferer import BatchedFeatureBufferer
 from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_ctc_decoder import ClippedCTCGreedyDecoder
@@ -34,7 +34,7 @@ from nemo.collections.asr.inference.streaming.state.ctc_state import CTCStreamin
 from nemo.collections.asr.inference.streaming.text.text_processing import StreamingTextPostprocessor
 from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.enums import FeatureBufferPaddingMode, RequestType
-from nemo.collections.asr.inference.utils.recognizer_utils import (
+from nemo.collections.asr.inference.utils.pipeline_utils import (
     drop_trailing_features,
     get_confidence_utils,
     normalize_features,
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from nemo.collections.asr.inference.pnc.punctuation_capitalizer import PunctuationCapitalizer
 
 
-class CTCBufferedSpeechRecognizer(BaseRecognizer):
+class BufferedCTCPipeline(BasePipeline):
 
     def __init__(
         self,
