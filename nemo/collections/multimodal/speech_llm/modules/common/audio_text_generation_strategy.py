@@ -16,7 +16,7 @@ from typing import List, Optional, Tuple
 
 import torch
 
-import nemo.collections.nlp.modules.common.text_generation_strategy as text_generation_strategy
+import nemo.collections.multimodal.speech_llm.modules.common.text_generation_strategy as text_generation_strategy
 from nemo.collections.multimodal.speech_llm.parts.utils.data_utils import shift_tokens_by_multi_audios
 from nemo.collections.nlp.modules.common.megatron.utils import build_position_ids
 
