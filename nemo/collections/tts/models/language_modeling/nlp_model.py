@@ -31,7 +31,6 @@ from transformers import TRANSFORMERS_CACHE
 from nemo.collections.common.tokenizers.huggingface.auto_tokenizer import AutoTokenizer
 from nemo.collections.common.tokenizers.tokenizer_utils import get_tokenizer
 from nemo.collections.nlp.modules import BertModule
-from nemo.collections.nlp.modules.common.lm_utils import get_lm_model
 from nemo.collections.nlp.modules.common.megatron.megatron_utils import (
     MEGATRON_CONFIG_MAP,
     get_megatron_pretrained_bert_models,
@@ -67,6 +66,93 @@ VOCAB_FILE_NAME = {
     "T5Tokenizer": "spiece.model",
     "BartTokenizer": "vocab.json",
 }
+
+
+def get_lm_model(
+    config_dict: Optional[dict] = None,
+    config_file: Optional[str] = None,
+    vocab_file: Optional[str] = None,
+    trainer: Optional[Trainer] = None,
+    cfg: DictConfig = None,
+) -> BertModule:
+    """
+    Helper function to instantiate a language model encoder, either from scratch or a pretrained model.
+    If only pretrained_model_name are passed, a pretrained model is returned.
+    If a configuration is passed, whether as a file or dictionary, the model is initialized with random weights.
+
+    Args:
+        config_dict: path to the model configuration dictionary
+        config_file: path to the model configuration file
+        vocab_file: path to vocab_file to be used with Megatron-LM
+        trainer: an instance of a PyTorch Lightning trainer
+        cfg: a model configuration
+    Returns:
+        Pretrained BertModule
+    """
+
+    # check valid model type
+    if cfg.language_model.get('pretrained_model_name'):
+        if (
+            not cfg.language_model.pretrained_model_name
+            or cfg.language_model.pretrained_model_name not in get_pretrained_lm_models_list(include_external=False)
+        ):
+            logging.warning(
+                f'{cfg.language_model.pretrained_model_name} is not in get_pretrained_lm_models_list(include_external=False), '
+                f'will be using AutoModel from HuggingFace.'
+            )
+
+    # warning when user passes both configuration dict and file
+    if config_dict and config_file:
+        logging.warning(
+            f"Both config_dict and config_file were found, defaulting to use config_file: {config_file} will be used."
+        )
+
+    pretrain_model_name = ''
+    if cfg.get('language_model') and cfg.language_model.get('pretrained_model_name', ''):
+        pretrain_model_name = cfg.language_model.get('pretrained_model_name', '')
+
+    from nemo.collections.nlp.modules.common.megatron.megatron_utils import list_available_models
+
+    def get_megatron_pretrained_bert_models() -> List[str]:
+
+        all_pretrained_megatron_bert_models = [model.pretrained_model_name for model in list_available_models()]
+        return all_pretrained_megatron_bert_models
+
+    all_pretrained_megatron_bert_models = get_megatron_pretrained_bert_models()
+    if (
+        cfg.tokenizer is not None
+        and cfg.tokenizer.get("tokenizer_name", "") is not None
+        and "megatron" in cfg.tokenizer.get("tokenizer_name", "")
+    ) or pretrain_model_name in all_pretrained_megatron_bert_models:
+        import torch
+
+        try:
+            from nemo.collections.nlp.models.language_modeling.megatron_bert_model import MegatronBertModel
+        except (ImportError, ModuleNotFoundError):
+            from abc import ABC
+
+            MegatronBertModel = ABC
+
+        class Identity(torch.nn.Module):
+            def __init__(self):
+                super(Identity, self).__init__()
+
+            def forward(self, x, *args):
+                return x
+
+        if cfg.language_model.get("lm_checkpoint"):
+            model = MegatronBertModel.restore_from(restore_path=cfg.language_model.lm_checkpoint, trainer=trainer)
+        else:
+            model = MegatronBertModel.from_pretrained(cfg.language_model.get('pretrained_model_name'), trainer=trainer)
+        # remove the headers that are only revelant for pretraining
+        model.model.lm_head = Identity()
+        model.model.binary_head = Identity()
+        model.model.language_model.pooler = Identity()
+
+    else:
+        raise ValueError("Model type is not supported.")
+
+    return model
 
 
 class NLPModel(ModelPT, Exportable):

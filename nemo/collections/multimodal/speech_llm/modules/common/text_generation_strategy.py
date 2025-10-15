@@ -23,7 +23,6 @@ import torch
 from transformers import CLIPImageProcessor
 
 from nemo.collections.common.tokenizers.chat_template_mixin import explode_chat_template_input, is_chat_input
-from nemo.collections.nlp.modules.common.lm_utils import pad_batch
 from nemo.collections.nlp.modules.common.megatron.module import Float16Module
 from nemo.collections.nlp.modules.common.megatron.utils import get_ltor_masks_and_position_ids
 from nemo.utils import logging
@@ -49,6 +48,17 @@ except (ImportError, ModuleNotFoundError):
 
 # the text representation of eos_id, it applies for all tokenizers
 END_OF_SEQ = '<|endoftext|>'
+
+
+def pad_batch(batch, pad_id, max_len):
+    context_lengths = []
+    max_context_length = max([len(tokens) for tokens in batch])
+    for tokens in batch:
+        context_length = len(tokens)
+        if context_length < max_context_length + max_len:
+            tokens.extend([pad_id] * (max_context_length + max_len - context_length))
+        context_lengths.append(context_length)
+    return batch, context_lengths
 
 
 class TextGenerationStrategy:
