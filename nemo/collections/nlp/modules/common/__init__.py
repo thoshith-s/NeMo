@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from nemo.collections.common.tokenizers.tokenizer_utils import get_tokenizer, get_tokenizer_list
 from nemo.collections.nlp.modules.common.bert_module import BertModule
 from nemo.collections.nlp.modules.common.huggingface import (
     AlbertEncoder,
@@ -33,4 +34,3 @@ from nemo.collections.nlp.modules.common.sequence_classifier import SequenceClas
 from nemo.collections.nlp.modules.common.sequence_regression import SequenceRegression
 from nemo.collections.nlp.modules.common.sequence_token_classifier import SequenceTokenClassifier
 from nemo.collections.nlp.modules.common.token_classifier import BertPretrainingTokenClassifier, TokenClassifier
-from nemo.collections.common.tokenizers.tokenizer_utils import get_tokenizer, get_tokenizer_list

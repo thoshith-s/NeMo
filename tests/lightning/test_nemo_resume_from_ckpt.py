@@ -31,8 +31,8 @@ from megatron.core.transformer.enums import AttnBackend
 
 import nemo.lightning as nl
 from nemo.collections import llm
-from nemo.collections.llm.gpt.data import PreTrainingDataModule
 from nemo.collections.common.tokenizers.tokenizer_utils import get_nmt_tokenizer
+from nemo.collections.llm.gpt.data import PreTrainingDataModule
 from nemo.lightning.pytorch.callbacks import ModelCheckpoint
 from nemo.lightning.pytorch.optim import CosineAnnealingScheduler
 from nemo.lightning.pytorch.optim.megatron import MegatronOptimizerModule
