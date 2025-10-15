@@ -9,4 +9,4 @@ Beyond streaming ASR, the script also supports:
 * **End-of-Utterance (EoU) Detection**
 * **Word-level and Segment-level Output**
 
-All related configurations can be found in the `../conf/asr_streaming_infer/` directory.
+All related configurations can be found in the `../conf/asr_streaming_inference/` directory.

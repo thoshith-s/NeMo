@@ -24,7 +24,7 @@ The script performs the following steps:
 
 Example usage:
 python asr_streaming_infer.py \
-        --config-path=../conf/asr_streaming_infer/ \
+        --config-path=../conf/asr_streaming_inference/ \
         --config-name=config.yaml \
         audio_file=<path to audio file, directory of audio files, or manifest file> \
         output_filename=<path to output jsonfile> \
@@ -33,7 +33,7 @@ python asr_streaming_infer.py \
         enable_itn=True \
         asr_output_granularity=segment \
         ...
-        # See ../conf/asr_streaming_infer/*.yaml for all available options
+        # See ../conf/asr_streaming_inference/*.yaml for all available options
 
 Note:
     The output file is a json file with the following structure:
