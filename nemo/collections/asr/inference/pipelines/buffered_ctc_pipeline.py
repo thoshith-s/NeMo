@@ -111,9 +111,7 @@ class BufferedCTCPipeline(BasePipeline):
 
     def init_greedy_ctc_decoder(self) -> None:
         """Initialize the CTC decoder."""
-        check_existance_of_required_attributes(
-            self, ['vocabulary', 'conf_func', 'endpointer', 'tokens_per_frame']
-        )
+        check_existance_of_required_attributes(self, ['vocabulary', 'conf_func', 'endpointer', 'tokens_per_frame'])
         self.greedy_ctc_decoder = ClippedCTCGreedyDecoder(
             vocabulary=self.vocabulary,
             conf_func=self.conf_func,
