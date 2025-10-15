@@ -14,6 +14,3 @@ On the other hand, if you increase your chunk size, then the delay between spoke
 
 For MultitaskAED models, we provide a script to perform chunked inference. This script will split the input audio into non-overlapping chunks and perform inference on each chunk. The script will then concatenate the results to provide the final transcript.
 
-## Universal Streaming Inference
-
-We also provide a script (`asr_streaming_infer.py`) for performing streaming inference with buffered (CTC/RNNT/TDT) and cache-aware (CTC/RNNT) models. This script can process a single audio file, a directory of audio files, or a manifest file. In addition to streaming ASR, the script supports Punctuation and Capitalization, Inverse Text Normalization, and End of Utterance detection. It also provides both word-level and segment-level output. All related configurations are available in the `../conf/asr_chunked_inference/` directory.
