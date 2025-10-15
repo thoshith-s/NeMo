@@ -891,7 +891,6 @@ def model_inference_strategy_dispatcher(model, **args):
         )
         from nemo.collections.nlp.models.language_modeling.megatron_griffin_model import MegatronGriffinModel
         from nemo.collections.nlp.models.language_modeling.megatron_mamba_model import MegatronMambaModel
-        from nemo.collections.nlp.models.language_modeling.megatron_retrieval_model import MegatronRetrievalModel
         from nemo.collections.nlp.models.language_modeling.megatron_retro_model import MegatronRetroModel
     except (ImportError, ModuleNotFoundError):
         from abc import ABC
@@ -900,14 +899,7 @@ def model_inference_strategy_dispatcher(model, **args):
         MegatronGPTPromptLearningModel = ABC
         MegatronGriffinModel = ABC
         MegatronMambaModel = ABC
-        MegatronRetrievalModel = ABC
         MegatronRetroModel = ABC
-
-    from nemo.collections.nlp.modules.common.retro_inference_strategies import (
-        RetroFileQAModelTextGenerationStrategy,
-        RetroModelTextGenerationStrategy,
-        RetroQAModelTextGenerationStrategy,
-    )
 
     if isinstance(model, MegatronGriffinModel):
         return GriffinModelTextGenerationStrategy(model)
@@ -917,19 +909,6 @@ def model_inference_strategy_dispatcher(model, **args):
         return PromptLearningModelTextGenerationStrategy(model, **args)
     elif isinstance(model, MegatronGPTModel) and not (isinstance(model, MegatronRetroModel)):
         return GPTModelTextGenerationStrategy(model)
-    elif isinstance(model, MegatronRetrievalModel):
-        strategy_name = args['strategy']
-        del args['strategy']
-        megatron_lm_compatible = model.model.megatron_lm_compatible
-        args['megatron_lm_compatible'] = megatron_lm_compatible
-        if strategy_name == 'RetroModelTextGenerationStrategy':
-            return RetroModelTextGenerationStrategy(model, **args)
-        elif strategy_name == 'RetroQAModelTextGenerationStrategy':
-            return RetroQAModelTextGenerationStrategy(model, **args)
-        elif strategy_name == 'RetroFileQAModelTextGenerationStrategy':
-            return RetroFileQAModelTextGenerationStrategy(model, **args)
-        else:
-            raise ValueError(f'{strategy_name} is not supported for inference')
     elif isinstance(model, MegatronRetroModel):
         return McoreRetroModelTextGenerationStrategy(model)
     else:
