@@ -17,9 +17,9 @@ from typing import Dict, Optional
 import torch
 from torch import nn as nn
 
-from nemo.collections.common.parts import transformer_weights_init, MultiLayerPerceptron
-from nemo.core.classes import typecheck, Exportable, NeuralModule
-from nemo.core.neural_types import LogitsType, LogprobsType, ChannelType, NeuralType
+from nemo.collections.common.parts import MultiLayerPerceptron, transformer_weights_init
+from nemo.core.classes import Exportable, NeuralModule, typecheck
+from nemo.core.neural_types import ChannelType, LogitsType, LogprobsType, NeuralType
 
 __all__ = ['Classifier', 'TokenClassifier']
 
@@ -37,7 +37,11 @@ class Classifier(NeuralModule, Exportable):
         """
         return {"hidden_states": NeuralType(('B', 'T', 'D'), ChannelType())}
 
-    def __init__(self, hidden_size: int, dropout: float = 0.0,) -> None:
+    def __init__(
+        self,
+        hidden_size: int,
+        dropout: float = 0.0,
+    ) -> None:
         """
         Initializes the Classifier base module.
         Args:
@@ -84,6 +88,7 @@ class Classifier(NeuralModule, Exportable):
         """
         pass
 
+
 class TokenClassifier(Classifier):
     """
     A module to perform token level classification tasks such as Named entity recognition.
@@ -109,7 +114,6 @@ class TokenClassifier(Classifier):
         dropout: float = 0.0,
         use_transformer_init: bool = True,
     ) -> None:
-
         """
         Initializes the Token Classifier module.
 
