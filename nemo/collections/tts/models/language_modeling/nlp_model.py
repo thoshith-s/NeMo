@@ -31,7 +31,6 @@ from transformers import TRANSFORMERS_CACHE
 from nemo.collections.common.tokenizers.huggingface.auto_tokenizer import AutoTokenizer
 from nemo.collections.common.tokenizers.tokenizer_utils import get_tokenizer
 from nemo.collections.nlp.modules import BertModule
-from nemo.collections.nlp.modules.common.huggingface.huggingface_utils import VOCAB_FILE_NAME
 from nemo.collections.nlp.modules.common.lm_utils import get_lm_model
 from nemo.collections.nlp.modules.common.megatron.megatron_utils import (
     MEGATRON_CONFIG_MAP,
@@ -57,6 +56,18 @@ __all__ = ['NLPModel']
 NEMO_NLP_TMP = os.path.join(os.path.dirname(str(TRANSFORMERS_CACHE)), "nemo_nlp_tmp")
 
 os.makedirs(NEMO_NLP_TMP, exist_ok=True)
+
+VOCAB_FILE_NAME = {
+    "AlbertTokenizer": "spiece.model",
+    "RobertaTokenizer": "vocab.json",
+    "BertTokenizer": "vocab.txt",
+    "DistilBertTokenizer": "vocab.txt",
+    "CamembertTokenizer": "sentencepiece.bpe.model",
+    "GPT2Tokenizer": "vocab.json",
+    "T5Tokenizer": "spiece.model",
+    "BartTokenizer": "vocab.json",
+}
+
 
 
 class NLPModel(ModelPT, Exportable):
