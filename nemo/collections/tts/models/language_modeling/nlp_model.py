@@ -69,7 +69,6 @@ VOCAB_FILE_NAME = {
 }
 
 
-
 class NLPModel(ModelPT, Exportable):
     """Base class for NLP Models."""
 
