@@ -29,6 +29,21 @@ from nemo.collections.asr.parts.utils.asr_confidence_utils import (
 )
 
 
+def check_existance_of_required_attributes(obj: object, required_args: list[str]) -> None:
+    """
+    Check if the required attributes exist in the object
+    Args:
+        obj: (object) Object to check the attributes of
+        required_args: (list[str]) List of required attributes
+    """
+    not_found_args = []
+    for arg in required_args:
+        if not hasattr(obj, arg):
+            not_found_args.append(arg)
+    if not_found_args:
+        raise ValueError(f"Required attributes not found: {not_found_args}")
+
+
 def normalize_features(features: Tensor, feature_lens: Tensor = None) -> Tensor:
     """Normalize the features.
     Args:

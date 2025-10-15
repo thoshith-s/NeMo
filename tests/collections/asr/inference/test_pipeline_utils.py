@@ -19,6 +19,7 @@ import pytest
 import torch
 
 from nemo.collections.asr.inference.utils.pipeline_utils import (
+    check_existance_of_required_attributes,
     drop_trailing_features,
     get_leading_punctuation_regex_pattern,
     get_repeated_punctuation_regex_pattern,
@@ -67,3 +68,11 @@ class TestPipelineUtils:
         puncts = {"!", "?", ".", ","}
         pattern = get_repeated_punctuation_regex_pattern(puncts)
         assert re.sub(pattern, r'\1', text) == expected_text
+
+    @pytest.mark.unit
+    def test_check_existance_of_required_attributes(self):
+        class TestClass:
+            pass
+
+        with pytest.raises(ValueError):
+            check_existance_of_required_attributes(TestClass, ['test_attr'])

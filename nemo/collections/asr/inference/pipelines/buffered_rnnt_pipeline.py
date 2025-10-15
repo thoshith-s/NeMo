@@ -23,19 +23,16 @@ from torch import Tensor
 
 from nemo.collections.asr.inference.model_wrappers.rnnt_inference_wrapper import RNNTInferenceWrapper
 from nemo.collections.asr.inference.pipelines.base_pipeline import BasePipeline
-from nemo.collections.asr.inference.streaming.buffering.audio_bufferer import BatchedAudioBufferer
-from nemo.collections.asr.inference.streaming.buffering.feature_bufferer import BatchedFeatureBufferer
 from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_rnnt_decoder import ClippedRNNTGreedyDecoder
 from nemo.collections.asr.inference.streaming.endpointing.greedy.greedy_rnnt_endpointing import RNNTGreedyEndpointing
 from nemo.collections.asr.inference.streaming.framing.multi_stream import ContinuousBatchedRequestStreamer
 from nemo.collections.asr.inference.streaming.framing.request import FeatureBuffer, Frame, Request
 from nemo.collections.asr.inference.streaming.framing.request_options import ASRRequestOptions
 from nemo.collections.asr.inference.streaming.state.rnnt_state import RNNTStreamingState
-from nemo.collections.asr.inference.streaming.text.text_processing import StreamingTextPostprocessor
-from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
 from nemo.collections.asr.inference.utils.enums import FeatureBufferPaddingMode, RequestType
 from nemo.collections.asr.inference.utils.pipeline_utils import (
     adjust_vad_segments,
+    check_existance_of_required_attributes,
     drop_trailing_features,
     get_confidence_utils,
     normalize_features,
@@ -59,19 +56,27 @@ class BufferedRNNTPipeline(BasePipeline):
     ):
 
         self.copy_asr_model_attributes(asr_model)
+        self.init_parameters(cfg)
+        self.init_bufferer_for_buffered_streaming()
+        self.conf_func, self.confidence_aggregator = get_confidence_utils(cfg.confidence)
+        self.init_endpointer()
+        self.init_greedy_rnnt_decoder()
+        self.init_bpe_decoder()
+        self.init_decoding_computer()
+        self.init_text_processor(cfg, pnc_model, itn_model)
+        super().__init__()
 
-        self.tokens_to_move = self.punctuation_ids.union(self.language_token_ids)
+    def init_parameters(self, cfg: DictConfig) -> None:
+        """Initialize the configuration parameters."""
         self.asr_output_granularity = cfg.asr_output_granularity
-
-        # Streaming related fields
-        self.streaming_cfg = cfg.streaming
-        self.sample_rate = self.streaming_cfg.sample_rate
-        self.stateful = self.streaming_cfg.stateful
+        self.sample_rate = cfg.streaming.sample_rate
+        self.stateful = cfg.streaming.stateful
         self.stateless = not self.stateful
+        self.batch_size = cfg.streaming.batch_size
 
-        self.chunk_size = self.streaming_cfg.chunk_size
-        self.left_padding_size = self.streaming_cfg.left_padding_size
-        self.right_padding_size = self.streaming_cfg.right_padding_size
+        self.chunk_size = cfg.streaming.chunk_size
+        self.left_padding_size = cfg.streaming.left_padding_size
+        self.right_padding_size = cfg.streaming.right_padding_size
         self.buffer_size_in_secs = self.chunk_size + self.left_padding_size + self.right_padding_size
         self.expected_feature_buffer_len = int(self.buffer_size_in_secs / self.window_stride)
 
@@ -84,10 +89,8 @@ class BufferedRNNTPipeline(BasePipeline):
         self.tokens_per_right_padding = math.ceil(self.tokens_per_right_padding_float)
 
         if self.stateful:
-            effective_buffer_size_in_secs = self.chunk_size + self.right_padding_size
             self.initial_delay = self.right_padding_size / self.model_stride_in_secs
         else:
-            effective_buffer_size_in_secs = self.buffer_size_in_secs
             self.initial_delay = (self.left_padding_size + self.right_padding_size) / self.model_stride_in_secs
 
         if self.stateful and (
@@ -101,92 +104,71 @@ class BufferedRNNTPipeline(BasePipeline):
             self.chunk_size = self.tokens_per_frame * self.model_stride_in_secs
             self.right_padding_size = self.tokens_per_right_padding * self.model_stride_in_secs
             self.buffer_size_in_secs = self.chunk_size + self.left_padding_size + self.right_padding_size
-            self.tokens_per_buffer_float = self.buffer_size_in_secs / self.model_stride_in_secs
-            self.streaming_cfg.left_padding_size = self.left_padding_size
-            self.streaming_cfg.chunk_size = self.chunk_size
 
-        # Request type
-        self.request_type = RequestType.from_str(self.streaming_cfg.request_type)
-        if self.request_type is RequestType.FEATURE_BUFFER:
-            # Feature buffering: It will be used when the input is feature buffers
-            self.bufferer = BatchedFeatureBufferer(
-                sample_rate=self.sample_rate,
-                buffer_size_in_secs=self.buffer_size_in_secs,
-                preprocessor_cfg=self.preprocessor_config,
-                device=self.device,
-            )
-        elif self.request_type is RequestType.FRAME:
-            # Audio buffering: It will be used when the input is audio frames
-            self.bufferer = BatchedAudioBufferer(
-                sample_rate=self.sample_rate, buffer_size_in_secs=self.buffer_size_in_secs
-            )
+        self.request_type = RequestType.from_str(cfg.streaming.request_type)
+        self.padding_mode = FeatureBufferPaddingMode.from_str(cfg.streaming.padding_mode)
+        self.right_padding = self.padding_mode is FeatureBufferPaddingMode.RIGHT
+        self.stop_history_eou_in_milliseconds = cfg.endpointing.stop_history_eou
+        self.residue_tokens_at_end = cfg.endpointing.residue_tokens_at_end
+        self.word_boundary_tolerance = cfg.streaming.word_boundary_tolerance
+        self.return_tail_result = cfg.return_tail_result
+        self.tokens_to_move = self.punctuation_ids.union(self.language_token_ids)
+
+        # Keep small amount of extra padding
+        self.tail_padding_in_samples = max(int(self.chunk_size * self.sample_rate * 0.45), 6400)
+        self.zero_encoded = self.init_zero_enc() if self.right_padding else None
+
+    def init_endpointer(self) -> None:
+        """Initialize the endpointer."""
+        check_existance_of_required_attributes(
+            self,
+            [
+                'stateful',
+                'chunk_size',
+                'right_padding_size',
+                'buffer_size_in_secs',
+                'vocabulary',
+                'model_stride_in_milliseconds',
+                'stop_history_eou_in_milliseconds',
+                'residue_tokens_at_end',
+            ],
+        )
+
+        if self.stateful:
+            effective_buffer_size_in_secs = self.chunk_size + self.right_padding_size
         else:
-            raise ValueError(f"Unknown request type: {self.request_type}")
+            effective_buffer_size_in_secs = self.buffer_size_in_secs
 
-        # Confidence related fields
-        self.conf_func, self.confidence_aggregator = get_confidence_utils(cfg.confidence)
-
-        # Endpointing related fields
-        self.stop_history_eou_in_millisecs = cfg.endpointing.stop_history_eou
         self.endpointer = RNNTGreedyEndpointing(
             vocabulary=self.vocabulary,
             ms_per_timestep=self.model_stride_in_milliseconds,
             effective_buffer_size_in_secs=effective_buffer_size_in_secs,
-            stop_history_eou=self.stop_history_eou_in_millisecs,
-            residue_tokens_at_end=cfg.endpointing.residue_tokens_at_end,
+            stop_history_eou=self.stop_history_eou_in_milliseconds,
+            residue_tokens_at_end=self.residue_tokens_at_end,
         )
 
-        # Greedy RNNT decoder
+    def init_greedy_rnnt_decoder(self) -> None:
+        """Initialize the greedy RNNT decoder."""
+        check_existance_of_required_attributes(self, ['vocabulary', 'conf_func', 'endpointer', 'tokens_per_frame'])
         self.greedy_rnnt_decoder = ClippedRNNTGreedyDecoder(
             vocabulary=self.vocabulary,
             conf_func=self.conf_func,
             endpointer=self.endpointer,
             tokens_per_frame=self.tokens_per_frame,
         )
-        self.return_tail_result = cfg.return_tail_result
 
-        # BPE Decoder
-        self.bpe_decoder = BPEDecoder(
-            vocabulary=self.vocabulary,
-            tokenizer=self.tokenizer,
-            confidence_aggregator=self.confidence_aggregator,
-            asr_supported_puncts=self.asr_supported_puncts,
-            word_boundary_tolerance=self.streaming_cfg.word_boundary_tolerance,
-            token_duration_in_secs=self.model_stride_in_secs,
-        )
-
-        # Decoding computer
+    def init_decoding_computer(self) -> None:
+        """Initialize the decoding computer."""
+        check_existance_of_required_attributes(self, ['stateful', 'asr_model'])
         self.decoding_computer = None
         if self.stateful:
             self.decoding_computer = self.asr_model.asr_model.decoding.decoding.decoding_computer
 
-        # PnC and ITN related fields
-        self.text_postprocessor = StreamingTextPostprocessor(
-            pnc_cfg=cfg.pnc,
-            itn_cfg=cfg.itn,
-            pnc_model=pnc_model,
-            itn_model=itn_model,
-            asr_supported_puncts=self.asr_supported_puncts,
-            asr_supports_punctuation=self.supports_punctuation,
-            confidence_aggregator=self.confidence_aggregator,
-            sep=self.sep,
-            segment_separators=self.segment_separators,
-            enable_pnc=cfg.enable_pnc,
-            enable_itn=cfg.enable_itn,
-        )
-
-        self.padding_mode = FeatureBufferPaddingMode.from_str(self.streaming_cfg.padding_mode)
-        self.right_padding = self.padding_mode is FeatureBufferPaddingMode.RIGHT
-        self.tail_padding_in_samples = int(self.chunk_size * self.sample_rate * 0.45)
-        self.tail_padding_in_samples = max(self.tail_padding_in_samples, 6400)
-        self.zero_encoded = None
-        if self.right_padding:
-            self.zero_encoded = self.init_zero_enc()
-
-        super().__init__()
-
     def init_zero_enc(self) -> Tensor:
         """Initialize the encoder output for the zero buffer."""
+        check_existance_of_required_attributes(
+            self, ['buffer_size_in_secs', 'sample_rate', 'device', 'expected_feature_buffer_len']
+        )
         buffer_size_in_samples = int(self.buffer_size_in_secs * self.sample_rate)
         zero_buffer = torch.zeros(1, buffer_size_in_samples, device=self.device)
         zero_features, zero_features_len = self.preprocess(
@@ -199,25 +181,21 @@ class BufferedRNNTPipeline(BasePipeline):
         )
         return zero_encoded[0]
 
-    def reset_session(self) -> None:
-        """Reset the frame buffer and internal state pool."""
-        super().reset_session()
-
     def create_state(self, options: ASRRequestOptions) -> RNNTStreamingState:
         """Create new empty state."""
         state = RNNTStreamingState()
         state.set_global_offset(-self.initial_delay)
         new_options = options.augment_with_defaults(
-            default_enable_itn=self.text_postprocessor.is_itn_enabled(),
-            default_enable_pnc=self.text_postprocessor.is_pnc_enabled(),
-            default_stop_history_eou=self.stop_history_eou_in_millisecs,
+            default_enable_itn=self.text_processor.is_itn_enabled(),
+            default_enable_pnc=self.text_processor.is_pnc_enabled(),
+            default_stop_history_eou=self.stop_history_eou_in_milliseconds,
             default_asr_output_granularity=self.asr_output_granularity,
         )
         state.set_options(new_options)
         return state
 
     def get_sep(self) -> str:
-        """Return the separator for the text postprocessor."""
+        """Return the separator for the text processor."""
         return self.sep
 
     def preprocess(
@@ -520,7 +498,7 @@ class BufferedRNNTPipeline(BasePipeline):
                     ready_state_ids,
                 )
             if len(ready_state_ids) > 0:
-                self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
+                self.text_processor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
                 ready_state_ids.clear()
             postponed_requests = next_postponed_requests.copy()
             next_postponed_requests.clear()
@@ -530,8 +508,8 @@ class BufferedRNNTPipeline(BasePipeline):
     def shared_transcribe_step(self, requests: list[Request], encs: Tensor, enc_lens: Tensor) -> None:
         """
         Transcribes the frames in a streaming manner.
-        After detecting EOU, it updates the state and run text postprocessor.
-        If there are multiple streams, it waits until all stated are ready to run text postprocessor.
+        After detecting EOU, it updates the state and run text processor.
+        If there are multiple streams, it waits until all stated are ready to run text processor.
         """
         postponed_requests = [(ridx, request.stream_id) for ridx, request in enumerate(requests)]
         next_postponed_requests = []
@@ -559,7 +537,7 @@ class BufferedRNNTPipeline(BasePipeline):
                 )
 
             if len(ready_state_ids) > 0:
-                self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
+                self.text_processor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
                 ready_state_ids.clear()
 
             postponed_requests = next_postponed_requests.copy()
@@ -599,7 +577,7 @@ class BufferedRNNTPipeline(BasePipeline):
             n_frames_per_stream=1,
             frame_size_in_secs=self.chunk_size,
             sample_rate=self.sample_rate,
-            batch_size=self.streaming_cfg.batch_size,
+            batch_size=self.batch_size,
             request_type=self.request_type,
             preprocessor=self.preprocessor,
             buffer_size_in_secs=self.buffer_size_in_secs,

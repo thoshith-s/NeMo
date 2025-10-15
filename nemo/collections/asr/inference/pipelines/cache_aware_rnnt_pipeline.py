@@ -26,19 +26,18 @@ from nemo.collections.asr.inference.model_wrappers.cache_aware_rnnt_inference_wr
     CacheAwareRNNTInferenceWrapper,
 )
 from nemo.collections.asr.inference.pipelines.base_pipeline import BasePipeline
-from nemo.collections.asr.inference.streaming.buffering.cache_feature_bufferer import BatchedCacheFeatureBufferer
 from nemo.collections.asr.inference.streaming.decoders.greedy.greedy_rnnt_decoder import RNNTGreedyDecoder
 from nemo.collections.asr.inference.streaming.endpointing.greedy.greedy_rnnt_endpointing import RNNTGreedyEndpointing
 from nemo.collections.asr.inference.streaming.framing.multi_stream import ContinuousBatchedRequestStreamer
 from nemo.collections.asr.inference.streaming.framing.request import FeatureBuffer, Frame
 from nemo.collections.asr.inference.streaming.framing.request_options import ASRRequestOptions
 from nemo.collections.asr.inference.streaming.state.cache_aware_rnnt_state import CacheAwareRNNTStreamingState
-from nemo.collections.asr.inference.streaming.text.text_processing import StreamingTextPostprocessor
-from nemo.collections.asr.inference.utils.bpe_decoder import BPEDecoder
-from nemo.collections.asr.inference.utils.context_manager import CacheAwareContextManager
 from nemo.collections.asr.inference.utils.endpointing_utils import millisecond_to_frames
 from nemo.collections.asr.inference.utils.enums import RequestType
-from nemo.collections.asr.inference.utils.pipeline_utils import get_confidence_utils
+from nemo.collections.asr.inference.utils.pipeline_utils import (
+    check_existance_of_required_attributes,
+    get_confidence_utils,
+)
 from nemo.collections.asr.parts.utils.rnnt_utils import Hypothesis
 
 if TYPE_CHECKING:
@@ -56,26 +55,33 @@ class CacheAwareRNNTPipeline(BasePipeline):
         itn_model: AlignmentPreservingInverseNormalizer | None = None,
     ):
         self.copy_asr_model_attributes(asr_model)
-        self.asr_output_granularity = cfg.asr_output_granularity
+        self.init_parameters(cfg)
+        self.init_context_manager()
+        self.init_bufferer_for_cache_aware_streaming()
+        self.conf_func, self.confidence_aggregator = get_confidence_utils(cfg.confidence)
+        self.init_bpe_decoder()
+        self.init_greedy_rnnt_decoder()
+        self.init_endpointer()
+        self.init_text_processor(cfg, pnc_model, itn_model)
+        super().__init__()
 
-        # Set the attention context size if it is provided
+    def init_parameters(self, cfg: DictConfig) -> None:
+        """Initialize the parameters."""
         if cfg.streaming.att_context_size is not None:
             self.asr_model.set_default_att_context_size(att_context_size=cfg.streaming.att_context_size)
 
-        # Streaming related fields
-        self.streaming_cfg = cfg.streaming
-        self.sample_rate = self.streaming_cfg.sample_rate
-
+        self.sample_rate = cfg.streaming.sample_rate
+        self.asr_output_granularity = cfg.asr_output_granularity
         self.pre_encode_cache_size = self.asr_model.get_pre_encode_cache_size()
         self.model_chunk_size = self.asr_model.get_chunk_size()
         if isinstance(self.model_chunk_size, list):
             self.model_chunk_size = self.model_chunk_size[1]
 
-        self.use_cache = getattr(self.streaming_cfg, "use_cache", True)
-        self.use_feat_cache = getattr(self.streaming_cfg, "use_feat_cache", True)
+        self.use_cache = cfg.streaming.use_cache
+        self.use_feat_cache = cfg.streaming.use_feat_cache
 
-        if self.streaming_cfg.get("chunk_size_in_secs", None) is not None:
-            self.chunk_size_in_secs = self.streaming_cfg.chunk_size_in_secs
+        if cfg.streaming.get("chunk_size_in_secs", None) is not None:
+            self.chunk_size_in_secs = cfg.streaming.chunk_size_in_secs
             self.tokens_per_frame = math.ceil(
                 np.trunc(self.chunk_size_in_secs / self.window_stride) / self.subsampling_factor
             )
@@ -92,16 +98,12 @@ class CacheAwareRNNTPipeline(BasePipeline):
         self.pre_encode_cache_size_in_secs = self.pre_encode_cache_size * self.window_stride
 
         # Context Manager
-        self.batch_size = self.streaming_cfg.batch_size
-        if self.streaming_cfg.num_slots < self.batch_size:
+        self.batch_size = cfg.streaming.batch_size
+        self.num_slots = cfg.streaming.num_slots
+        if self.num_slots < self.batch_size:
             raise ValueError(
-                f"Number of slots in the context manager must be >= batch_size: {self.streaming_cfg.num_slots} < {self.batch_size}"
+                f"Number of slots in the context manager must be >= batch_size: {self.num_slots} < {self.batch_size}"
             )
-        self.context_manager = CacheAwareContextManager(
-            cache_aware_model=self.asr_model, num_slots=self.streaming_cfg.num_slots, use_cache=self.use_cache
-        )
-
-        # Feature Bufferer
         model_chunk_size_in_secs = self.model_chunk_size * self.window_stride
 
         if self.use_cache:
@@ -120,69 +122,38 @@ class CacheAwareRNNTPipeline(BasePipeline):
             self.drop_left_context = left_context_size
             self.valid_out_len = self.tokens_per_frame
 
-        if self.use_feat_cache:
-            # Only calculate mel-spec features for last chunk
-            chunk_size_for_feature_buffer = self.chunk_size_in_secs
-        else:
-            # Calculate mel-spec features for the whole buffer
-            chunk_size_for_feature_buffer = self.buffer_size_in_secs
+        self.stop_history_eou_in_milliseconds = cfg.endpointing.stop_history_eou
+        self.residue_tokens_at_end = cfg.endpointing.residue_tokens_at_end
+        self.word_boundary_tolerance = cfg.streaming.word_boundary_tolerance
+        self.return_tail_result = cfg.return_tail_result
 
-        self.request_type = RequestType.from_str(self.streaming_cfg.request_type)
+        self.request_type = RequestType.from_str(cfg.streaming.request_type)
         if self.request_type is not RequestType.FRAME:
             raise ValueError(f"Request type {self.request_type} is not supported for cache-aware streaming.")
 
-        self.bufferer = BatchedCacheFeatureBufferer(
-            sample_rate=self.sample_rate,
-            buffer_size_in_secs=self.buffer_size_in_secs,
-            chunk_size_in_secs=chunk_size_for_feature_buffer,
-            preprocessor_cfg=self.preprocessor_config,
-            device=self.device,
-        )
-
-        # Confidence related fields
-        self.conf_func, self.confidence_aggregator = get_confidence_utils(cfg.confidence)
-
-        # BPE Decoder
-        self.bpe_decoder = BPEDecoder(
-            vocabulary=self.vocabulary,
-            tokenizer=self.tokenizer,
-            confidence_aggregator=self.confidence_aggregator,
-            asr_supported_puncts=self.asr_supported_puncts,
-            word_boundary_tolerance=self.streaming_cfg.word_boundary_tolerance,
-            token_duration_in_secs=self.model_stride_in_secs,
-        )
-
-        # RNNT gready decoder
+    def init_greedy_rnnt_decoder(self) -> None:
+        """Initialize the RNNT decoder."""
+        check_existance_of_required_attributes(self, ['vocabulary', 'conf_func'])
         self.greedy_rnnt_decoder = RNNTGreedyDecoder(vocabulary=self.vocabulary, conf_func=self.conf_func)
 
-        # Endpointing
-        self.stop_history_eou_in_millisecs = cfg.endpointing.stop_history_eou
-        self.residue_tokens_at_end = cfg.endpointing.residue_tokens_at_end
+    def init_endpointer(self) -> None:
+        """Initialize the endpointer."""
+        check_existance_of_required_attributes(
+            self,
+            [
+                'vocabulary',
+                'model_stride_in_milliseconds',
+                'stop_history_eou_in_milliseconds',
+                'residue_tokens_at_end',
+            ],
+        )
+
         self.endpointer = RNNTGreedyEndpointing(
             vocabulary=self.vocabulary,
             ms_per_timestep=self.model_stride_in_milliseconds,
-            stop_history_eou=self.stop_history_eou_in_millisecs,
+            stop_history_eou=self.stop_history_eou_in_milliseconds,
             residue_tokens_at_end=self.residue_tokens_at_end,
         )
-
-        # PnC and ITN related fields
-        self.text_postprocessor = StreamingTextPostprocessor(
-            pnc_cfg=cfg.pnc,
-            itn_cfg=cfg.itn,
-            pnc_model=pnc_model,
-            itn_model=itn_model,
-            asr_supported_puncts=self.asr_supported_puncts,
-            asr_supports_punctuation=self.supports_punctuation,
-            confidence_aggregator=self.confidence_aggregator,
-            sep=self.sep,
-            segment_separators=self.segment_separators,
-            enable_pnc=cfg.enable_pnc,
-            enable_itn=cfg.enable_itn,
-        )
-
-        self.return_tail_result = cfg.return_tail_result
-
-        super().__init__()
 
     def reset_session(self) -> None:
         """Reset the frame buffer and internal state pool"""
@@ -194,9 +165,9 @@ class CacheAwareRNNTPipeline(BasePipeline):
         state = CacheAwareRNNTStreamingState()
         state.set_global_offset(0)
         new_options = options.augment_with_defaults(
-            default_enable_itn=self.text_postprocessor.is_itn_enabled(),
-            default_enable_pnc=self.text_postprocessor.is_pnc_enabled(),
-            default_stop_history_eou=self.stop_history_eou_in_millisecs,
+            default_enable_itn=self.text_processor.is_itn_enabled(),
+            default_enable_pnc=self.text_processor.is_pnc_enabled(),
+            default_stop_history_eou=self.stop_history_eou_in_milliseconds,
             default_asr_output_granularity=self.asr_output_granularity,
         )
 
@@ -212,7 +183,7 @@ class CacheAwareRNNTPipeline(BasePipeline):
         return state
 
     def get_sep(self) -> str:
-        """Return the separator for the text postprocessor."""
+        """Return the separator for the text processor."""
         return self.sep
 
     def preprocess(self, buffers: list[Tensor], right_paddings: list[int] | None = None) -> tuple[Tensor, Tensor]:
@@ -327,8 +298,8 @@ class CacheAwareRNNTPipeline(BasePipeline):
     def transcribe_step_for_frames(self, frames: list[Frame]) -> None:
         """
         Transcribes the frames in a streaming manner.
-        After detecting EOU, it updates the state and run text postprocessor.
-        If there are multiple streams, it waits until all states are ready to run text postprocessor.
+        After detecting EOU, it updates the state and run text processor.
+        If there are multiple streams, it waits until all states are ready to run text processor.
         """
 
         all_fbuffers, right_paddings = self.bufferer.update(frames)
@@ -362,7 +333,7 @@ class CacheAwareRNNTPipeline(BasePipeline):
 
         # post-process the ready states
         if len(ready_state_ids) > 0:
-            self.text_postprocessor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
+            self.text_processor.process([self.get_state(stream_id) for stream_id in ready_state_ids])
             ready_state_ids.clear()
 
         self.update_partial_transcript(frames, self.tokenizer, self.leading_regex_pattern)

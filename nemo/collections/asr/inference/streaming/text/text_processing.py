@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from nemo.collections.asr.inference.pnc.punctuation_capitalizer import PunctuationCapitalizer
 
 
-class StreamingTextPostprocessor:
+class StreamingTextProcessor:
     """
     A streaming text post-processing module that applies punctuation & capitalization (PnC) and
     inverse text normalization (ITN) to ASR transcriptions in real-time.
@@ -59,7 +59,7 @@ class StreamingTextPostprocessor:
         enable_itn: bool = False,
     ):
         """
-        Initialize the streaming text postprocessor.
+        Initialize the streaming text processor.
 
         Args:
             pnc_cfg (DictConfig): PnC parameters.
