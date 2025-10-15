@@ -16,7 +16,7 @@ import copy
 import hashlib
 import json
 import os
-from typing import Any, Mapping, Optional, Union
+from typing import Any, List, Mapping, Optional, Union
 
 import torch
 from lightning.fabric.utilities.cloud_io import _load as pl_load
@@ -92,10 +92,7 @@ def get_lm_model(
 
     # check valid model type
     if cfg.language_model.get('pretrained_model_name'):
-        if (
-            not cfg.language_model.pretrained_model_name
-            or cfg.language_model.pretrained_model_name not in get_pretrained_lm_models_list(include_external=False)
-        ):
+        if not cfg.language_model.pretrained_model_name:
             logging.warning(
                 f'{cfg.language_model.pretrained_model_name} is not in get_pretrained_lm_models_list(include_external=False), '
                 f'will be using AutoModel from HuggingFace.'
