@@ -19,18 +19,45 @@ from typing import ClassVar, Dict, Optional
 
 import torch
 from megatron.core.datasets.gpt_dataset import GPTDataset
-from nemo.collections.llm.gpt.model.megatron.hyena.hyena_utils import make_upper_case
+
+
+def make_upper_case(tokens, lowercase_start=97, lowercase_end=122, case_diff=32):
+    """Replace lowercase ASCII characters with uppercase.
+
+    Args:
+        tokens: Input tensor containing token IDs
+        lowercase_start: ASCII value for the first lowercase character (default: 97 for 'a')
+        lowercase_end: ASCII value for the last lowercase character (default: 122 for 'z')
+        case_diff: Difference between lowercase and uppercase (default: 32)
+
+    Returns:
+        tuple: (uppercase_tensor, lowercase_mask)
+    """
+    lowercase_mask = (tokens >= lowercase_start) & (tokens <= lowercase_end)
+    uppercase_tensor = torch.where(lowercase_mask, tokens - case_diff, tokens)
+    return uppercase_tensor, lowercase_mask
 
 
 class Evo2Dataset(GPTDataset):
     """Dataset for training Evo2."""
 
-    CONTROL_TAGS: ClassVar[list[int]] = [64, 35]  # '@' tag for splice splits/windows, '#' for contig splits
+    CONTROL_TAGS: ClassVar[list[int]] = [
+        64,
+        35,
+    ]  # '@' tag for splice splits/windows, '#' for contig splits
     TAG_BOUNDS = 124  # start and end delim: '|'
-    TAG_CHARS: ClassVar[set[int]] = {95, 59, 32}  # chars only found in control tags: _, ;, space
+    TAG_CHARS: ClassVar[set[int]] = {
+        95,
+        59,
+        32,
+    }  # chars only found in control tags: _, ;, space
     DEFAULT_EOD = 0
-    TO_UPPER_TOKENS: bool = True  # If set, do an in-place transform to make all tokens capital letters
-    RESET_PAD_EOD_MASK: bool = True  # If set, unset the mask for [pad] and [eod] tokens (matches Evo2 paper).
+    TO_UPPER_TOKENS: bool = (
+        True  # If set, do an in-place transform to make all tokens capital letters
+    )
+    RESET_PAD_EOD_MASK: bool = (
+        True  # If set, unset the mask for [pad] and [eod] tokens (matches Evo2 paper).
+    )
     # Valid DNA tokens: A, C, G, T, U, W, S, M, K, R, Y, B, D, H, V, N, -,  (both uppercase and lowercase and
     #   degenerate bases and RNA)
     MAX_TAG_LEN = 2048
@@ -76,7 +103,9 @@ class Evo2Dataset(GPTDataset):
     def _get_gpt_batch(self, idx: Optional[int]) -> dict[str, torch.Tensor]:
         return super().__getitem__(idx)
 
-    def _modify_gpt_batch(self, databatch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    def _modify_gpt_batch(
+        self, databatch: dict[str, torch.Tensor]
+    ) -> dict[str, torch.Tensor]:
         loss_mask = databatch.get("loss_mask", None)
         if self.RESET_PAD_EOD_MASK and loss_mask is not None:
             # Reset the mask for 'pad', '[eod]', '[pad token]', which will lower the loss, but matches Evo2 pub.
@@ -87,15 +116,21 @@ class Evo2Dataset(GPTDataset):
             return databatch
 
         # Mask special label tags in loss.
-        control_mask = torch.isin(labels, torch.tensor(self.CONTROL_TAGS, device=labels.device))
+        control_mask = torch.isin(
+            labels, torch.tensor(self.CONTROL_TAGS, device=labels.device)
+        )
         # Mask degenerate (and U) DNA tokens
-        not_dna_mask = ~torch.isin(labels, torch.tensor(self.DNA_TOKENS, device=labels.device))
+        not_dna_mask = ~torch.isin(
+            labels, torch.tensor(self.DNA_TOKENS, device=labels.device)
+        )
         loss_mask[control_mask | not_dna_mask] = 0
         phylotag_mask = self.mask_phylogenetic_tags(
             labels,
             self.TAG_BOUNDS,
             self.TAG_CHARS,
-            self.config.tokenizer.eod if self.config.tokenizer is not None else self.DEFAULT_EOD,
+            self.config.tokenizer.eod
+            if self.config.tokenizer is not None
+            else self.DEFAULT_EOD,
             self.MAX_TAG_LEN,
         )
         databatch["loss_mask"] = loss_mask * phylotag_mask
@@ -187,7 +222,9 @@ class Evo2Dataset(GPTDataset):
         batch_size, seq_len = tokenized_sequence.shape
 
         valid_dna_or_control_tensor = torch.tensor(
-            list(Evo2Dataset.VALID_DNA_AND_DEGENERATE | set(Evo2Dataset.CONTROL_TAGS)), device=device, dtype=dtype
+            list(Evo2Dataset.VALID_DNA_AND_DEGENERATE | set(Evo2Dataset.CONTROL_TAGS)),
+            device=device,
+            dtype=dtype,
         )
 
         # Initialize output mask to all ones.
@@ -198,18 +235,24 @@ class Evo2Dataset(GPTDataset):
             if region.numel() == 0:
                 return True
             # Using torch's all() over the token values.
-            return bool(torch.all(torch.isin(region, valid_dna_or_control_tensor)).cpu().item())
+            return bool(
+                torch.all(torch.isin(region, valid_dna_or_control_tensor)).cpu().item()
+            )
 
         # Process one EOD-free segment using the O1 logic.
         def process_segment(seg_seq: torch.Tensor) -> torch.Tensor:
             seg_len = seg_seq.size(0)
             seg_mask = torch.ones(seg_len, device=device, dtype=torch.int)
             # Identify positions of terminal tag (pipe)
-            pipe_pos = (seg_seq == terminal_tag_char).nonzero(as_tuple=True)[0].cpu().tolist()
+            pipe_pos = (
+                (seg_seq == terminal_tag_char).nonzero(as_tuple=True)[0].cpu().tolist()
+            )
             if len(pipe_pos) == 0:
                 # If no pipe exists and any token is a known tag char or not valid DNA,
                 # mask the entire segment, unless it is longer than the maximum tag len.
-                if len(seg_seq) < max_tag_len and not region_all_valid_or_control(seg_seq):
+                if len(seg_seq) < max_tag_len and not region_all_valid_or_control(
+                    seg_seq
+                ):
                     seg_mask.zero_()
                 return seg_mask
 
@@ -224,7 +267,9 @@ class Evo2Dataset(GPTDataset):
                 if len(seg_seq) > first_pipe + 2:
                     first_tok = seg_seq[first_pipe + 1].item()
                     next_tok = seg_seq[first_pipe + 2].item()
-                    if next_tok == 95 or first_tok == 59:  # ord('_') = 95, ord(';') = 59
+                    if (
+                        next_tok == 95 or first_tok == 59
+                    ):  # ord('_') = 95, ord(';') = 59
                         # the syntax is [tag char]_ or a missing segment would start with ;
                         is_tag = False
                     else:
@@ -234,11 +279,19 @@ class Evo2Dataset(GPTDataset):
                     next_tok = seg_seq[first_pipe + 1].item()
                     # Much weaker signal since these are sometimes degenerate bases, but at least the length
                     #  check later will prevent overmasking.
-                    if next_tok in {68, 100, 82, 114, 59}:  # D,d,R,r for domain or realm (viruses) or missing ;
+                    if next_tok in {
+                        68,
+                        100,
+                        82,
+                        114,
+                        59,
+                    }:  # D,d,R,r for domain or realm (viruses) or missing ;
                         is_tag = False
                     else:
                         is_tag = True
-                elif first_pipe >= max_tag_len or region_all_valid_or_control(seg_seq[:first_pipe]):
+                elif first_pipe >= max_tag_len or region_all_valid_or_control(
+                    seg_seq[:first_pipe]
+                ):
                     is_tag = False
                 else:
                     is_tag = True
@@ -246,7 +299,9 @@ class Evo2Dataset(GPTDataset):
                 # The sequence ends with a pipe, so just check everything before the pipe and return the seg mask
                 assert first_pipe == seg_len - 1
                 # The sequence ends with a pipe, so just check everything before the pipe.
-                if first_pipe >= max_tag_len or region_all_valid_or_control(seg_seq[:first_pipe]):
+                if first_pipe >= max_tag_len or region_all_valid_or_control(
+                    seg_seq[:first_pipe]
+                ):
                     return seg_mask  # Pipe pos has already been masked
                 else:
                     seg_mask[:first_pipe] = 0
@@ -254,7 +309,9 @@ class Evo2Dataset(GPTDataset):
             start = 0
             for end in pipe_pos:
                 seg_len = end - start
-                if is_tag and seg_len < max_tag_len:  # Prefer faulty tag mask logic over masking entire seqs
+                if (
+                    is_tag and seg_len < max_tag_len
+                ):  # Prefer faulty tag mask logic over masking entire seqs
                     seg_mask[start:end] = 0
                 elif is_tag and seg_len >= max_tag_len:
                     # We were wrong about this segment being a tag, so change the current state to what
@@ -267,7 +324,9 @@ class Evo2Dataset(GPTDataset):
                 start = end + 1  # position after the pipe
             # Process the last segment after the last pipe.
             seg_len = len(seg_mask) - start
-            if is_tag and seg_len < max_tag_len:  # Prefer faulty tag mask logic over overmasking
+            if (
+                is_tag and seg_len < max_tag_len
+            ):  # Prefer faulty tag mask logic over overmasking
                 seg_mask[start:] = 0
             return seg_mask
 
@@ -275,7 +334,9 @@ class Evo2Dataset(GPTDataset):
         for b in range(batch_size):
             row = tokenized_sequence[b]
             # Get indices of EOD tokens.
-            eod_positions = (row == eod_token_id).nonzero(as_tuple=True)[0].cpu().tolist()
+            eod_positions = (
+                (row == eod_token_id).nonzero(as_tuple=True)[0].cpu().tolist()
+            )
             start_idx = 0
             for pos in eod_positions:
                 if pos > start_idx:

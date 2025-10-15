@@ -23,7 +23,10 @@ from megatron.core.transformer.enums import AttnMaskType
 from megatron.core.transformer.identity_op import IdentityOp
 from megatron.core.transformer.mlp import MLP, MLPSubmodules
 from megatron.core.transformer.spec_utils import ModuleSpec
-from megatron.core.transformer.transformer_layer import TransformerLayer, TransformerLayerSubmodules
+from megatron.core.transformer.transformer_layer import (
+    TransformerLayer,
+    TransformerLayerSubmodules,
+)
 
 from .hyena_block import HyenaStack, HyenaStackSubmodules
 from .hyena_layer import HyenaLayer, HyenaLayerSubmodules
@@ -37,7 +40,7 @@ try:
         TERowParallelLinear,
     )
 
-    from nemo.collections.llm.gpt.model.megatron.hyena.te_compat import (
+    from .te_compat import (
         Linear,
         RMSNormLinear,
         RMSNormTELinearFp8,
@@ -59,7 +62,6 @@ except ImportError:
 
 try:
     import nvidia_kitchen  # pylint: disable=unused-import
-
     from megatron.core.extensions.kitchen import KitchenSpecProvider
 
     HAVE_KITCHEN = True
@@ -115,13 +117,17 @@ def get_hyena_stack_spec(
                 submodules=HyenaLayerSubmodules(
                     mixer=ModuleSpec(
                         module=HyenaMixer,
-                        submodules=HyenaMixerSubmodules(dense_projection=dense_projection, dense=row_linear),
+                        submodules=HyenaMixerSubmodules(
+                            dense_projection=dense_projection, dense=row_linear
+                        ),
                     ),
                     hyena_bda=get_bias_dropout_add,
                     pre_mlp_layernorm=pre_layernorm,
                     mlp=ModuleSpec(
                         module=MLP,
-                        submodules=MLPSubmodules(linear_fc1=col_linear, linear_fc2=row_linear),
+                        submodules=MLPSubmodules(
+                            linear_fc1=col_linear, linear_fc2=row_linear
+                        ),
                     ),
                     mlp_bda=get_bias_dropout_add,
                 ),
@@ -143,7 +149,9 @@ def get_hyena_stack_spec(
                     pre_mlp_layernorm=pre_layernorm,
                     mlp=ModuleSpec(
                         module=MLP,
-                        submodules=MLPSubmodules(linear_fc1=col_linear, linear_fc2=row_linear),
+                        submodules=MLPSubmodules(
+                            linear_fc1=col_linear, linear_fc2=row_linear
+                        ),
                     ),
                     mlp_bda=get_bias_dropout_add,
                 ),
