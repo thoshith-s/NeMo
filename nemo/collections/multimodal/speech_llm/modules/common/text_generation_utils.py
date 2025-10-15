@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import torch
+import torch.nn.functional as F
+
+import numpy as np
+
+from nemo.utils import AppState
 
 try:
-    from megatron.core import parallel_state, tensor_parallel
+    from megatron.core import parallel_state
 
     HAVE_MEGATRON_CORE = True
 
