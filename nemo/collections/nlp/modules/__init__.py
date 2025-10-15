@@ -13,17 +13,10 @@
 # limitations under the License.
 
 
-from nemo.collections.nlp.modules.common import AlbertEncoder  # noqa: F401
-from nemo.collections.nlp.modules.common import BertEncoder  # noqa: F401
 from nemo.collections.nlp.modules.common import BertModule  # noqa: F401
-from nemo.collections.nlp.modules.common import CamembertEncoder  # noqa: F401
-from nemo.collections.nlp.modules.common import DistilBertEncoder  # noqa: F401
 from nemo.collections.nlp.modules.common import PromptEncoder  # noqa: F401
-from nemo.collections.nlp.modules.common import RobertaEncoder  # noqa: F401
 from nemo.collections.nlp.modules.common import SequenceClassifier  # noqa: F401
 from nemo.collections.nlp.modules.common import SequenceRegression  # noqa: F401
 from nemo.collections.nlp.modules.common import SequenceTokenClassifier  # noqa: F401
 from nemo.collections.nlp.modules.common import get_lm_model  # noqa: F401
 from nemo.collections.nlp.modules.common import get_pretrained_lm_models_list  # noqa: F401
-from nemo.collections.nlp.modules.common import get_tokenizer  # noqa: F401
-from nemo.collections.nlp.modules.common import get_tokenizer_list  # noqa: F401
