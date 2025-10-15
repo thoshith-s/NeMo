@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import torch
 import numpy as np
+import torch
 
 try:
     from megatron.core import parallel_state, tensor_parallel
@@ -144,4 +144,3 @@ def top_k_logits(logits, top_k=0, top_p=0.0, filter_value=-float('Inf'), started
                 logits[i, indices_to_remove] = filter_value
 
     return logits
-

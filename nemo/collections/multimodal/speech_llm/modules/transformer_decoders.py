@@ -216,4 +216,3 @@ class TransformerDecoder(nn.Module):
         input_ids = torch.randint(low=0, high=2048, size=(max_batch, max_dim, 1024), device=sample.device)
         encoder_mask = torch.randint(low=0, high=1, size=(max_batch, max_dim), device=sample.device)
         return tuple([input_ids, encoder_mask, input_ids, encoder_mask])
-

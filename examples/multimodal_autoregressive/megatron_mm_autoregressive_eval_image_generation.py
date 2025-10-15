@@ -14,9 +14,9 @@
 
 import datetime
 import math
-import sys
 import os
 import re
+import sys
 
 import torch
 import torchvision

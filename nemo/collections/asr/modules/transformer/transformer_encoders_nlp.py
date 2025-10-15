@@ -172,4 +172,3 @@ class TransformerEncoder(nn.Module):
             return cached_mems_list
         else:
             return cached_mems_list[-1]
-
