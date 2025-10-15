@@ -35,7 +35,7 @@
 # pylint: skip-file
 
 from dataclasses import dataclass
-from typing import Union, Optional
+from typing import Optional, Union
 
 import torch
 import torch.nn as nn

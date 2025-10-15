@@ -31,6 +31,7 @@ from omegaconf.omegaconf import OmegaConf, open_dict
 from nemo.collections.asr.models import ASRModel, SpeechEncDecSelfSupervisedModel
 from nemo.collections.common.data.utils import move_data_to_device
 from nemo.collections.common.metrics import MetricStringToTorchMetric, TextMetricsSet
+from nemo.collections.common.parts.nlp_overrides import NLPSaveRestoreConnector
 from nemo.collections.multimodal.speech_llm.data.build_dataset import (
     build_speechllm_dataloader,
     build_speechllm_dataset,
@@ -48,7 +49,6 @@ from nemo.collections.nlp.modules.common.megatron.utils import (
     build_position_ids,
     get_iterator_k_split,
 )
-from nemo.collections.common.parts.nlp_overrides import NLPSaveRestoreConnector
 from nemo.core.classes.mixins import adapter_mixins
 from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, MaskType, NeuralType
 from nemo.utils import AppState, logging, model_utils

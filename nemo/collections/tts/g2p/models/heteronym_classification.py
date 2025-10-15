@@ -18,10 +18,10 @@ import os
 from typing import List, Optional, Union
 
 import torch
-from torch import Tensor
 from hydra.utils import instantiate
 from lightning.pytorch import Trainer
 from omegaconf import DictConfig
+from torch import Tensor
 
 from nemo.collections.common.losses import CrossEntropyLoss
 from nemo.collections.nlp.modules.common import TokenClassifier
