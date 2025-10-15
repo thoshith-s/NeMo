@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo examples/asr/asr_streaming_infer/asr_streaming_infer.py \
+coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo examples/asr/asr_streaming_inference/asr_streaming_infer.py \
     --config-path=examples/asr/conf/asr_streaming_inference/ \
     --config-name=buffered_ctc.yaml \
     audio_file="/home/TestData/an4_transcribe/test_subset/" \
@@ -22,7 +22,7 @@ coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo exampl
     enable_itn=False \
     asr_output_granularity=segment
 
-coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo examples/asr/asr_streaming_infer/asr_streaming_infer.py \
+coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo examples/asr/asr_streaming_inference/asr_streaming_infer.py \
     --config-path=examples/asr/conf/asr_streaming_inference/ \
     --config-name=buffered_rnnt.yaml \
     audio_file="/home/TestData/an4_transcribe/test_subset/" \
@@ -33,7 +33,7 @@ coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo exampl
     enable_itn=False \
     asr_output_granularity=segment
 
-coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo examples/asr/asr_streaming_infer/asr_streaming_infer.py \
+coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo examples/asr/asr_streaming_inference/asr_streaming_infer.py \
     --config-path=examples/asr/conf/asr_streaming_inference/ \
     --config-name=cache_aware_ctc.yaml \
     audio_file="/home/TestData/an4_transcribe/test_subset/" \
@@ -44,7 +44,7 @@ coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo exampl
     enable_itn=False \
     asr_output_granularity=segment
 
-coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo examples/asr/asr_streaming_infer/asr_streaming_infer.py \
+coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo examples/asr/asr_streaming_inference/asr_streaming_infer.py \
     --config-path=examples/asr/conf/asr_streaming_inference/ \
     --config-name=cache_aware_rnnt.yaml \
     audio_file="/home/TestData/an4_transcribe/test_subset/" \
