@@ -16,6 +16,7 @@ coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo exampl
     --config-name=buffered_ctc.yaml \
     audio_file="/home/TestData/an4_transcribe/test_subset/" \
     output_filename="/tmp/buffered_ctc_test_res.json" \
+    output_dir="/tmp/buffered_ctc_test_dir" \
     lang=en \
     enable_pnc=False \
     enable_itn=False \
@@ -26,6 +27,7 @@ coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo exampl
     --config-name=buffered_rnnt.yaml \
     audio_file="/home/TestData/an4_transcribe/test_subset/" \
     output_filename="/tmp/buffered_rnnt_test_res.json" \
+    output_dir="/tmp/buffered_rnnt_test_dir" \
     lang=en \
     enable_pnc=False \
     enable_itn=False \
@@ -36,6 +38,7 @@ coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo exampl
     --config-name=cache_aware_ctc.yaml \
     audio_file="/home/TestData/an4_transcribe/test_subset/" \
     output_filename="/tmp/cache_aware_ctc_test_res.json" \
+    output_dir="/tmp/cache_aware_ctc_test_dir" \
     lang=en \
     enable_pnc=False \
     enable_itn=False \
@@ -46,6 +49,7 @@ coverage run -a --data-file=/workspace/.coverage --source=/workspace/nemo exampl
     --config-name=cache_aware_rnnt.yaml \
     audio_file="/home/TestData/an4_transcribe/test_subset/" \
     output_filename="/tmp/cache_aware_rnnt_test_res.json" \
+    output_dir="/tmp/cache_aware_rnnt_test_dir" \
     lang=en \
     enable_pnc=False \
     enable_itn=False \
