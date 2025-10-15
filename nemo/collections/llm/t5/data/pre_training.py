@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# flake8: noqa
+# pylint: skip-file
+
 import logging
 import warnings
 from pathlib import Path
@@ -19,6 +22,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import lightning.pytorch as pl
 from lightning.pytorch.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
+from lightning.pytorch.utilities.exceptions import MisconfigurationException
 from torch.utils import data
 
 from nemo.lightning.data import WrappedDataLoader

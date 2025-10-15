@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from nemo.collections.common.tokenizers.tokenizer_utils import get_tokenizer, get_tokenizer_list
+# flake8: noqa
+# pylint: skip-file
+
 from nemo.collections.nlp.modules.common.bert_module import BertModule
 from nemo.collections.nlp.modules.common.huggingface import (
     AlbertEncoder,
