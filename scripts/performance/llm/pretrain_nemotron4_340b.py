@@ -23,7 +23,7 @@ from nemo.collections.llm.recipes.tp_overlap_configs.userbuffers import (
     userbuffers_bf16_b200_h18432_tp8_mbs1_seqlen4096,
     userbuffers_fp8_b200_h18432_tp8_mbs1_seqlen4096,
 )
-from nemo.collections.nlp.modules.common.tokenizer_utils import get_nmt_tokenizer
+from nemo.collections.common.tokenizers.tokenizer_utils import get_nmt_tokenizer
 from nemo.lightning.run.plugins import MemoryProfilePlugin, NsysPlugin
 
 from ..argument_parser import parse_additional_slurm_params, parse_cli_args

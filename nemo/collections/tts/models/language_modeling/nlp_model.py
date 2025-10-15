@@ -36,7 +36,7 @@ from nemo.collections.nlp.modules.common.megatron.megatron_utils import (
     MEGATRON_CONFIG_MAP,
     get_megatron_pretrained_bert_models,
 )
-from nemo.collections.nlp.modules.common.tokenizer_utils import get_tokenizer
+from nemo.collections.common.tokenizers.tokenizer_utils import get_tokenizer
 from nemo.collections.nlp.parts.nlp_overrides import NLPSaveRestoreConnector
 from nemo.core.classes import ModelPT
 from nemo.core.classes.exportable import Exportable

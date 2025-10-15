@@ -39,7 +39,7 @@ import joblib
 import numpy as np
 from tqdm import tqdm
 
-from nemo.collections.nlp.modules.common.tokenizer_utils import get_tokenizer
+from nemo.collections.common.tokenizers.tokenizer_utils import get_tokenizer
 
 parser = argparse.ArgumentParser(description='Tarred Tokenized dataset for text language modelling')
 
