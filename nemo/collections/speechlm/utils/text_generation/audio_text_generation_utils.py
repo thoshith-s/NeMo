@@ -15,18 +15,18 @@
 """Utilities for generating text."""
 
 import pickle
+import sys
 from collections.abc import Iterable
 from typing import List, Optional, Tuple, Union
 import numpy as np
 import torch
 import torch.nn.functional as F
 
-import nemo.collections.nlp.modules.common.text_generation_utils as text_generation_utils
+import nemo.collections.multimodal.speech_llm.modules.common.text_generation_utils as text_generation_utils
 from nemo.collections.common.tokenizers.tabular_tokenizer import TabularTokenizer
 from nemo.collections.multimodal.speech_llm.modules.common.audio_text_generation_strategy import (
     model_inference_strategy_dispatcher,
 )
-from nemo.collections.nlp.modules.common.transformer.text_generation import OutputType
 from nemo.utils import AppState, logging
 
 try:
@@ -47,6 +47,11 @@ except (ImportError, ModuleNotFoundError):
         _reconfigure_microbatch_calculator as reconfigure_num_microbatches_calculator,
     )
 
+if sys.version_info >= (3, 8):
+    from typing import TypedDict
+else:
+    from typing_extensions import TypedDict
+
 __all__ = [
     "get_computeprob_response",
     "generate",
@@ -56,6 +61,15 @@ __all__ = [
 
 
 default_inference_config = {'tokens_to_generate': 64}
+
+
+class OutputType(TypedDict):
+    sentences: List[str]  # output sentences
+    tokens: List[List[str]]  # output sentences borken into tokens
+    logprob: List[List[float]]  # log prob of generated tokens
+    full_logprob: List[List[float]]  # log prob of all the tokens in the vocab
+    token_ids: List[List[int]]  # output sentence token ids
+    offsets: List[List[int]]  # list of tokens start positions in text
 
 
 def clean_end_string(text: list[str], tokenizer, end_string: Optional[str] = None):

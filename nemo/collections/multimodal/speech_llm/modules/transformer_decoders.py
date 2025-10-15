@@ -1,4 +1,4 @@
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2025, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -216,3 +216,4 @@ class TransformerDecoder(nn.Module):
         input_ids = torch.randint(low=0, high=2048, size=(max_batch, max_dim, 1024), device=sample.device)
         encoder_mask = torch.randint(low=0, high=1, size=(max_batch, max_dim), device=sample.device)
         return tuple([input_ids, encoder_mask, input_ids, encoder_mask])
+
