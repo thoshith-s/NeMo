@@ -26,12 +26,12 @@ from loguru import logger
 class AudioLogger:
     """
     Utility class for logging audio data and transcriptions during voice agent interactions.
-    
+
     This logger saves:
     - Audio files in WAV format
     - Transcriptions with metadata in JSON format
     - Session information and metadata
-    
+
     File structure:
         log_dir/
         ├── session_YYYYMMDD_HHMMSS/
@@ -44,7 +44,7 @@ class AudioLogger:
         │   │   ├── 00001_HHMMSS.wav
         │   │   ├── 00001_HHMMSS.json
         │   └── session_metadata.json
-    
+
     Args:
         log_dir: Base directory for storing logs (default: "./audio_logs")
         session_id: Optional custom session ID. If None, auto-generated from timestamp
@@ -63,28 +63,28 @@ class AudioLogger:
             return
 
         self.log_dir = Path(log_dir)
-        
+
         # Generate session ID if not provided
         if session_id is None:
             session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
+
         self.session_id = session_id
         self.session_dir = self.log_dir / session_id
-        
+
         # Create directories
         self.user_dir = self.session_dir / "user"
         self.agent_dir = self.session_dir / "agent"
-        
+
         self.user_dir.mkdir(parents=True, exist_ok=True)
         self.agent_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Counters for file naming (thread-safe)
         self._user_counter = 0
         self._agent_counter = 0
         self._lock = threading.Lock()
         self._staged_metadata = None
         self._staged_audio_data = None
-        
+
         # Session metadata
         self.session_metadata = {
             "session_id": session_id,
@@ -92,7 +92,7 @@ class AudioLogger:
             "user_entries": [],
             "agent_entries": [],
         }
-        
+
         logger.info(f"AudioLogger initialized: {self.session_dir}")
 
     def _get_next_counter(self, speaker: str) -> int:
@@ -114,7 +114,7 @@ class AudioLogger:
     ):
         """
         Save audio data to a WAV file.
-        
+
         Args:
             audio_data: Audio data as bytes or numpy array
             file_path: Path to save the WAV file
@@ -140,7 +140,7 @@ class AudioLogger:
                 wav_file.setsampwidth(2)  # 16-bit audio
                 wav_file.setframerate(sample_rate)
                 wav_file.writeframes(audio_bytes)
-            
+
             logger.debug(f"Saved audio to {file_path}")
         except Exception as e:
             logger.error(f"Error saving audio to {file_path}: {e}")
@@ -168,7 +168,7 @@ class AudioLogger:
         """
         Stage log user audio and transcription (from STT).
         This data will be saved when the turn is complete by `log_user_audio` method.
-        
+
         Args:
             audio_data: Raw audio data as bytes or numpy array
             transcription: Transcribed text
@@ -176,7 +176,7 @@ class AudioLogger:
             num_channels: Number of audio channels (default: 1)
             is_final: Whether this is a final transcription (default: True)
             additional_metadata: Additional metadata to include
-            
+
         Returns:
             Dictionary with logged file paths, or None if logging is disabled
         """
@@ -188,14 +188,14 @@ class AudioLogger:
             counter = self._get_next_counter("user")
             timestamp = datetime.now().strftime('%H%M%S')
             base_name = f"{counter:05d}_{timestamp}"
-            
+
             audio_file = self.user_dir / f"{base_name}.wav"
             metadata_file = self.user_dir / f"{base_name}.json"
-            
+
             # Save audio
             # self._save_audio_wav(audio_data, audio_file, sample_rate, num_channels)
             self._staged_audio_data = audio_data
-            
+
             # Prepare metadata
             self._staged_metadata = {
                 "base_name": base_name,
@@ -207,24 +207,27 @@ class AudioLogger:
                 "audio_file": audio_file.name,
                 "sample_rate": sample_rate,
                 "num_channels": num_channels,
-                "audio_duration_sec": len(audio_data) / (sample_rate * num_channels * 2) if isinstance(audio_data, bytes) else len(audio_data) / sample_rate,
+                "audio_duration_sec": (
+                    len(audio_data) / (sample_rate * num_channels * 2)
+                    if isinstance(audio_data, bytes)
+                    else len(audio_data) / sample_rate
+                ),
             }
-            
+
             if additional_metadata:
                 self._staged_metadata.update(additional_metadata)
-            
+
             # Save metadata
             # self._save_metadata_json(metadata, metadata_file)
-        
-            
+
             # logger.info(f"Logged user audio #{counter}: '{transcription[:50]}{'...' if len(transcription) > 50 else ''}'")
-            
+
             return {
                 "audio_file": str(audio_file),
                 "metadata_file": str(metadata_file),
                 "counter": counter,
             }
-            
+
         except Exception as e:
             logger.error(f"Error logging user audio: {e}")
             return None
@@ -234,19 +237,18 @@ class AudioLogger:
         audio_file = self.user_dir / f"{self._staged_metadata['base_name']}.wav"
         metadata_file = self.user_dir / f"{self._staged_metadata['base_name']}.json"
 
-        self._save_audio_wav(audio_data=self._staged_audio_data, 
-                             file_path=audio_file, 
-                             sample_rate=self._staged_metadata["sample_rate"]
-                            )
-                            
-        self._save_metadata_json(metadata=self._staged_metadata, 
-                                 file_path=metadata_file
-                                )
-        logger.info(f"Saved user audio #{self._staged_metadata['counter']}: '{self._staged_metadata['transcription'][:50]}{'...' if len(self._staged_metadata['transcription']) > 50 else ''}'")
+        self._save_audio_wav(
+            audio_data=self._staged_audio_data, file_path=audio_file, sample_rate=self._staged_metadata["sample_rate"]
+        )
+
+        self._save_metadata_json(metadata=self._staged_metadata, file_path=metadata_file)
+        logger.info(
+            f"Saved user audio #{self._staged_metadata['counter']}: '{self._staged_metadata['transcription'][:50]}{'...' if len(self._staged_metadata['transcription']) > 50 else ''}'"
+        )
         # Update session metadata
         with self._lock:
             self.session_metadata["user_entries"].append(self._staged_metadata)
-            self._save_session_metadata() 
+            self._save_session_metadata()
 
     def log_agent_audio(
         self,
@@ -258,14 +260,14 @@ class AudioLogger:
     ) -> Optional[dict]:
         """
         Log agent audio and text (from TTS).
-        
+
         Args:
             audio_data: Generated audio data as bytes or numpy array
             text: Input text that was synthesized
             sample_rate: Audio sample rate in Hz (default: 22050)
             num_channels: Number of audio channels (default: 1)
             additional_metadata: Additional metadata to include
-            
+
         Returns:
             Dictionary with logged file paths, or None if logging is disabled
         """
@@ -277,13 +279,13 @@ class AudioLogger:
             counter = self._get_next_counter("agent")
             timestamp = datetime.now().strftime('%H%M%S')
             base_name = f"{counter:05d}_{timestamp}"
-            
+
             audio_file = self.agent_dir / f"{base_name}.wav"
             metadata_file = self.agent_dir / f"{base_name}.json"
-            
+
             # Save audio
             self._save_audio_wav(audio_data, audio_file, sample_rate, num_channels)
-            
+
             # Prepare metadata
             metadata = {
                 "counter": counter,
@@ -293,28 +295,32 @@ class AudioLogger:
                 "audio_file": audio_file.name,
                 "sample_rate": sample_rate,
                 "num_channels": num_channels,
-                "audio_duration_sec": len(audio_data) / (sample_rate * num_channels * 2) if isinstance(audio_data, bytes) else len(audio_data) / sample_rate,
+                "audio_duration_sec": (
+                    len(audio_data) / (sample_rate * num_channels * 2)
+                    if isinstance(audio_data, bytes)
+                    else len(audio_data) / sample_rate
+                ),
             }
-            
+
             if additional_metadata:
                 metadata.update(additional_metadata)
-            
+
             # Save metadata
             self._save_metadata_json(metadata, metadata_file)
-            
+
             # Update session metadata
             with self._lock:
                 self.session_metadata["agent_entries"].append(metadata)
                 self._save_session_metadata()
-            
+
             logger.info(f"Logged agent audio #{counter}: '{text[:50]}{'...' if len(text) > 50 else ''}'")
-            
+
             return {
                 "audio_file": str(audio_file),
                 "metadata_file": str(metadata_file),
                 "counter": counter,
             }
-            
+
         except Exception as e:
             logger.error(f"Error logging agent audio: {e}")
             return None
@@ -323,7 +329,7 @@ class AudioLogger:
         """Save the session metadata to disk."""
         if not self.enabled:
             return
-        
+
         try:
             metadata_file = self.session_dir / "session_metadata.json"
             self.session_metadata["last_updated"] = datetime.now().isoformat()
@@ -335,7 +341,7 @@ class AudioLogger:
         """Finalize the session and save final metadata."""
         if not self.enabled:
             return
-        
+
         self.session_metadata["end_time"] = datetime.now().isoformat()
         self.session_metadata["total_user_entries"] = self._user_counter
         self.session_metadata["total_agent_entries"] = self._agent_counter
@@ -351,4 +357,3 @@ class AudioLogger:
             "agent_entries": self._agent_counter,
             "enabled": self.enabled,
         }
-

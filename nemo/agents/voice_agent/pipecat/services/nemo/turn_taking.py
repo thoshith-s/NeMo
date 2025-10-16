@@ -34,8 +34,8 @@ from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.transcriptions.language import Language
 from pipecat.utils.time import time_now_iso8601
 
-from nemo.agents.voice_agent.pipecat.services.nemo.audio_logger import AudioLogger
 from nemo.agents.voice_agent.pipecat.frames.frames import DiarResultFrame
+from nemo.agents.voice_agent.pipecat.services.nemo.audio_logger import AudioLogger
 
 
 class NeMoTurnTakingService(FrameProcessor):
