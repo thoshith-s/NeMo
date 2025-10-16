@@ -68,6 +68,8 @@ try:
 except ImportError:
     HAVE_KITCHEN = False
 
+from megatron.core.extensions.transformer_engine_spec_provider import TESpecProvider
+
 
 def get_hyena_stack_spec(
     use_te=HAVE_TE,
@@ -77,14 +79,15 @@ def get_hyena_stack_spec(
     use_kitchen=False,
 ):
     """Construct desired Hyena stack spec based on given parameters."""
-    if use_te:
+    if use_te and not use_kitchen:
         row_linear = TERowParallelLinear
         col_linear = TELayerNormColumnParallelLinear
         pre_layernorm = IdentityOp  # fused Norm+Linear, so no pre norm
         core_attention = TEDotProductAttention
     elif use_kitchen:
+        assert use_te  # TE is implied with kitchen for now
         assert HAVE_KITCHEN
-        backend = KitchenSpecProvider()
+        backend = KitchenSpecProvider(fallback=TESpecProvider())
         row_linear = backend.row_parallel_linear()
         col_linear = backend.column_parallel_layer_norm_linear()
         pre_layernorm = IdentityOp  # fused Norm+Linear, so no pre norm
