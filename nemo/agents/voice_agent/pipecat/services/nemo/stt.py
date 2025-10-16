@@ -168,7 +168,7 @@ class NemoSTTService(STTService):
                 self.audio_buffer = []
 
                 transcription, is_final = self._model.transcribe(audio)
-                if self._record_audio_data and self._audio_logger:
+                if self._record_audio_data and self._audio_logger and self._is_vad_active:
                     self._turn_audio_buffer.append(audio)
                     # Accumulate transcriptions for turn-based logging
                     if transcription:
