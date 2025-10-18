@@ -79,7 +79,7 @@ def find_last_period_index(text: str) -> int:
             return -1
 
         # Check if any of the abbreviations "e.", "i." "g.", "etc." are present in the text
-        if re.search(r'\b(e\.|i\.|g\.|etc\.)\b', text):
+        if re.search(r'\b(e\.|i\.|g\.)\b', text):
             # The period is after a character/word that is likely to be a abbreviation, return -1
             return -1
 
@@ -90,7 +90,7 @@ def find_last_period_index(text: str) -> int:
     if text[idx - 1].isdigit():
         # if the period is after a digit, it's likely a partial decimal, return -1
         return -1
-    elif idx > 2 and text[idx - 3 : idx + 1] in ["e.g.", "i.e.", "etc."]:
+    elif idx > 2 and text[idx - 3 : idx + 1] in ["e.g.", "i.e."]:
         # The period is after a character/word that is likely to be a abbreviation, return -1
         return -1
 
