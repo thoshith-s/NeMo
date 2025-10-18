@@ -22,32 +22,19 @@ import sys
 from loguru import logger
 from omegaconf import OmegaConf
 
-# Configure loguru to output to both console and file
-logger.remove()  # Remove default handler
-logger.add(
-    sys.stderr,
-    format="<green>{time:YYYY-MM-DD HH:mm:ss.SSSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-    level="DEBUG",
-)
-
-logger.add("bot_server.log", rotation="1 day", level="DEBUG")
-
-# Global flag for graceful shutdown
-shutdown_event = asyncio.Event()
-
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.frames.frames import EndTaskFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.openai_llm_context import OpenAILLMContext
-from pipecat.processors.frameworks.rtvi import RTVIAction, RTVIConfig, RTVIObserver, RTVIProcessor
+from pipecat.processors.frameworks.rtvi import RTVIAction, RTVIConfig, RTVIProcessor
 from pipecat.serializers.protobuf import ProtobufFrameSerializer
-
 from nemo.agents.voice_agent.pipecat.services.nemo.audio_logger import AudioLogger
-from nemo.agents.voice_agent.pipecat.services.nemo.diar import NeMoDiarInputParams, NemoDiarService
+from nemo.agents.voice_agent.pipecat.processors.frameworks.rtvi import RTVIObserver
+from nemo.agents.voice_agent.pipecat.services.nemo.diar import NemoDiarService
 from nemo.agents.voice_agent.pipecat.services.nemo.llm import get_llm_service_from_config
-from nemo.agents.voice_agent.pipecat.services.nemo.stt import NeMoSTTInputParams, NemoSTTService
+from nemo.agents.voice_agent.pipecat.services.nemo.stt import NemoSTTService
 from nemo.agents.voice_agent.pipecat.services.nemo.tts import KokoroTTSService, NeMoFastPitchHiFiGANTTSService
 from nemo.agents.voice_agent.pipecat.services.nemo.turn_taking import NeMoTurnTakingService
 from nemo.agents.voice_agent.pipecat.transports.network.websocket_server import (
@@ -56,6 +43,24 @@ from nemo.agents.voice_agent.pipecat.transports.network.websocket_server import 
 )
 from nemo.agents.voice_agent.pipecat.utils.text.simple_text_aggregator import SimpleSegmentedTextAggregator
 from nemo.agents.voice_agent.utils.config_manager import ConfigManager
+
+
+def setup_logging():
+    # Configure loguru to output to both console and file
+    logger.remove()  # Remove default handler
+    logger.add(
+        sys.stderr,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss.SSSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+        level="DEBUG",
+    )
+
+    logger.add("bot_server.log", rotation="1 day", level="DEBUG")
+
+
+setup_logging()
+
+# Global flag for graceful shutdown
+shutdown_event = asyncio.Event()
 
 # Initialize configuration manager
 config_manager = ConfigManager(
@@ -262,7 +267,9 @@ async def run_bot_websocket_server():
             assistant_context_aggregator.reset()
             user_context_aggregator.set_messages(copy.deepcopy(original_messages))
             assistant_context_aggregator.set_messages(copy.deepcopy(original_messages))
-
+            text_aggregator.reset()
+            if diar is not None:
+                diar.reset()
             logger.info("Conversation context reset successfully")
             return True
         except Exception as e:
@@ -295,6 +302,7 @@ async def run_bot_websocket_server():
 
     pipeline = Pipeline(pipeline)
 
+    rtvi_text_aggregator = SimpleSegmentedTextAggregator("\n?!.", min_sentence_length=5)
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
@@ -305,13 +313,16 @@ async def run_bot_websocket_server():
             report_only_initial_ttfb=True,
             idle_timeout=None,  # Disable idle timeout
         ),
-        observers=[RTVIObserver(rtvi)],
+        observers=[RTVIObserver(rtvi, text_aggregator=rtvi_text_aggregator)],
         idle_timeout_secs=None,
         cancel_on_idle_timeout=False,
     )
 
     # Track task state
     task_running = True
+
+    # Setup logging again to avoid logger from being overwritten during setting up the pipeline components
+    setup_logging()
 
     @rtvi.event_handler("on_client_ready")
     async def on_client_ready(rtvi: RTVIProcessor):
