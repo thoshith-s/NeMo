@@ -15,7 +15,7 @@
 from typing import Any, List, Tuple, Union
 
 import torch.utils.data
-from lhotse.cut import Cut, CutSet, MixedCut
+from lhotse.cut import Cut, CutSet
 from lhotse.dataset import AudioSamples
 from lhotse.dataset.collation import collate_vectors as collate_vectors_lhotse
 
