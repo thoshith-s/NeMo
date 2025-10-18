@@ -134,6 +134,7 @@ async def run_bot_websocket_server():
     audio_logger = None
     if RECORD_AUDIO_DATA:
         from datetime import datetime
+
         session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         audio_logger = AudioLogger(
             log_dir=AUDIO_LOG_DIR,

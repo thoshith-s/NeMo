@@ -24,8 +24,8 @@ from pipecat.frames.frames import (
     InterimTranscriptionFrame,
     StartFrame,
     TranscriptionFrame,
-    VADUserStoppedSpeakingFrame,
     VADUserStartedSpeakingFrame,
+    VADUserStoppedSpeakingFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.stt_service import STTService
@@ -221,22 +221,24 @@ class NemoSTTService(STTService):
     def _stage_turn_audio_and_transcription(self):
         """
         Stage the complete turn audio and accumulated transcriptions.
-        
+
         This method is called when a final transcription is received.
         It joins all accumulated audio and transcription chunks and logs them together.
         """
         if not self._turn_audio_buffer or not self._turn_transcription_buffer:
             logger.debug("No audio or transcription to log")
             return
-        
+
         try:
             # Join all accumulated audio and transcriptions for this turn
             complete_turn_audio = b"".join(self._turn_audio_buffer)
             complete_transcription = "".join(self._turn_transcription_buffer)
-            
-            logger.debug(f"Staging a turn with: {len(self._turn_audio_buffer)} audio chunks, "
-                        f"{len(self._turn_transcription_buffer)} transcription chunks")
-            
+
+            logger.debug(
+                f"Staging a turn with: {len(self._turn_audio_buffer)} audio chunks, "
+                f"{len(self._turn_transcription_buffer)} transcription chunks"
+            )
+
             self._audio_logger.stage_user_audio(
                 audio_data=complete_turn_audio,
                 transcription=complete_transcription,
@@ -251,12 +253,11 @@ class NemoSTTService(STTService):
                     "num_audio_chunks": len(self._turn_audio_buffer),
                 },
             )
-            
+
             logger.info(f"Staged the audio and transcription for turn: '{complete_transcription[:50]}...'")
-            
+
         except Exception as e:
             logger.warning(f"Failed to log user audio: {e}")
-
 
     @traced_stt
     async def _handle_transcription(self, transcript: str, is_final: bool, language: Optional[str] = None):
@@ -306,5 +307,5 @@ class NemoSTTService(STTService):
                     self._turn_transcription_buffer = []
             elif isinstance(frame, VADUserStartedSpeakingFrame):
                 self._is_vad_active = True
-        
+
         await super().process_frame(frame, direction)
