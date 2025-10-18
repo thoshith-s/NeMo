@@ -279,6 +279,7 @@ async def run_bot_websocket_server():
 
     pipeline = Pipeline(pipeline)
 
+    rtvi_text_aggregator = SimpleSegmentedTextAggregator("\n?!.", min_sentence_length=5)
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
@@ -289,7 +290,7 @@ async def run_bot_websocket_server():
             report_only_initial_ttfb=True,
             idle_timeout=None,  # Disable idle timeout
         ),
-        observers=[RTVIObserver(rtvi, text_aggregator=SimpleSegmentedTextAggregator("\n?!:."))],
+        observers=[RTVIObserver(rtvi, text_aggregator=rtvi_text_aggregator)],
         idle_timeout_secs=None,
         cancel_on_idle_timeout=False,
     )

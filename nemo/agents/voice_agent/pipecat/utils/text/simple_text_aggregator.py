@@ -58,12 +58,15 @@ def has_partial_decimal(text: str) -> bool:
     return True
 
 
-def find_last_period_index(text: str) -> Optional[int]:
+def find_last_period_index(text: str) -> int:
     """
     Find the last occurrence of a period in the text,
-    but return -1 if the only period in the text is part of a number or bullet point.
+    but return -1 if the text doesn't seem to be a complete sentence.
     """
     num_periods = text.count(".")
+    if num_periods == 0:
+        return -1
+
     if num_periods == 1:
         if has_partial_decimal(text):
             # if the only period in the text is part of a number, return -1
@@ -75,11 +78,23 @@ def find_last_period_index(text: str) -> Optional[int]:
             # - or at the end with optional whitespace (e.g., "1." or "1. ")
             return -1
 
+        # Check if any of the abbreviations "e.", "i." "g.", "etc." are present in the text
+        if re.search(r'\b(e\.|i\.|g\.|etc\.)\b', text):
+            # The period is after a character/word that is likely to be a abbreviation, return -1
+            return -1
+
     # otherwise, check the last occurrence of a period
     idx = text.rfind(".")
-    if idx > 0 and text[idx - 1].isdigit():
-        # if the period is after a digit, it's likely a partial decimal, return None
+    if idx <= 0:
+        return idx
+    if text[idx - 1].isdigit():
+        # if the period is after a digit, it's likely a partial decimal, return -1
         return -1
+    elif idx > 2 and text[idx - 3 : idx + 1] in ["e.g.", "i.e.", "etc."]:
+        # The period is after a character/word that is likely to be a abbreviation, return -1
+        return -1
+
+    # the text seems to have a complete sentence, return the index of the last period
     return idx
 
 
@@ -88,11 +103,21 @@ class SimpleSegmentedTextAggregator(SimpleTextAggregator):
         self,
         punctuation_marks: str | list[str] = ".,!?;:",
         ignore_marks: str | list[str] = "*",
+        min_sentence_length: int = 0,
         use_legacy_eos_detection: bool = False,
         **kwargs,
     ):
+        """
+        Args:
+            punctuation_marks: The punctuation marks to use for sentence detection.
+            ignore_marks: The marks to ignore in the text.
+            min_sentence_length: The minimum length of a sentence to be considered.
+            use_legacy_eos_detection: Whether to use the legacy EOS detection from pipecat.
+            **kwargs: Additional arguments to pass to the SimpleTextAggregator constructor.
+        """
         super().__init__(**kwargs)
         self._use_legacy_eos_detection = use_legacy_eos_detection
+        self._min_sentence_length = min_sentence_length
         if not ignore_marks:
             self._ignore_marks = set()
         else:
@@ -111,6 +136,17 @@ class SimpleSegmentedTextAggregator(SimpleTextAggregator):
             self._punctuation_marks = punctuation_marks
 
     def _find_segment_end(self, text: str) -> Optional[int]:
+        """find the end of text segment.
+
+        Args:
+            text: The text to find the end of the segment.
+
+        Returns:
+            The index of the end of the segment, or None if the text is too short.
+        """
+        if len(text.strip()) < self._min_sentence_length:
+            return None
+
         for punc in self._punctuation_marks:
             if punc == ".":
                 idx = find_last_period_index(text)
@@ -137,7 +173,11 @@ class SimpleSegmentedTextAggregator(SimpleTextAggregator):
 
         if eos_end_index:
             result = self._text[:eos_end_index]
-            logger.debug(f"Text Aggregator Result: `{result}`, full text: `{self._text}`")
-            self._text = self._text[eos_end_index:]
+            if len(result.strip()) < self._min_sentence_length:
+                result = None
+                logger.debug(f"Text is too short, skipping: `{result}`, full text: `{self._text}`")
+            else:
+                logger.debug(f"Text Aggregator Result: `{result}`, full text: `{self._text}`")
+                self._text = self._text[eos_end_index:]
 
         return result
