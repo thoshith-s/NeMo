@@ -168,10 +168,13 @@ class NemoSTTService(STTService):
                 language = self._params.language if self._params else Language.EN_US
 
                 # Create and push the transcription frame
-                if self._has_turn_taking or not is_final:
+                if self._has_turn_taking:
+                    # if turn taking is enabled, we push interim transcription frames
+                    # and let the turn taking service handle the final transcription
                     frame_type = InterimTranscriptionFrame
                 else:
-                    frame_type = TranscriptionFrame
+                    # otherwise, we use the is_final flag to determine the frame type
+                    frame_type = TranscriptionFrame if not is_final else InterimTranscriptionFrame
                 await self.push_frame(
                     frame_type(
                         transcription,
