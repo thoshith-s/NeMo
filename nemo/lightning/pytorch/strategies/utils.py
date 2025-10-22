@@ -30,6 +30,7 @@ try:
     from megatron.core.dist_checkpointing.mapping import ShardedBase, ShardedObject, ShardedTensor
     from megatron.core.dist_checkpointing.strategies.torch import sharded_tensor_to_torch_sharded_tensor
     from megatron.core.transformer.utils import _get_extra_state_offsets
+
     HAVE_MEGATRON_CORE = True
 
 except (ImportError, ModuleNotFoundError):
