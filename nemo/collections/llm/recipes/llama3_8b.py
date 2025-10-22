@@ -54,7 +54,7 @@ def model() -> run.Config[pl.LightningModule]:
             >>> model_config = model()
             >>> print(model_config)
     """
-    return run.Config(LlamaModel, config=run.Config(Llama3Config8B))
+    return run.Config(LlamaModel, config=run.Config(Llama3Config8B, gradient_accumulation_fusion=False))
 
 
 def trainer(

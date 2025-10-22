@@ -373,10 +373,10 @@ class MegatronStrategy(DDPStrategy, io.IOMixin):
                 "Setting FSDP option to megatron"
             )
             fsdp = 'megatron'
-            if use_megatron_fsdp and self.save_ckpt_format != "fsdp_dtensor":
-                raise NotImplementedError(
-                    f"Megatron-FSDP checkpointing is not supported with {self.save_ckpt_format}."
-                )
+        if use_megatron_fsdp and self.save_ckpt_format != "fsdp_dtensor":
+            raise NotImplementedError(
+                f"Megatron-FSDP checkpointing is not supported with {self.save_ckpt_format}."
+            )
 
         if fsdp == "pytorch":
             raise NotImplementedError("PyTorch FSDP2 is not supported with MegatronParallel.")
@@ -1052,7 +1052,8 @@ class MegatronStrategy(DDPStrategy, io.IOMixin):
     def _save_fsdp_dtensor_common_state(self, state_dict, ckpt_dir):
         state_dict = state_dict.copy()
         del state_dict["model"]
-        del state_dict["optimizer_states"]
+        if "optimizer_states" in state_dict:
+            del state_dict["optimizer_states"]
         torch.save(state_dict, os.path.join(ckpt_dir, "common.pt"))
 
     def _load_fsdp_dtensor_common_state(self, ckpt_dir):
