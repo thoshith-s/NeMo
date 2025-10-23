@@ -34,6 +34,9 @@ from lightning.pytorch.callbacks.callback import Callback
 from megatron.core.distributed import DistributedDataParallelConfig
 from scripts.performance.argument_parser import parse_cli_args
 
+# TEMPORARY WORKAROUND - Remove in next release when upstream srun issue is fixed
+from ..slurm_exit_code_override import *  # Monkey-patch for false-positive job failures
+
 from nemo import lightning as nl
 from nemo.collections.llm.api import pretrain
 from nemo.collections.llm.gpt.data.mock import MockDataModule
