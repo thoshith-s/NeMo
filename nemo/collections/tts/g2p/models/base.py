@@ -14,7 +14,6 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional
-from nemo.utils import logging
 
 
 class BaseG2p(ABC):
