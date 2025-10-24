@@ -52,7 +52,6 @@ from lightning.pytorch.trainer.states import TrainerFn
 from lightning.pytorch.utilities import move_data_to_device
 
 
-
 try:
     from megatron.core import parallel_state
     from megatron.core.distributed import DistributedDataParallel as McoreDDP
