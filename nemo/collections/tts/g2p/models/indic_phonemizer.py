@@ -21,9 +21,10 @@ class IndicG2P:
     def __init__(self):
         self.phonemizers = {}
 
-        
-    def initialize_phonemizers(self):
-        languages = ['hi', 'en-gb', 'bn', 'gu', 'kn', 'ml', 'mr', 'ne', 'or', 'pa', 'ta', 'te']
+
+    def initialize_phonemizers(self, languages=None):
+        if languages is None:   
+            languages = ['hi', 'en-gb', 'bn', 'gu', 'kn', 'ml', 'mr', 'ne', 'or', 'pa', 'ta', 'te']
         for lang in languages:
             try:
                 self.phonemizers[lang] = create_phonemizer(language=lang, punctuation_marks=_DEF_PUNCS)

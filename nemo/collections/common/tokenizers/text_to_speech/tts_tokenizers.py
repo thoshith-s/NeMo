@@ -1135,7 +1135,7 @@ class IndicPhonemesTokenizer(BaseTokenizer):
 
     def __init__(
         self,
-        g2p=None,
+        g2p=IndicG2P(),
         punct=True,
         phoneneme_path=None,
         *,
@@ -1166,7 +1166,9 @@ class IndicPhonemesTokenizer(BaseTokenizer):
         self.pad_with_space = pad_with_space
         self.preprocessed_g2p = preprocessed_g2p
         self.text_preprocessing_func = text_preprocessing_func
-        self.g2p = IndicG2P() if g2p is None else g2p
+        self.g2p = g2p
+        self.g2p.initialize_phonemizers()
+
 
     def encode(self, text: str) -> List[int]: 
         if not self.preprocessed_g2p:
