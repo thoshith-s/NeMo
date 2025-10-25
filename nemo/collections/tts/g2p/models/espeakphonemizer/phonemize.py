@@ -13,7 +13,7 @@ from nemo.collections.tts.g2p.models.espeakphonemizer.utils import list2str, str
 
 
 
-def create_phonemizer(  # pylint: disable=too-many-arguments
+def create_espeak_phonemizer(  # pylint: disable=too-many-arguments
         language: str = 'en-us',
         separator: Optional[Separator] = Separator(phone=' ', word=' | '),
         strip: bool = True,

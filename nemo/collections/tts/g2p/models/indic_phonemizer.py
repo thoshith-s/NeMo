@@ -1,6 +1,6 @@
 from nemo.utils import logging
 import re
-from nemo.collections.tts.g2p.models.espeakphonemizer.phonemize import create_phonemizer, phonemize
+from nemo.collections.tts.g2p.models.espeakphonemizer.phonemize import create_espeak_phonemizer, phonemize
 
 _DEF_PUNCS=',.!?-:;/"()[]{}।॥|~`\'\'"``;:,.!?¡¿—…"«»“”।@'
 phonemizers = {}
@@ -27,7 +27,7 @@ class IndicG2P:
             languages = ['hi', 'en-gb', 'bn', 'gu', 'kn', 'ml', 'mr', 'ne', 'or', 'pa', 'ta', 'te']
         for lang in languages:
             try:
-                self.phonemizers[lang] = create_phonemizer(language=lang, punctuation_marks=_DEF_PUNCS)
+                self.phonemizers[lang] = create_espeak_phonemizer(language=lang, punctuation_marks=_DEF_PUNCS)
                 logging.info(f"Successfully initialized phonemizer for {lang}")
             except Exception as e:
                 logging.warning(f"Failed to initialize phonemizer for {lang}: {e}")
