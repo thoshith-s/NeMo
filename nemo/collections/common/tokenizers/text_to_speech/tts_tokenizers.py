@@ -1171,7 +1171,7 @@ class IndicPhonemesTokenizer(BaseTokenizer):
     def encode(self, text: str) -> List[int]: 
         if not self.preprocessed_g2p:
             text = self.text_preprocessing_func(text)
-            g2p_text = " | " + " | ".join(self.g2p(text.strip())) + " | "
+            g2p_text = " | " + " | ".join(self.g2p.phonemize_text(text.strip())) + " | "
         else:
             g2p_text = text 
         return self.encode_from_g2p(g2p_text, text)
