@@ -1,6 +1,6 @@
-from nemo.collections.tts.g2p.models.espeakphonemizer.phonemize import create_phonemizer, phonemize
 from nemo.utils import logging
 import re
+from nemo.collections.tts.g2p.models.espeakphonemizer.phonemize import create_phonemizer, phonemize
 
 _DEF_PUNCS=',.!?-:;/"()[]{}।॥|~`\'\'"``;:,.!?¡¿—…"«»“”।@'
 phonemizers = {}
@@ -66,7 +66,7 @@ class IndicG2P:
             return 'en'
         return 'unknown'
     
-    def __call__(self, text: str):
+    def phonemize_text(self, text: str):
         words = text.strip().split()
         phonemized_words = [self.get_phonemization(word) for word in words]
         return phonemized_words
