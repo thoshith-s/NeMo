@@ -36,8 +36,11 @@ from nemo.collections.common.tokenizers.text_to_speech.tokenizer_utils import (
     spanish_text_preprocessing,
     vietnamese_text_preprocessing,
 )
+from nemo.collections.common.tokenizers.text_to_speech.indic_text_processing import IndicTextProcessing
+from nemo.collections.tts.g2p.models.indic_phonemizer import IndicG2P
 from nemo.utils import logging
 from nemo.utils.decorators import experimental
+
 
 
 class BaseTokenizer(ABC):
@@ -1086,8 +1089,6 @@ class JapanesePhonemeTokenizer(BaseTokenizer):
         return [self._token2id[p] for p in ps]
 
 
-# TODO @xueyang: subclassing from `nemo/collections/common/tokenizers/tokenizer_spec.py::TokenizerSpec`, and/or
-#  adjust to reuse `nemo/collections/common/tokenizers/aggregate_tokenizer.py::AggregateTokenizer`
 class AggregatedTTSTokenizer:
     def __init__(self, tokenizers: List[Union[BaseTokenizer, PreTrainedTokenizerBase]], tokenizer_names: List[str]):
         """A simple aggregated tokenizer. Aggregates multiple tokenizers into one by combining (simply concatenating)
@@ -1098,49 +1099,102 @@ class AggregatedTTSTokenizer:
         """
         assert len(tokenizers) == len(tokenizer_names), "Number of tokenizers and tokenizer names must be the same."
         tokens = []
-        tokenizer_offsets = {}
+        toknizer_offsets = {}
         tokenizer_offset = 0
         self.tokenizers = {}
-        num_tokens_per_tokenizer = {}
-        tokenizer_pad_ids = {}
         for idx, tokenizer in enumerate(tokenizers):
-            tokenizer_name = tokenizer_names[idx]
-            self.tokenizers[tokenizer_name] = tokenizer
-            tokenizer_offsets[tokenizer_name] = tokenizer_offset
+            self.tokenizers[tokenizer_names[idx]] = tokenizer
+            toknizer_offsets[tokenizer_names[idx]] = tokenizer_offset
             if isinstance(tokenizer, BaseTokenizer):
                 tokens.extend(tokenizer.tokens)
                 num_tokens = len(tokenizer.tokens)
-                tokenizer_pad_ids[tokenizer_name] = tokenizer.pad + tokenizer_offset
             elif isinstance(tokenizer, PreTrainedTokenizerBase):
                 _tokens = list(tokenizer.get_vocab().keys())
                 tokens.extend(_tokens)
                 num_tokens = len(_tokens)
-                tokenizer_pad_ids[tokenizer_name] = tokenizer.pad_token_id + tokenizer_offset
             else:
                 raise ValueError("Tokenizers must be either BaseTokenizer or HuggingFace PreTrainedTokenizerBase.")
             tokenizer_offset += num_tokens
-            num_tokens_per_tokenizer[tokenizer_name] = num_tokens
 
         self.tokens = tokens
         self.tokenizer_names = tokenizer_names
-        self.tokenizer_offsets = tokenizer_offsets
-        self.vocab_size = len(tokens)
-        self.num_tokens_per_tokenizer = num_tokens_per_tokenizer
-        self.tokenizer_pad_ids = tokenizer_pad_ids
-        # Define aggregated token's pad value from the first tokenizer's pad value
-        first_tokenizer = self.tokenizers[tokenizer_names[0]]
-        if hasattr(first_tokenizer, "pad_token_id"):  # Defined in PreTrainedTokenizerBase subclasses
-            self.pad = first_tokenizer.pad_token_id
-        elif hasattr(first_tokenizer, "pad"):  # Defined in BaseTokenizer subclasses
-            self.pad = first_tokenizer.pad
-        else:
-            raise ValueError("AggregatedTTSTokenizer could not find a padding token in the first tokenizer")
+        self.toknizer_offsets = toknizer_offsets
+        self.pad = self.tokenizers[tokenizer_names[0]].pad  # Use the first tokenizer's pad token
 
-    def encode(self, text: str, tokenizer_name: str = None) -> List[int]:
+    def encode(self, text: str, tokenizer_name: str) -> List[int]:
         tokenizer = self.tokenizers[tokenizer_name]
         tokens = tokenizer.encode(text)
-        return [self.tokenizer_offsets[tokenizer_name] + token for token in tokens]
+        return [self.toknizer_offsets[tokenizer_name] + token for token in tokens]
 
-    def decode(self, tokens: List[int], tokenizer_name: str = None) -> str:
+    def decode(self, tokens: List[int], tokenizer_name: str) -> str:
         tokenizer = self.tokenizers[tokenizer_name]
-        return tokenizer.decode([token - self.tokenizer_offsets[tokenizer_name] for token in tokens])
+        return tokenizer.decode([token - self.toknizer_offsets[tokenizer_name] for token in tokens])
+    
+class IndicPhonemesTokenizer(BaseTokenizer):
+    INDIC_PUNCT_LIST = (',', '.', '!', '?', '-', ':', ';', '/', '"', '(', ')', '[', ']', '{', '}','।')
+
+    def __init__(
+        self,
+        g2p=IndicG2P(),
+        punct=True,
+        phoneneme_path=None,
+        *,
+        space='|',
+        apostrophe=True,
+        sep='|',
+        add_blank_at=None,
+        pad_with_space=True,
+        preprocessed_g2p=False,
+        text_preprocessing_func=IndicTextProcessing,
+    ):
+        tokens = []
+        self.space, tokens = len(tokens), tokens + [space]
+        if phoneneme_path is not None:
+            self.phoneme_list = [line.strip() for line in open(phoneneme_path, 'r', encoding='utf-8')]
+
+        tokens.extend(self.phoneme_list)
+        if apostrophe:
+            tokens.append("'")
+        if punct:
+            tokens.extend(self.INDIC_PUNCT_LIST)
+
+        # Make tokens unique while preserving order    
+        tokens = list(dict.fromkeys(tokens))
+
+        super().__init__(tokens, sep=sep, add_blank_at=add_blank_at)
+        self.punct = punct
+        self.pad_with_space = pad_with_space
+        self.preprocessed_g2p = preprocessed_g2p
+        self.text_preprocessing_func = text_preprocessing_func
+        self.g2p = g2p
+
+    def encode(self, text: str) -> List[int]: 
+        if not self.preprocessed_g2p:
+            text = self.text_preprocessing_func(text)
+            g2p_text = " | " + " | ".join(self.g2p(text.strip())) + " | "
+        else:
+            g2p_text = text 
+        return self.encode_from_g2p(g2p_text, text)
+
+    def encode_from_g2p(self, g2p_text: List[str], raw_text: Optional[str] = None):
+        ps, space, tokens = [], self.tokens[self.space], set(self.tokens)
+        for p in g2p_text.split():
+            if p == space and len(ps) > 0 and ps[-1] != space:
+                ps.append(p)
+            elif (p.isalnum() or p == "'" or p in self.phoneme_list) and p in tokens:
+                ps.append(p)
+            elif (p in self.PUNCT_LIST) and self.punct:
+                ps.append(p)
+            elif p != space:
+                message = f"Text: [{' '.join(g2p_text)}] contains unknown char/phoneme: [{p}]."
+                if raw_text is not None:
+                    message += f"Original text: [{raw_text}]. Symbol will be skipped."
+                logging.warning(message)
+
+        if ps:
+            while ps[-1] == space:
+                ps.pop()
+        if self.pad_with_space:
+            ps = [space] + ps + [space]
+
+        return [self._token2id[p] for p in ps]
