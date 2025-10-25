@@ -17,7 +17,7 @@ KANNADA_REGEX = re.compile(r'[\u0C80-\u0CFF]+')  # Kannada script
 MALAYALAM_REGEX = re.compile(r'[\u0D00-\u0D7F]+')  # Malayalam script
 LATIN_REGEX = re.compile(r'[A-Za-z]+')  # Latin script
 
-class IndicG2P:
+class IndicG2P():
     def __init__(self):
         self.phonemizers = {}
 
