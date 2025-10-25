@@ -19,8 +19,11 @@ LATIN_REGEX = re.compile(r'[A-Za-z]+')  # Latin script
 
 class IndicG2P:
     def __init__(self):
-        languages = ['hi', 'en-gb', 'bn', 'gu', 'kn', 'ml', 'mr', 'ne', 'or', 'pa', 'ta', 'te']
         self.phonemizers = {}
+
+        
+    def initialize_phonemizers(self):
+        languages = ['hi', 'en-gb', 'bn', 'gu', 'kn', 'ml', 'mr', 'ne', 'or', 'pa', 'ta', 'te']
         for lang in languages:
             try:
                 self.phonemizers[lang] = create_phonemizer(language=lang, punctuation_marks=_DEF_PUNCS)
